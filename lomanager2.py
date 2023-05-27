@@ -3,7 +3,20 @@ import logging
 
 
 def get_current_locale() -> str:
-    current_locale = "en_US"
+    """Gets currently set system locale.
+
+    It uses environmental variable LC_TELEPHONE
+    (following original lomanger bash script in this regard)
+    to determine current locale setting for the OS.
+
+    Returns
+    -------
+    current_locale : str
+        A locale identifier eg. "en-GB" or empty string
+        if locale could not be determined.
+    """
+
+    current_locale = ""
     logging.debug(
         f'Not implemented. Value returned: "{current_locale}" '
         f"({type(current_locale)})"
@@ -12,6 +25,14 @@ def get_current_locale() -> str:
 
 
 def get_system_information() -> dict:
+    """Gets information about the OS relevant to LibreOffice installation.
+
+    Returns
+    -------
+    information : dict
+        Useful information
+    """
+
     system_information = dict()
     logging.debug(
         f'Not implemented. Value returned: "{system_information}" '
