@@ -213,3 +213,7 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# draw.io backup and temporary files
+docs/*.bkp
+docs/*.dtmp
