@@ -20,7 +20,7 @@ def get_current_locale() -> str | None:
         (eg. when LC_CTYPE is set to "C").
     """
 
-    # Note that the original lomanger bash script checks
+    # Note that the original lomanager bash script checks
     # the value of the environmental variable LC_TELEPHONE
     # to determine the language code.
     # If needed this can be done like so (import os):
@@ -114,7 +114,7 @@ def uninstall_LibreOffice() -> int:
 
 def main():
     # Some logging useful to debug this script -
-    # - not related to lomanger2 flowchart
+    # - not related to lomanager2 flowchart
     logging.basicConfig(
         format="[%(levelname)s] (in %(funcName)s): %(message)s",
         level=logging.DEBUG,
@@ -132,13 +132,13 @@ def main():
 
     # Check whether there is a .mo file with translation for preferred language
     available_translation = gettext.find(
-        "lomanger2-main",
+        "lomanager2-main",
         localedir=translations_folder,
         languages=[preferred_language],
     )
     if available_translation:  # install available translation
         translation = gettext.translation(
-            "lomanger2-main",
+            "lomanager2-main",
             localedir=translations_folder,
             languages=[preferred_language],
         )
@@ -155,7 +155,7 @@ def main():
         # # Display system information and choices
         print(f"\nSystem information: {system_information}\n")
 
-        print(_("This is lomanger2"))
+        print(_("This is lomanager2"))
         print(_("What do you want to do?"))
         print(_("1) Install latest version of LibreOffice"))
         print(_("2) Install LibreOffice from locally saved packages"))
