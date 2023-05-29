@@ -155,38 +155,38 @@ def main():
         # # Display system information and choices
         print(f"\nSystem information: {system_information}\n")
 
-        print("This is lomanger2")
-        print("What do you want to do?")
-        print("1) Install latest version of LibreOffice")
-        print("2) Install LibreOffice from locally saved packages")
-        print("3) Uninstall LibreOffice from the system")
-        print("Any other number) Exit this program")
+        print(_("This is lomanger2"))
+        print(_("What do you want to do?"))
+        print(_("1) Install latest version of LibreOffice"))
+        print(_("2) Install LibreOffice from locally saved packages"))
+        print(_("3) Uninstall LibreOffice from the system"))
+        print(_("Any other number) Exit this program"))
         while True:
             try:
-                choice = int(input("Your choice: "))
+                choice = int(input(_("Your choice: ")))
                 break
             except:
-                print("invalid option")
+                print(_("invalid option"))
 
         if choice == 1:
-            print("Begin normal installation procedure... ")
+            print(_("Begin normal installation procedure... "))
             install_dir = pathlib.Path("~/tmp/")
             install_status = install_LibreOffice(
                 dir_path=install_dir, install_type="normal"
             )
         elif choice == 2:
-            print("Begin installation from local copy... ")
+            print(_("Begin installation from local copy... "))
             install_dir = pathlib.Path("~/tmp/")
             install_status = install_LibreOffice(
                 dir_path=install_dir, install_type="local-copy"
             )
         elif choice == 3:
-            print("Begin uninstall procedure... ")
+            print(_("Begin uninstall procedure... "))
             uninstall_LibreOffice()
         else:
             time_to_quit = True
 
-    print("Exiting...")
+    print(_("Exiting..."))
     sys.exit(0)
 
 
