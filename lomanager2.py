@@ -1,28 +1,37 @@
 import sys
 import logging
 import pathlib
+import gettext
+import locale
 
 
-def get_current_locale() -> str:
-    """Gets currently set system locale.
+def get_current_locale() -> str | None:
+    """Gets currently set locale.
 
-    It uses environmental variable LC_TELEPHONE
-    (following original lomanger bash script in this regard)
-    to determine current locale setting for the OS.
+    In order to determine current locale
+    this function uses locale.getlocale method
+    which relies on variable LC_CTYPE.
 
     Returns
     -------
-    current_locale : str
-        A locale identifier eg. "en-GB" or empty string
-        if locale could not be determined.
+    language_code : str or None
+        A locale identifier eg. "en_GB"
+        None is returned if locale could not be determined
+        (eg. when LC_CTYPE is set to "C").
     """
 
-    current_locale = ""
-    logging.debug(
-        f'Not implemented. Value returned: "{current_locale}" '
-        f"({type(current_locale)})"
-    )
-    return current_locale
+    # Note that the original lomanger bash script checks
+    # the value of the environmental variable LC_TELEPHONE
+    # to determine the language code.
+    # If needed this can be done like so (import os):
+    # language_code = os.environ["LC_TELEPHONE"].split(".")[0]
+    # and check for values that are not language codes
+    # like "C" or empty string
+
+    language_code = locale.getlocale()[0]
+    logging.debug(f'Detected language code: "{language_code}"')
+
+    return language_code
 
 
 def get_system_information() -> dict:
@@ -113,7 +122,30 @@ def main():
 
     # Top level program logic
     # # Set this program's language
-    use_language = get_current_locale()
+    preferred_language = get_current_locale()
+    # TODO: move all path to a separate object
+    translations_folder = pathlib.Path("./locales/")
+
+    # In case locale settings are messed up default to en_US
+    if preferred_language is None:
+        preferred_language = "en_US"
+
+    # Check whether there is a .mo file with translation for preferred language
+    available_translation = gettext.find(
+        "lomanger2-main",
+        localedir=translations_folder,
+        languages=[preferred_language],
+    )
+    if available_translation:  # install available translation
+        translation = gettext.translation(
+            "lomanger2-main",
+            localedir=translations_folder,
+            languages=[preferred_language],
+        )
+        translation.install()
+        _ = translation.gettext
+    else:  # no translation .mo file found, use non-translated strings
+        _ = gettext.gettext
 
     time_to_quit = False
     while not time_to_quit:
