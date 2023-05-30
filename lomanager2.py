@@ -14,6 +14,8 @@ translation = gettext.translation(
 translation.install()
 _ = translation.gettext
 
+keep_logging_messages_in_english = False
+
 
 def get_current_locale() -> str | None:
     """Gets currently set locale.
@@ -39,8 +41,15 @@ def get_current_locale() -> str | None:
     # like "C" or empty string
 
     language_code = locale.getlocale()[0]
-    logging.debug(f'Detected language code: "{language_code}"')
 
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    message = _("Detected language code: {}").format(language_code)
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.info(message)
     return language_code
 
 
@@ -54,10 +63,18 @@ def get_system_information() -> dict:
     """
 
     system_information = dict()
-    logging.debug(
-        f'Not implemented. Value returned: "{system_information}" '
-        f"({type(system_information)})"
-    )
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    message = _(
+        "NOT IMPLEMENTED!\n"
+        "Value returned: {} (type: {})"
+    ).format(system_information, type(system_information))
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.debug(message)
     return system_information
 
 
@@ -92,15 +109,21 @@ def install_LibreOffice(dir_path: pathlib.Path, install_type: str) -> int:
     """
 
     install_status = -1
-    logging.debug(
-        f"Not implemented.\n"
-        f'Value passed: "{dir_path}" '
-        f'type: "{type(dir_path)}"\n'
-        f'Value passed: "{install_type}" '
-        f'type: "{type(install_type)}"\n'
-        f'Value returned: "{install_status}" '
-        f'type: "{type(install_status)}"\n'
-    )
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    message = _(
+        "NOT IMPLEMENTED!\n"
+        "Value 1 passed: {} (type: {})\n"
+        "Value 2 passed: {} (type: {})\n"
+        "Value returned: {} (type: {})"
+    ).format(dir_path, type(dir_path), install_type, type(install_type),
+             install_status, type(install_status))
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.debug(message)
     return install_status
 
 
@@ -114,11 +137,18 @@ def uninstall_LibreOffice() -> int:
     """
 
     uninstall_status = -1
-    logging.debug(
-        f"Not implemented.\n"
-        f'Value returned: "{uninstall_status}" '
-        f'type: "{type(uninstall_status)}"\n'
-    )
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    message = _(
+        "NOT IMPLEMENTED!\n"
+        "Value returned: {} (type: {})"
+    ).format(uninstall_status, type(uninstall_status))
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.debug(message)
     return uninstall_status
 
 
@@ -126,7 +156,7 @@ def main():
     # Some logging useful to debug this script -
     # - not related to lomanager2 flowchart
     logging.basicConfig(
-        format="[%(levelname)s] (in %(funcName)s): %(message)s",
+        format="[%(levelname)s](%(asctime)s) (in %(funcName)s): %(message)s",
         level=logging.DEBUG,
     )
 
