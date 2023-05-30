@@ -4,6 +4,16 @@ import pathlib
 import gettext
 import locale
 
+# TODO: move all path to a separate object
+translations_folder = pathlib.Path("./locales/")
+
+translation = gettext.translation(
+    "lomanager2-main",
+    localedir=translations_folder,
+)
+translation.install()
+_ = translation.gettext
+
 
 def get_current_locale() -> str | None:
     """Gets currently set locale.
@@ -123,29 +133,10 @@ def main():
     # Top level program logic
     # # Set this program's language
     preferred_language = get_current_locale()
-    # TODO: move all path to a separate object
-    translations_folder = pathlib.Path("./locales/")
 
     # In case locale settings are messed up default to en_US
     if preferred_language is None:
         preferred_language = "en_US"
-
-    # Check whether there is a .mo file with translation for preferred language
-    available_translation = gettext.find(
-        "lomanager2-main",
-        localedir=translations_folder,
-        languages=[preferred_language],
-    )
-    if available_translation:  # install available translation
-        translation = gettext.translation(
-            "lomanager2-main",
-            localedir=translations_folder,
-            languages=[preferred_language],
-        )
-        translation.install()
-        _ = translation.gettext
-    else:  # no translation .mo file found, use non-translated strings
-        _ = gettext.gettext
 
     time_to_quit = False
     while not time_to_quit:
