@@ -217,3 +217,9 @@ compile_commands.json
 # draw.io backup and temporary files
 docs/*.bkp
 docs/*.dtmp
+
+# locale - translated .mo files in subfolders
+# but not the locale folder itself
+# nor the top-level translation template file .pot inside it.
+locales/*
+!*.pot

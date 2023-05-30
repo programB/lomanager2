@@ -1,0 +1,66 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-05-29 22:54+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: lomanager2.py:158
+msgid "This is lomanager2"
+msgstr ""
+
+#: lomanager2.py:159
+msgid "What do you want to do?"
+msgstr ""
+
+#: lomanager2.py:160
+msgid "1) Install latest version of LibreOffice"
+msgstr ""
+
+#: lomanager2.py:161
+msgid "2) Install LibreOffice from locally saved packages"
+msgstr ""
+
+#: lomanager2.py:162
+msgid "3) Uninstall LibreOffice from the system"
+msgstr ""
+
+#: lomanager2.py:163
+msgid "Any other number) Exit this program"
+msgstr ""
+
+#: lomanager2.py:166
+msgid "Your choice: "
+msgstr ""
+
+#: lomanager2.py:169
+msgid "invalid option"
+msgstr ""
+
+#: lomanager2.py:172
+msgid "Begin normal installation procedure... "
+msgstr ""
+
+#: lomanager2.py:178
+msgid "Begin installation from local copy... "
+msgstr ""
+
+#: lomanager2.py:184
+msgid "Begin uninstall procedure... "
+msgstr ""
+
+#: lomanager2.py:189
+msgid "Exiting..."
+msgstr ""
