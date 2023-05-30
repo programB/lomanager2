@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-29 22:54+0200\n"
+"POT-Creation-Date: 2023-05-30 22:30+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,50 +17,68 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lomanager2.py:158
+#: lomanager2.py:48
+msgid "Detected language code: {}"
+msgstr ""
+
+#: lomanager2.py:71 lomanager2.py:145
+msgid ""
+"NOT IMPLEMENTED!\n"
+"Value returned: {} (type: {})"
+msgstr ""
+
+#: lomanager2.py:117
+msgid ""
+"NOT IMPLEMENTED!\n"
+"Value 1 passed: {} (type: {})\n"
+"Value 2 passed: {} (type: {})\n"
+"Value returned: {} (type: {})"
+msgstr ""
+
+#: lomanager2.py:179
 msgid "This is lomanager2"
 msgstr ""
 
-#: lomanager2.py:159
+#: lomanager2.py:180
 msgid "What do you want to do?"
 msgstr ""
 
-#: lomanager2.py:160
+#: lomanager2.py:181
 msgid "1) Install latest version of LibreOffice"
 msgstr ""
 
-#: lomanager2.py:161
+#: lomanager2.py:182
 msgid "2) Install LibreOffice from locally saved packages"
 msgstr ""
 
-#: lomanager2.py:162
+#: lomanager2.py:183
 msgid "3) Uninstall LibreOffice from the system"
 msgstr ""
 
-#: lomanager2.py:163
+#: lomanager2.py:184
 msgid "Any other number) Exit this program"
 msgstr ""
 
-#: lomanager2.py:166
+#: lomanager2.py:187
 msgid "Your choice: "
 msgstr ""
 
-#: lomanager2.py:169
+#: lomanager2.py:190
 msgid "invalid option"
 msgstr ""
 
-#: lomanager2.py:172
+#: lomanager2.py:193
 msgid "Begin normal installation procedure... "
 msgstr ""
 
-#: lomanager2.py:178
+#: lomanager2.py:199
 msgid "Begin installation from local copy... "
 msgstr ""
 
-#: lomanager2.py:184
+#: lomanager2.py:205
 msgid "Begin uninstall procedure... "
 msgstr ""
 
-#: lomanager2.py:189
+#: lomanager2.py:210
 msgid "Exiting..."
 msgstr ""
