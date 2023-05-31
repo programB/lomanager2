@@ -64,11 +64,13 @@ def get_system_information() -> dict:
 
     system_information = dict()
 
+    system_information["live session"] = is_live_session_active()
+
     # fmt: off
     global _
     if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
     message = _(
-        "NOT IMPLEMENTED!\n"
+        "WIP!\n"
         "Value returned: {} (type: {})"
     ).format(system_information, type(system_information))
     if keep_logging_messages_in_english: del _  # reset lang
@@ -76,6 +78,31 @@ def get_system_information() -> dict:
 
     logging.debug(message)
     return system_information
+
+
+def is_live_session_active():
+    """Checks is system runs in Live mode aka Live Session.
+
+    Live Session (known before as Live CD) is active when
+    the user runs the OS directly of an iso image,
+    wihtout installing it onto system drive.
+    The hallmark is the existance of /union folder
+    created by UnionFS.
+    """
+
+    is_active = pathlib.Path("/union").exists()
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    actv = _("active")
+    noactv = _("not active")
+    message = _("Live session is: {}").format(actv if is_active else noactv)
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.info(message)
+    return is_active
 
 
 def install_LibreOffice(dir_path: pathlib.Path, install_type: str) -> int:

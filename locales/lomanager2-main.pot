@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-30 22:30+0200\n"
+"POT-Creation-Date: 2023-05-31 17:45+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,13 +21,25 @@ msgstr ""
 msgid "Detected language code: {}"
 msgstr ""
 
-#: lomanager2.py:71 lomanager2.py:145
+#: lomanager2.py:73
 msgid ""
-"NOT IMPLEMENTED!\n"
+"WIP!\n"
 "Value returned: {} (type: {})"
 msgstr ""
 
-#: lomanager2.py:117
+#: lomanager2.py:97
+msgid "active"
+msgstr ""
+
+#: lomanager2.py:98
+msgid "not active"
+msgstr ""
+
+#: lomanager2.py:99
+msgid "Live session is: {}"
+msgstr ""
+
+#: lomanager2.py:143
 msgid ""
 "NOT IMPLEMENTED!\n"
 "Value 1 passed: {} (type: {})\n"
@@ -35,50 +47,56 @@ msgid ""
 "Value returned: {} (type: {})"
 msgstr ""
 
-#: lomanager2.py:179
-msgid "This is lomanager2"
-msgstr ""
-
-#: lomanager2.py:180
-msgid "What do you want to do?"
-msgstr ""
-
-#: lomanager2.py:181
-msgid "1) Install latest version of LibreOffice"
-msgstr ""
-
-#: lomanager2.py:182
-msgid "2) Install LibreOffice from locally saved packages"
-msgstr ""
-
-#: lomanager2.py:183
-msgid "3) Uninstall LibreOffice from the system"
-msgstr ""
-
-#: lomanager2.py:184
-msgid "Any other number) Exit this program"
-msgstr ""
-
-#: lomanager2.py:187
-msgid "Your choice: "
-msgstr ""
-
-#: lomanager2.py:190
-msgid "invalid option"
-msgstr ""
-
-#: lomanager2.py:193
-msgid "Begin normal installation procedure... "
-msgstr ""
-
-#: lomanager2.py:199
-msgid "Begin installation from local copy... "
+#: lomanager2.py:171
+msgid ""
+"NOT IMPLEMENTED!\n"
+"Value returned: {} (type: {})"
 msgstr ""
 
 #: lomanager2.py:205
-msgid "Begin uninstall procedure... "
+msgid "This is lomanager2"
+msgstr ""
+
+#: lomanager2.py:206
+msgid "What do you want to do?"
+msgstr ""
+
+#: lomanager2.py:207
+msgid "1) Install latest version of LibreOffice"
+msgstr ""
+
+#: lomanager2.py:208
+msgid "2) Install LibreOffice from locally saved packages"
+msgstr ""
+
+#: lomanager2.py:209
+msgid "3) Uninstall LibreOffice from the system"
 msgstr ""
 
 #: lomanager2.py:210
+msgid "Any other number) Exit this program"
+msgstr ""
+
+#: lomanager2.py:213
+msgid "Your choice: "
+msgstr ""
+
+#: lomanager2.py:216
+msgid "invalid option"
+msgstr ""
+
+#: lomanager2.py:219
+msgid "Begin normal installation procedure... "
+msgstr ""
+
+#: lomanager2.py:225
+msgid "Begin installation from local copy... "
+msgstr ""
+
+#: lomanager2.py:231
+msgid "Begin uninstall procedure... "
+msgstr ""
+
+#: lomanager2.py:236
 msgid "Exiting..."
 msgstr ""
