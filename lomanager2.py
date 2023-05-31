@@ -8,6 +8,7 @@ import shutil
 # TODO: move all path to a separate object
 translations_folder = pathlib.Path("./locales/")
 install_folder_root = pathlib.Path("/opt/")
+java_executable_file = pathlib.Path("/usr/bin/java")
 
 translation = gettext.translation(
     "lomanager2-main",
@@ -68,6 +69,7 @@ def get_system_information() -> dict:
 
     system_information["live session"] = is_live_session_active()
     system_information["free HDD space"] = free_HDD_space(install_folder_root)
+    system_information["Java installed"] = is_java_installed()
 
     # fmt: off
     global _
@@ -130,6 +132,30 @@ def free_HDD_space(dir_path: pathlib.Path) -> int:
     logging.info(message)
     return free_space
 
+
+def is_java_installed() -> bool:
+    """Checks if Java Runtime Environment is installed.
+
+
+    Returns
+    -------
+    is_java_binary_present : bool
+       True if binary is present.
+    """
+
+    is_java_binary_present = java_executable_file.exists()
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    yes = _("is")
+    no = _("is not")
+    message = _("Java {} installed").format(yes if is_java_binary_present else no)
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.info(message)
+    return is_java_binary_present
 
 
 def install_LibreOffice(dir_path: pathlib.Path, install_type: str) -> int:
