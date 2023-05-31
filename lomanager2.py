@@ -93,6 +93,11 @@ def is_live_session_active() -> bool:
     wihtout installing it onto system drive.
     The hallmark is the existance of /union folder
     created by UnionFS.
+
+    Returns
+    -------
+    is_active: bool
+       True if OS runs in Live Session mode.
     """
 
     is_active = pathlib.Path("/union").exists()
@@ -117,7 +122,6 @@ def free_HDD_space(dir_path: pathlib.Path) -> int:
     -------
     free_space : int
         Free space in kibibytes (KiB).
-
     """
 
     free_space = int(shutil.disk_usage(dir_path).free / 1024)
@@ -135,7 +139,6 @@ def free_HDD_space(dir_path: pathlib.Path) -> int:
 
 def is_java_installed() -> bool:
     """Checks if Java Runtime Environment is installed.
-
 
     Returns
     -------
