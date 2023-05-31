@@ -97,7 +97,7 @@ def is_live_session_active():
     if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
     actv = _("active")
     noactv = _("not active")
-    message = _("Live session is: {}").format(actv is is_active or noactv)
+    message = _("Live session is: {}").format(actv if is_active else noactv)
     if keep_logging_messages_in_english: del _  # reset lang
     # fmt: on
 
