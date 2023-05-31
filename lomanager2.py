@@ -83,7 +83,7 @@ def get_system_information() -> dict:
     return system_information
 
 
-def is_live_session_active():
+def is_live_session_active() -> bool:
     """Checks is system runs in Live mode aka Live Session.
 
     Live Session (known before as Live CD) is active when
