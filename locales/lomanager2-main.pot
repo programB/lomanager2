@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-31 17:45+0200\n"
+"POT-Creation-Date: 2023-05-31 19:07+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,29 +17,33 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lomanager2.py:48
+#: lomanager2.py:50
 msgid "Detected language code: {}"
 msgstr ""
 
-#: lomanager2.py:73
+#: lomanager2.py:76
 msgid ""
 "WIP!\n"
 "Value returned: {} (type: {})"
 msgstr ""
 
-#: lomanager2.py:97
+#: lomanager2.py:101
 msgid "active"
 msgstr ""
 
-#: lomanager2.py:98
+#: lomanager2.py:102
 msgid "not active"
 msgstr ""
 
-#: lomanager2.py:99
+#: lomanager2.py:103
 msgid "Live session is: {}"
 msgstr ""
 
-#: lomanager2.py:143
+#: lomanager2.py:126
+msgid "Free space at {}: {} KiB"
+msgstr ""
+
+#: lomanager2.py:171
 msgid ""
 "NOT IMPLEMENTED!\n"
 "Value 1 passed: {} (type: {})\n"
@@ -47,56 +51,56 @@ msgid ""
 "Value returned: {} (type: {})"
 msgstr ""
 
-#: lomanager2.py:171
+#: lomanager2.py:199
 msgid ""
 "NOT IMPLEMENTED!\n"
 "Value returned: {} (type: {})"
 msgstr ""
 
-#: lomanager2.py:205
+#: lomanager2.py:233
 msgid "This is lomanager2"
 msgstr ""
 
-#: lomanager2.py:206
+#: lomanager2.py:234
 msgid "What do you want to do?"
 msgstr ""
 
-#: lomanager2.py:207
+#: lomanager2.py:235
 msgid "1) Install latest version of LibreOffice"
 msgstr ""
 
-#: lomanager2.py:208
+#: lomanager2.py:236
 msgid "2) Install LibreOffice from locally saved packages"
 msgstr ""
 
-#: lomanager2.py:209
+#: lomanager2.py:237
 msgid "3) Uninstall LibreOffice from the system"
 msgstr ""
 
-#: lomanager2.py:210
+#: lomanager2.py:238
 msgid "Any other number) Exit this program"
 msgstr ""
 
-#: lomanager2.py:213
+#: lomanager2.py:241
 msgid "Your choice: "
 msgstr ""
 
-#: lomanager2.py:216
+#: lomanager2.py:244
 msgid "invalid option"
 msgstr ""
 
-#: lomanager2.py:219
+#: lomanager2.py:247
 msgid "Begin normal installation procedure... "
 msgstr ""
 
-#: lomanager2.py:225
+#: lomanager2.py:253
 msgid "Begin installation from local copy... "
 msgstr ""
 
-#: lomanager2.py:231
+#: lomanager2.py:259
 msgid "Begin uninstall procedure... "
 msgstr ""
 
-#: lomanager2.py:236
+#: lomanager2.py:264
 msgid "Exiting..."
 msgstr ""

@@ -3,9 +3,11 @@ import logging
 import pathlib
 import gettext
 import locale
+import shutil
 
 # TODO: move all path to a separate object
 translations_folder = pathlib.Path("./locales/")
+install_folder_root = pathlib.Path("/opt/")
 
 translation = gettext.translation(
     "lomanager2-main",
@@ -65,6 +67,7 @@ def get_system_information() -> dict:
     system_information = dict()
 
     system_information["live session"] = is_live_session_active()
+    system_information["free HDD space"] = free_HDD_space(install_folder_root)
 
     # fmt: off
     global _
@@ -103,6 +106,30 @@ def is_live_session_active():
 
     logging.info(message)
     return is_active
+
+
+def free_HDD_space(dir_path: pathlib.Path) -> int:
+    """Checks free space on the partition holding a folder passed.
+
+    Returns
+    -------
+    free_space : int
+        Free space in kibibytes (KiB).
+
+    """
+
+    free_space = int(shutil.disk_usage(dir_path).free / 1024)
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    message = _("Free space at {}: {} KiB").format(str(dir_path), free_space)
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    logging.info(message)
+    return free_space
+
 
 
 def install_LibreOffice(dir_path: pathlib.Path, install_type: str) -> int:
