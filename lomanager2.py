@@ -67,6 +67,7 @@ def get_system_information() -> dict:
 
     system_information = dict()
 
+    system_information["current locale"] = get_current_locale()
     system_information["live session"] = is_live_session_active()
     system_information["free HDD space"] = free_HDD_space(install_folder_root)
     system_information["Java installed"] = is_java_installed()
@@ -235,6 +236,8 @@ def uninstall_LibreOffice() -> int:
     return uninstall_status
 
 
+# Top level program logic
+# # Start
 def main():
     # Some logging useful to debug this script -
     # - not related to lomanager2 flowchart
@@ -243,14 +246,10 @@ def main():
         level=logging.DEBUG,
     )
 
-    # Top level program logic
     # # Set this program's language
-    preferred_language = get_current_locale()
+    # # (This is done at the top of the module by setting up gettext)
 
-    # In case locale settings are messed up default to en_US
-    if preferred_language is None:
-        preferred_language = "en_US"
-
+    # # Enter main loop
     time_to_quit = False
     while not time_to_quit:
         # # Gather system information
@@ -259,6 +258,7 @@ def main():
         # # Display system information and choices
         print(f"\nSystem information: {system_information}\n")
 
+        # # Get user input
         print(_("This is lomanager2"))
         print(_("What do you want to do?"))
         print(_("1) Install latest version of LibreOffice"))
@@ -288,8 +288,10 @@ def main():
             print(_("Begin uninstall procedure... "))
             uninstall_LibreOffice()
         else:
+            # # User chooses to exit ?
             time_to_quit = True
 
+    # # End
     print(_("Exiting..."))
     sys.exit(0)
 
