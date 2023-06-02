@@ -4,6 +4,7 @@ import pathlib
 import gettext
 import locale
 import shutil
+from typing import Tuple  # for type hints
 
 # TODO: move all path to a separate object
 translations_folder = pathlib.Path("./locales/")
@@ -70,6 +71,7 @@ def get_system_information() -> dict:
     system_information["current locale"] = get_current_locale()
     system_information["live session"] = is_live_session_active()
     system_information["free HDD space"] = free_HDD_space(install_folder_root)
+    system_information["installed office suits"] = detect_installed_office_suits()
     system_information["Java installed"] = is_java_installed()
 
     # fmt: off
@@ -160,6 +162,143 @@ def is_java_installed() -> bool:
 
     logging.info(message)
     return is_java_binary_present
+
+
+def detect_installed_office_suits() -> list[Tuple[str, str]]:
+    """Detects legacy OpenOffice and old versions of LibreOffice installed.
+
+    It probes for known set of OpenOffice and LibreOffice versions
+    that were part of PCLOS at some point. It does that by
+    checking for known executables in known places (eg. /usr/bin/ooffice2*).
+    The function returns a list of detected Office suits with version numbers
+    (if this could be determined). This list should consist at most 1 entry
+    as more would indicate that the user managed to install two different
+    versions of Office simultaneously - such option was never supported.
+
+    Returns
+    -------
+    list_of_detected_suits : list
+        List of tuples in the form ("Suite name", "version")
+        eg. [("OpenOffice", "2.4"), ("LibreOffice", "7.2")]
+    """
+
+    # fmt: off
+    global _
+    if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+    # fmt: on
+
+    list_of_detected_suits = list()
+
+    # Look for OpenOffice 2.x (was on 2007 CD)
+    if list(pathlib.Path("/usr/bin/").glob("ooffice2*")):
+        # exec. detected but if we don't detect version in the version_file
+        # we should assume version 2.0
+        version = "2.0"
+        config_files = list(pathlib.Path("/usr/bin/").glob("ooconfig*"))
+        if config_files:
+            # get version from the file name
+            # (first one only following the original lomanager script)
+            version = (str(config_files[0]))[17 : 17 + 3]
+        dbg_message = _("Detected OpenOffice series 2 ver.: {}").format(version)
+        logging.debug(dbg_message)
+        list_of_detected_suits.append(("OpenOffice", version))
+
+    # Look for OpenOffice 3.0.0 (was on 2009.1 CD)
+    if pathlib.Path("/usr/bin/ooffice3.0").exists():
+        dbg_message = _("Detected OpenOffice ver.: {}").format("3.0.0")
+        logging.debug(dbg_message)
+        list_of_detected_suits.append(("OpenOffice", "3.0.0"))
+
+    # Look for OpenOffice 3.0.1 and later
+    if pathlib.Path("/usr/bin/openoffice.org3").exists():
+        # exec. detected but if we don't detect version in the version_file
+        # we should assume version 3.1
+        version = "3.1"
+        # Parse version_file to find version
+        # TODO: If 'configparser' module gets included for other purposes
+        #       this should be refactored to:
+        #       cfg = configparser.ConfigParser()
+        #       cfg.read(version_file)
+        #       version = cfg.get('Version', 'OOOBaseVersion')
+        version_file = "/opt/openoffice.org3/program/versionrc"
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = _("Detected OpenOffice series 3 ver.: {}").format(version)
+        logging.debug(dbg_message)
+        list_of_detected_suits.append(("OpenOffice", version))
+
+    # Look for LibreOffice 3.3 (it is intentionally treated separately)
+    if pathlib.Path("/usr/bin/libreoffice").exists():
+        # exec. detected but if we don't detect version in the version_file
+        # we should assume version 3.3
+        version = "3.3"
+        version_file = "/opt/libreoffice/program/versionrc"  # different then ↑
+        # The version extracted from the configuration file should
+        # always be 3.3 but the original script checks that anyways
+        # and this is why it is done here as well.
+        # (Perhaps there were some subvariants like 3.3.1 etc.)
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = _("Detected LibreOffice series 3.3 ver.: {}").format(version)
+        logging.debug(dbg_message)
+        list_of_detected_suits.append(("LibreOffice", version))
+
+    # Look for LibreOffice 3.4 and above (including latest)
+    # TODO: Move this list to some configuration section or configuration file.
+    #       Every time new LibreOffice version is added this list
+    #       needs to be updated.
+    versions_list = [
+        "3.4",
+        "3.5",
+        "3.6",
+        "4.0",
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "5.0",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.0",
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "7.0",
+        "7.1",
+        "7.2",
+        "7.3",
+        "7.4",
+        "7.5",
+    ]
+    for version in versions_list:
+        if pathlib.Path("/usr/bin/libreoffice" + version).exists():
+            dbg_message = _("Detected LibreOffice ver.: {}").format(version)
+            logging.debug(dbg_message)
+            list_of_detected_suits.append(("LibreOffice", version))
+
+    inf_message = _("Value returned: {} (type: {})").format(
+        list_of_detected_suits, type(list_of_detected_suits)
+    )
+    logging.info(inf_message)
+
+    # fmt: off
+    if keep_logging_messages_in_english: del _  # reset lang
+    # fmt: on
+
+    return list_of_detected_suits
 
 
 def install_LibreOffice(dir_path: pathlib.Path, install_type: str) -> int:
