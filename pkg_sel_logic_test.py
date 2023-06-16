@@ -1,5 +1,5 @@
 import sys
-from typing import Any
+from typing import Any, Tuple
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -130,11 +130,95 @@ class PackageMenu(object):
         self._set_initial_state()
 
     # Public methods
-    def get_package_field(self, row: int, column: int):
-        pass
+    def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
+        """Gets any field in the package menu (at row and column)
+
+        This method is used to represent underlying package data as
+        a table with rows representing each package the user can request
+        operation on and various columns showing the status of this operations.
+        This virtual table is thought to consist of 6 columns (0-5):
+        |Software name|package type|version|...
+        ...|removal flags|upgrade flags|install flags|
+
+        Each row-column combination leads to a field that is described by
+        a tuple of 3 parameters. For columns 0-2 it is the string (either kind
+        family or version) and 2 filler boolean values that don't carry meaning
+        For columns 3-5 returned is a tuple of 3 (out of 4 existing) flags
+        of the virtual package shown in this row.
+        These are accordingly:
+            is_marked_for_(removal/upgrade/install)
+            is_(remove/upgrade/install)_opt_visible
+            is_(remove/upgrade/install)_opt_enabled
+
+        virtual package flags:
+            removable/upgradable/installable
+            are treated as private and never returned
+
+
+        Parameters
+        ----------
+        row : int
+          row of the package list
+        column : int
+          column of the package list
+
+        Returns
+        -------
+        Tuple[Any, Any, Any]
+          (string, bool, bool) - for columns 0,1,2 (bools are just fillers)
+          (bool, bool, bool) - for columns 3,4,5 (visible) package flags
+        """
+
+        package = self.packages[row]
+        if column == 0:
+            return (package.family, True, False)
+        elif column == 1:
+            return (package.kind, True, False)
+        elif column == 2:
+            return (package.version, True, False)
+        elif column == 3:
+            return (
+                package.is_marked_for_removal,
+                package.is_remove_opt_visible,
+                package.is_remove_opt_enabled,
+            )
+        elif column == 4:
+            return (
+                package.is_marked_for_upgrade,
+                package.is_upgrade_opt_visible,
+                package.is_upgrade_opt_enabled,
+            )
+        elif column == 5:
+            return (
+                package.is_marked_for_install,
+                package.is_install_opt_visible,
+                package.is_install_opt_enabled,
+            )
+        else:
+            return (None, None, None)
 
     def set_package_field(self, row: int, column: int, value: bool):
         pass
+
+    def get_row_count(self) -> int:
+        """Returns number of rows of the packages menu
+
+        Returns
+        -------
+        int
+          number of rows
+        """
+        return len(self.packages)
+
+    def get_column_count(self) -> int:
+        """Returns number of columns of the package menu
+
+        Returns
+        -------
+        int
+          Currently package menu is thought as having 6 columns
+        """
+        return 6
 
     # Private methods
     def _build_package_list(self) -> None:
@@ -158,37 +242,15 @@ class PackageMenu(object):
 
 
 class PackageMenuModel(QAbstractTableModel):
-    def __init__(self):
+    def __init__(self, package_menu=None):
         super().__init__()
 
-        # TODO: A test. Remove after creating proper model
-        test_v_p = VirtualPackage("core-packages", "LibreOffice", "7.4")
-        print(test_v_p)
-        print(test_v_p.family)
-        print(test_v_p.is_removable)
-
-        # TODO: Holding the data inside model
-        #       for testing only.
-        #       To be replaced by a proper
-        #       data object.
-        self.package_menu = [
-            [
-                "OpenOffice",
-                "core-packages",
-                "2.1",
-                True,
-                False,
-                False,
-            ],
-            [
-                "LibreOffice",
-                "core-packages",
-                "7.4",
-                False,
-                True,
-                False,
-            ],
-        ]
+        # Create or reference an object concerned
+        # with the logic of package operations
+        if package_menu is None:
+            self.package_menu = PackageMenu()
+        else:
+            self.package_menu = package_menu
 
     def data(self, index, role) -> Any:
         """Returns data item as requested by the View.
@@ -212,10 +274,12 @@ class PackageMenuModel(QAbstractTableModel):
 
         row = index.row()
         column = index.column()
-        item = self.package_menu[row][column]
+        pf_base, pf_visible, pf_enabled = self.package_menu.get_package_field(
+            row, column
+        )
 
         if role == Qt.ItemDataRole.DisplayRole:
-            return item
+            return pf_base
 
     def rowCount(self, index) -> int:
         """Tells how many rows of data there are.
@@ -231,7 +295,7 @@ class PackageMenuModel(QAbstractTableModel):
             Number of rows
         """
 
-        return len(self.package_menu)
+        return self.package_menu.get_row_count()
 
     def columnCount(self, index) -> int:
         """Tells how many columns of data there are.
@@ -247,9 +311,7 @@ class PackageMenuModel(QAbstractTableModel):
             Number of rows
         """
 
-        # For the intended way of displaying package status
-        # there will always be fixed number of 6 columns.
-        return 6
+        return self.package_menu.get_column_count()
 
     def headerData(self, section: int, orientation, role) -> str | None:
         """Returns descriptions for each column in the data.
