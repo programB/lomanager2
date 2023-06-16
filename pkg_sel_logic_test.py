@@ -101,6 +101,62 @@ class VirtualPackage(object):
         self.is_marked_for_install = False
 
 
+class PackageMenu(object):
+    def __init__(self) -> None:
+        # Temporary, hard coded list of software "installed" in the system
+        # TODO: such list should be passed to the __init__ method
+        #       from the "Gather system information" procedure
+        #       (see the flowchart)
+        self.found_software = [
+            ["OpenOffice", "2.0"],
+            ["OpenOffice", "2.4", "pl", "gr"],
+            ["LibreOffice", "3.0.0", "fr", "de"],
+            ["LibreOffice", "7.5", "jp", "pl"],
+            ["Clipart", "5.3"],
+        ]
+        for item in self.found_software:
+            print(item)
+
+        # Data store representing items in the menu
+        self.packages = []
+
+        # Initialize PackageMenu object
+        # a) Build a list of virtual packages from the list
+        #    of packages installed in the system.
+        self._build_package_list()
+        # b) Set initial state of the menu by analyzing package
+        #    dependencies and system state to decide
+        #    what the user can/cannot do.
+        self._set_initial_state()
+
+    # Public methods
+    def get_package_field(self, row: int, column: int):
+        pass
+
+    def set_package_field(self, row: int, column: int, value: bool):
+        pass
+
+    # Private methods
+    def _build_package_list(self) -> None:
+        """Builds a list of virtual packages based on installed ones."""
+        for office_suit in self.found_software:
+            family = office_suit[0]
+            version = office_suit[1]
+            core_packages = VirtualPackage(
+                "core-packages",
+                family,
+                version,
+            )
+            self.packages.append(core_packages)
+            for lang in office_suit[2:]:
+                lang_pkg = VirtualPackage(lang, family, version)
+                self.packages.append(lang_pkg)
+
+    def _set_initial_state(self) -> None:
+        """Decides on initial conditions for packages install/removal."""
+        pass
+
+
 class PackageMenuModel(QAbstractTableModel):
     def __init__(self):
         super().__init__()
