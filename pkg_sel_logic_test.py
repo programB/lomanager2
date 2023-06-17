@@ -552,7 +552,7 @@ class PackageMenu(object):
                 print(
                     "Whoops! How did you manage to install LO that is newer "
                     f"({self.newest_installed_LO_version}) than the one in the"
-                    f" repo ({latest_available_LO_version})?"
+                    f" repo ({self.latest_available_LO_version})?"
                 )
                 print(
                     "This program will not allow you to make any changes. "
