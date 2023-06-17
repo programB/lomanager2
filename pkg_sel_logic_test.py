@@ -500,6 +500,57 @@ class PackageMenu(object):
                     if markpackege.family == "OpenOffice":
                         markpackege.is_marked_for_removal = True
 
+        # LibreOffice dependency tree
+        if package.family == "LibreOffice":
+            # unmarking the request for removal
+            if mark is False:
+                # If the users wants to unmark the removal of an LibreOffice
+                # package previously marked for removal (for whatever reason)
+                # this should be allowed BUT:
+                # - it should not lead (by marking and unmarking core-packages)
+                #   to lang packs left without their core-packages.
+                # - the install option for new lang packs should reenabled
+                package.is_marked_for_removal = False
+                if package.kind == "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                        ):
+                            candidate.is_marked_for_removal = False
+                            if candidate.is_installable:
+                                candidate.is_install_opt_enabled = True
+
+            # requesting removal of ...
+            if mark is True:
+                # ... a LibreOffice core-packages
+                if package.kind == "core-packages":
+                    # mark yourself for removal
+                    package.is_marked_for_removal = True
+                    #  mark all your children (lang packages) for removal too
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                        ):
+                            candidate.is_marked_for_removal = True
+                    # prevent installation of any new lang packs
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.is_installable is True
+                        ):
+                            candidate.is_marked_for_install = False
+                            candidate.is_install_opt_enabled = False
+                # ... any lang package
+                else:
+                    # only mark yourself for removal
+                    package.is_marked_for_removal = True
+
         # Clipart dependency tree
         if package.family == "Clipart":
             # As this is an independent package no special logic is needed,
