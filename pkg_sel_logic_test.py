@@ -127,7 +127,7 @@ class PackageMenu(object):
         #       on hard coded latest available versions, a fixed list of
         #       supported languages and file naming convention
         #       or read in from a pre generated configuration file.
-        self.latest_available_LO_version = "7.5"
+        self.latest_available_LO_version = "7.6"
         self.latest_available_clipart_version = "5.8"
         self.latest_available_packages = [
             VirtualPackage(
@@ -517,6 +517,84 @@ class PackageMenu(object):
             raise NotImplementedError(
                 "OpenOffice cannot be upgraded, it can only be uninstalled."
             )
+
+        # LibreOffice dependency tree
+        # TODO: this procedure may not actually need separate mark = True/False
+        #       cases but keeping separate for now to make sure no edge case
+        #       slips by.
+        if package.family == "LibreOffice":
+            # unmarking the request for upgrade
+            if mark is False:
+                # TODO: Unmark any removals of ANY Office. This is to prevent
+                #       the situation when unmarking the (already marked)
+                #       upgrade options leaves existing Office suit(s)
+                #       marked for removal. Then accidental "Apply Changes"
+                #       would lead to all existing office suits getting
+                #       uninstalled and latest office not installed.
+                for candidate in self.packages:
+                    if (
+                        candidate.family == "OpenOffice"
+                        or candidate.family == "LibreOffice"
+                    ):
+                        candidate.is_marked_for_removal = False
+                        candidate.is_remove_opt_enabled = True
+                #  unmark yourself
+                package.is_marked_for_upgrade = False
+                # 4b)   Upgrade is atomic -- all or none so:
+                #       unmark for upgrade other packages in the same tree
+                #       (parent or children or sibling(s))
+                #       BUT only those that were marked as upgradable
+                for candidate in self.packages:
+                    if (
+                        candidate is not package
+                        and candidate.family == "LibreOffice"
+                        and candidate.version == package.version
+                        and candidate.is_upgradable
+                    ):
+                        candidate.is_marked_for_upgrade = False
+
+            # requesting upgrade
+            if mark is True:
+                # 1a) mark ALL OpenOffice packages installed for removal
+                # 1b)   and their remove_opt_enabled to False
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                # 2a) mark installed LibreOffice versions other then
+                #     newest installed for removal
+                # 2b)   and their remove_opt_enabled to False
+                for candidate in self.packages:
+                    if (
+                        candidate.family == "LibreOffice"
+                        and candidate.version != self.newest_installed_LO_version
+                    ):
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                    # 3a) Do not mark newest installed LO for removal. Just
+                    #     mark its remove_opt_enabled as False
+                    #     (disable explicit removal request)
+                    #     This will show the latest is not removed but upgraded
+                    # 3b)
+                    if (
+                        candidate.family == "LibreOffice"
+                        and candidate.version == self.newest_installed_LO_version
+                    ):
+                        candidate.is_remove_opt_enabled = False
+                # 4a) mark yourself for upgrade
+                package.is_marked_for_upgrade = True
+                # 4b)   Upgrade is atomic -- all or none so:
+                #       mark for upgrade other packages in the same tree
+                #       (parent or children or sibling(s))
+                #       BUT only those that were marked as upgradable
+                for candidate in self.packages:
+                    if (
+                        candidate is not package
+                        and candidate.family == "LibreOffice"
+                        and candidate.version == package.version
+                        and candidate.is_upgradable
+                    ):
+                        candidate.is_marked_for_upgrade = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
