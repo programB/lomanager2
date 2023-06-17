@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 from PySide6.QtCore import (
+    QAbstractItemModel,
     QAbstractTableModel,
     Qt,
 )
@@ -198,8 +199,29 @@ class PackageMenu(object):
         else:
             return (None, None, None)
 
-    def set_package_field(self, row: int, column: int, value: bool):
-        pass
+    def set_package_field(self, row: int, column: int, value: bool) -> bool:
+        # TODO: This naive flags setting is for testing purposes only
+        #       Replace with proper code.
+
+        # TODO: Package selection logic should be applied in this method
+
+        # TODO: this method should return True/False to provide GUI with
+        #       some information if the package selection logic failed
+        #       to set the desired state (for any reason)
+        is_logic_applied = False
+        package = self.packages[row]
+        if column == 3:
+            package.is_marked_for_removal = value
+            is_logic_applied = True
+        elif column == 4:
+            package.is_marked_for_upgrade = value
+            is_logic_applied = True
+        elif column == 5:
+            package.is_marked_for_install = value
+            is_logic_applied = False
+        else:
+            is_logic_applied = False
+        return is_logic_applied
 
     def get_row_count(self) -> int:
         """Returns number of rows of the packages menu
@@ -266,6 +288,7 @@ class PackageMenuModel(QAbstractTableModel):
         else:
             self.package_menu = package_menu
 
+    # -- start "Getters" --
     def data(self, index, role) -> Any:
         """Returns data item as requested by the View.
 
@@ -413,6 +436,91 @@ class PackageMenuModel(QAbstractTableModel):
                     return "marked for install?"
                 else:
                     return None
+
+    # -- end "Getters" --
+
+    # -- start "Setters" --
+    # To enable editing, the following functions must be implemented correctly:
+    # setData(), setHeaderData(), flags()
+    def setData(self, index, value, role) -> bool:
+        """Attempts to set data in the PackageMenu based on user input
+
+        Set package's flag (T/F) indicated by index
+        (effectively row and column)
+        by calling PackageMenu method set_package_field()
+
+        Parameters
+        ----------
+        index : QModelIndex | QPeristentModelIndex
+            Points to a specific data item in data model
+
+        value : str
+          Although any string can be provided only strings: "True", "False",
+          "1", "0" representing booleans will have effect.
+
+        role : DisplayRole
+           Each data item in data model may have many data elements
+           associated with it. role, passed in by the View, indicates
+           to the model which element of the data item is needed.
+
+        Returns
+        -------
+        bool
+          True: PackageMenu successfully applied package logic
+          False: non flag column, package logic failed, index not valid
+        """
+
+        row = index.row()
+        column = index.column()
+
+        # TODO: Printing just for testing. Remove when not needed
+        print(f"you entered: {value} (type {type(value)})")
+
+        # Only data in columns mark_for_removal|upgrade|install
+        # can be modified and they only accept boolen values
+        # Also this method will not be called for other columns
+        # because the flags() method already
+        # prevents the user from modifying other columns.
+        if column >= 3:
+            if value.upper() == "TRUE" or value == "1":
+                value_as_bool = True
+            if value.upper() == "FALSE" or value == "0":
+                value_as_bool = False
+        else:
+            return False
+
+        if index.isValid() and role == Qt.ItemDataRole.EditRole:
+            # This is the place to send the entered value to the underlining
+            # object holding the data (PackageMenu) ...
+            s = self.package_menu.set_package_field(row, column, value_as_bool)
+
+            # ... and then inform the View that it should update its
+            # state because data has changed.
+            # Redraw ENTIRE View as the underlining PackageMenu logic
+            # may have altered other cells - not just the one changed here.
+            self.layoutChanged.emit()
+            # Do not use:
+            # self.dataChanged.emit(index, index, role)
+            # as it causes only the altered cell to be redrawn by the View
+
+            if s:  # desired state was set successfully
+                return True
+        return False  # invalid index OR something went wrong when setting
+
+    def setHeaderData(self, section, orientation, value, role) -> bool:
+        return super().setHeaderData(section, orientation, value, role)
+
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.ItemFlag.ItemIsEnabled
+        # Only allow mark_for_removal|upgrade|install fields to be editable
+        # Columns 0,1 and 3 can't be edited
+        if index.column() >= 3:
+            existing_flags = QAbstractItemModel.flags(self, index)
+            return existing_flags | Qt.ItemFlag.ItemIsEditable
+        return QAbstractItemModel.flags(self, index)
+
+    # -- end "Setters" --
 
 
 class MyWindow(QMainWindow):
