@@ -127,7 +127,7 @@ class PackageMenu(object):
         #       on hard coded latest available versions, a fixed list of
         #       supported languages and file naming convention
         #       or read in from a pre generated configuration file.
-        self.latest_available_LO_version = "7.5"
+        self.latest_available_LO_version = "7.6"
         self.latest_available_clipart_version = "5.8"
         self.latest_available_packages = [
             VirtualPackage(
@@ -258,25 +258,64 @@ class PackageMenu(object):
             return (None, None, None)
 
     def set_package_field(self, row: int, column: int, value: bool) -> bool:
-        # TODO: This naive flags setting is for testing purposes only
-        #       Replace with proper code.
+        """Sets (marked for ...) flags for package applying dependencies logic
 
-        # TODO: Package selection logic should be applied in this method
+        Parameters
+        ----------
+        row : int
+          Selected package as row in the package menu
 
-        # TODO: this method should return True/False to provide GUI with
-        #       some information if the package selection logic failed
-        #       to set the desired state (for any reason)
+        column : int
+          Selected flag as column
+
+        value : bool
+          Requested flag value: True - mark, False - unmark
+
+        Returns
+        -------
+        bool
+          Request succeeded True/False
+        """
+
         is_logic_applied = False
         package = self.packages[row]
+
         if column == 3:
-            package.is_marked_for_removal = value
-            is_logic_applied = True
+            if (
+                package.is_remove_opt_visible
+                and package.is_remove_opt_enabled
+                and package.is_removable
+            ):
+                is_logic_applied = self._apply_removal_logic(package, value)
+            else:
+                is_logic_applied = False
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for removal"
+                )
         elif column == 4:
-            package.is_marked_for_upgrade = value
-            is_logic_applied = True
+            if (
+                package.is_upgrade_opt_visible
+                and package.is_upgrade_opt_enabled
+                and package.is_upgradable
+            ):
+                is_logic_applied = self._apply_upgrade_logic(package, value)
+            else:
+                is_logic_applied = False
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for upgrade"
+                )
         elif column == 5:
-            package.is_marked_for_install = value
-            is_logic_applied = False
+            if (
+                package.is_install_opt_visible
+                and package.is_install_opt_enabled
+                and package.is_installable
+            ):
+                is_logic_applied = self._apply_install_logic(package, value)
+            else:
+                is_logic_applied = False
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for install"
+                )
         else:
             is_logic_applied = False
         return is_logic_applied
@@ -337,6 +376,386 @@ class PackageMenu(object):
         package.is_upgradable = True
         package.is_upgrade_opt_visible = True
         package.is_upgrade_opt_enabled = True
+
+    def _apply_install_logic(self, package: VirtualPackage, mark: bool):
+        """Marks package for install changing flags of other packages accordingly
+
+        This procedure will mark requested package for install and make
+        sure this causes other packages to be also installed or prevented
+        from being removed respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for installed, False - unmark (give up installing)
+
+        Returns
+        -------
+        bool
+          True if packages install logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_install_successul = False
+
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # OpenOffice is not supported and can never be installed
+            # by this program - it can only be removed.
+            # The code here should never execute.
+            is_apply_install_successul = False
+            raise NotImplementedError(
+                "OpenOffice cannot be installed, it can only be uninstalled."
+            )
+
+        # LibreOffice dependency tree
+        if package.family == "LibreOffice":
+            # unmarking the request for install
+            if mark is False:
+                # 1) unmark yourself
+                package.is_marked_for_install = False
+                # 2) If this is the request to unmark the last of all
+                #    new lang packs marked for install (user changes mind
+                #    and decides not to install any new languages) -
+                #    allow to uninstall existing (is exists) core-packages.
+                if package.kind != "core-packages":
+                    langs_left = []
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind != "core-packages"
+                            and candidate.is_installable is True
+                            and candidate.is_marked_for_install is True
+                        ):
+                            langs_left.append(candidate)
+
+                    if not langs_left:
+                        for candidate in self.packages:
+                            if (
+                                candidate.family == "LibreOffice"
+                                and candidate.version == package.version
+                                and candidate.kind == "core-packages"
+                            ):
+                                candidate.is_remove_opt_enabled = True
+                # 3) If this IS the core-packages
+                #    don't leave your lang packs hanging - unmark them
+                if package.kind == "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind != "core-packages"
+                        ):
+                            candidate.is_marked_for_install = False
+                        # 4) Unmark the removal field of any OpenOffice to
+                        #    prevent the case when the user changes mind
+                        #    and unmarks LibreOffice install but
+                        #    OpenOffice that was marked for uninstall
+                        #    (in the "requesting install" case below) stays
+                        #    marked and gets accidentally removed leaving
+                        #    the user with NO Office installed at all.
+                        #    This can be done ONLY IF no LibreOffice package
+                        #    is left marked for install. That is only after
+                        #    the last LibreOffice package that was marked
+                        #    for install gets unmarked - and this happens here
+                        #    automatically when the core-packages
+                        #    gets unmarked.
+                        if candidate.family == "OpenOffice":
+                            candidate.is_marked_for_removal = False
+                            candidate.is_remove_opt_enabled = True
+                is_apply_install_successul = True
+
+            # requesting install
+            if mark is True:
+                # 1) mark yourself for install
+                package.is_marked_for_install = True
+                # 2) If this is a lang pack
+                #    mark your parent (core-packages) as well
+                if package.kind != "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind == "core-packages"
+                        ):
+                            # core-packages already installed - prevent
+                            # it's removal
+                            if candidate.is_removable is True:
+                                candidate.is_remove_opt_enabled = False
+                            # core-packages not installed - mark for install
+                            else:
+                                candidate.is_marked_for_install = True
+                # 3) mark any OpenOffice for removal
+                #    and set is_remove_opt_enabled to False
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                # 4)  As the install option is only available
+                #     when no installed LO was detected
+                #     and thus the latest LO was added to self.packages
+                #     there is no need to care about other installed LO suits
+                #     Such situation should never occur.
+                is_apply_install_successul = True
+
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # As this is an independent package no special logic is needed,
+            # just mark the package as requested.
+            package.is_marked_for_install = mark
+            is_apply_install_successul = True
+
+        return is_apply_install_successul
+
+    def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
+        """Marks package for removal changing flags of other packages accordingly
+
+        This procedure will mark requested package for removal and make
+        sure this causes other packages to be also removed or prevented
+        from removal respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for removal, False - unmark (give up removing)
+
+        Returns
+        -------
+        bool
+          True if packages removal logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_removal_successul = False
+
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # unmarking the request for removal
+            if mark is False:
+                # If the users wants to unmark the removal of an OpenOffice
+                # (previously marked for removal) for whatever reason
+                # this should be allowed BUT:
+                # Since the OpenOffice is not supported and this is
+                # LibreOffice Manager not OpenOffice Manager there are
+                # only 2 options:
+                # - keep OpenOffice and not install LibreOffice at all
+                # - or completelty remove ANY and ALL OpenOffice packages
+                # This program will not allow for any paritial marking of
+                # OpenOffice packages.
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = False
+                is_apply_removal_successul = True
+
+            # requesting removal
+            if mark is True:
+                # In case the user marks ANY OpenOffice package for removal
+                # it's a good opportunity to get rid of all OpenOffice
+                # packages since this suite is NOT SUPPORTED
+                for markpackege in self.packages:
+                    if markpackege.family == "OpenOffice":
+                        markpackege.is_marked_for_removal = True
+                is_apply_removal_successul = True
+
+        # LibreOffice dependency tree
+        if package.family == "LibreOffice":
+            # unmarking the request for removal
+            if mark is False:
+                # If the users wants to unmark the removal of an LibreOffice
+                # package previously marked for removal (for whatever reason)
+                # this should be allowed BUT:
+                # - it should not lead (by marking and unmarking core-packages)
+                #   to lang packs left without their core-packages.
+                # - the install option for new lang packs should reenabled
+                package.is_marked_for_removal = False
+                if package.kind == "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                        ):
+                            candidate.is_marked_for_removal = False
+                            if candidate.is_installable:
+                                candidate.is_install_opt_enabled = True
+                is_apply_removal_successul = True
+
+            # requesting removal of ...
+            if mark is True:
+                # ... a LibreOffice core-packages
+                if package.kind == "core-packages":
+                    # mark yourself for removal
+                    package.is_marked_for_removal = True
+                    #  mark all your children (lang packages) for removal too
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                        ):
+                            candidate.is_marked_for_removal = True
+                    # prevent installation of any new lang packs
+                    for candidate in self.packages:
+                        if (
+                            candidate.kind != "core-packages"
+                            and candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.is_installable is True
+                        ):
+                            candidate.is_marked_for_install = False
+                            candidate.is_install_opt_enabled = False
+                # ... any lang package
+                else:
+                    # only mark yourself for removal
+                    package.is_marked_for_removal = True
+                is_apply_removal_successul = True
+
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # As this is an independent package no special logic is needed,
+            # just mark the package as requested.
+            package.is_marked_for_removal = mark
+            is_apply_removal_successul = True
+
+        return is_apply_removal_successul
+
+    def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
+        """Marks package for upgrade changing flags of other packages accordingly
+
+        This procedure will mark requested package for upgrade and make
+        sure this causes other packages to be also upgraded or prevented
+        from being removed respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for upgrade, False - unmark (give up upgrading)
+
+        Returns
+        -------
+        bool
+          True if packages upgrade logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_upgrade_successul = False
+
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # OpenOffice is not supported and can never be upgraded
+            # by this program - it can only be removed.
+            # The code here should never execute.
+            is_apply_upgrade_successul = False
+            raise NotImplementedError(
+                "OpenOffice cannot be upgraded, it can only be uninstalled."
+            )
+
+        # LibreOffice dependency tree
+        if package.family == "LibreOffice":
+            # unmarking the request for upgrade
+            if mark is False:
+                # TODO: Unmark any removals of ANY Office. This is to prevent
+                #       the situation when unmarking the (already marked)
+                #       upgrade options leaves existing Office suit(s)
+                #       marked for removal. Then accidental "Apply Changes"
+                #       would lead to all existing office suits getting
+                #       uninstalled and latest office not installed.
+                for candidate in self.packages:
+                    if (
+                        candidate.family == "OpenOffice"
+                        or candidate.family == "LibreOffice"
+                    ):
+                        candidate.is_marked_for_removal = False
+                        candidate.is_remove_opt_enabled = True
+                #  unmark yourself
+                package.is_marked_for_upgrade = False
+                # 4b)   Upgrade is atomic -- all or none so:
+                #       unmark for upgrade other packages in the same tree
+                #       (parent or children or sibling(s))
+                #       BUT only those that were marked as upgradable
+                for candidate in self.packages:
+                    if (
+                        candidate is not package
+                        and candidate.family == "LibreOffice"
+                        and candidate.version == package.version
+                        and candidate.is_upgradable
+                    ):
+                        candidate.is_marked_for_upgrade = False
+                is_apply_upgrade_successul = True
+
+            # requesting upgrade
+            if mark is True:
+                # 1a) mark ALL OpenOffice packages installed for removal
+                # 1b)   and their remove_opt_enabled to False
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                # 2a) mark installed LibreOffice versions other then
+                #     newest installed for removal
+                # 2b)   and their remove_opt_enabled to False
+                for candidate in self.packages:
+                    if (
+                        candidate.family == "LibreOffice"
+                        and candidate.version != self.newest_installed_LO_version
+                    ):
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                    # 3a) Do not mark newest installed LO for removal. Just
+                    #     mark its remove_opt_enabled as False
+                    #     (disable explicit removal request)
+                    #     This will show the latest is not removed but upgraded
+                    # 3b)
+                    if (
+                        candidate.family == "LibreOffice"
+                        and candidate.version == self.newest_installed_LO_version
+                    ):
+                        candidate.is_remove_opt_enabled = False
+                # 4a) mark yourself for upgrade
+                package.is_marked_for_upgrade = True
+                # 4b)   Upgrade is atomic -- all or none so:
+                #       mark for upgrade other packages in the same tree
+                #       (parent or children or sibling(s))
+                #       BUT only those that were marked as upgradable
+                for candidate in self.packages:
+                    if (
+                        candidate is not package
+                        and candidate.family == "LibreOffice"
+                        and candidate.version == package.version
+                        and candidate.is_upgradable
+                    ):
+                        candidate.is_marked_for_upgrade = True
+                is_apply_upgrade_successul = True
+
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # unmarking the request for upgrade
+            if mark is False:
+                # unmark yourself
+                package.is_marked_for_upgrade = False
+                # The user changed his mind and is unmarking update so:
+                # - unmarked removal of existing clipart package
+                # - allow manual marking of its removal
+                package.is_marked_for_removal = False
+                package.is_remove_opt_enabled = True
+                is_apply_upgrade_successul = True
+
+            # requesting upgrade
+            if mark is True:
+                # mark yourself
+                # TODO: should it be also marked_for_removal ?
+                package.is_remove_opt_enabled = False
+                package.is_marked_for_upgrade = True
+                is_apply_upgrade_successul = True
+
+        return is_apply_upgrade_successul
 
     def _build_package_list(self) -> None:
         """Builds a list of virtual packages based on installed ones."""
