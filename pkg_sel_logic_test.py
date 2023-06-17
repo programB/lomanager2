@@ -258,21 +258,37 @@ class PackageMenu(object):
             return (None, None, None)
 
     def set_package_field(self, row: int, column: int, value: bool) -> bool:
-        # TODO: this method should return True/False to provide GUI with
-        #       some information if the package selection logic failed
-        #       to set the desired state (for any reason)
+        """Sets (marked for ...) flags for package applying dependencies logic
+
+        Parameters
+        ----------
+        row : int
+          Selected package as row in the package menu
+
+        column : int
+          Selected flag as column
+
+        value : bool
+          Requested flag value: True - mark, False - unmark
+
+        Returns
+        -------
+        bool
+          Request succeeded True/False
+        """
+
         is_logic_applied = False
         package = self.packages[row]
+
         if column == 3:
             if (
                 package.is_remove_opt_visible
                 and package.is_remove_opt_enabled
                 and package.is_removable
             ):
-                # TODO: _apply_removal_logic should return T/F
-                #       to indicate success/failure
-                self._apply_removal_logic(package, value)
+                is_logic_applied = self._apply_removal_logic(package, value)
             else:
+                is_logic_applied = False
                 raise PermissionError(
                     "It's not permited to mark/unmark this package for removal"
                 )
@@ -282,10 +298,9 @@ class PackageMenu(object):
                 and package.is_upgrade_opt_enabled
                 and package.is_upgradable
             ):
-                # TODO: _apply_upgrade_logic should return T/F
-                #       to indicate success/failure
-                self._apply_upgrade_logic(package, value)
+                is_logic_applied = self._apply_upgrade_logic(package, value)
             else:
+                is_logic_applied = False
                 raise PermissionError(
                     "It's not permited to mark/unmark this package for upgrade"
                 )
@@ -295,10 +310,9 @@ class PackageMenu(object):
                 and package.is_install_opt_enabled
                 and package.is_installable
             ):
-                # TODO: _apply_install_logic should return T/F
-                #       to indicate success/failure
-                self._apply_install_logic(package, value)
+                is_logic_applied = self._apply_install_logic(package, value)
             else:
+                is_logic_applied = False
                 raise PermissionError(
                     "It's not permited to mark/unmark this package for install"
                 )
@@ -364,13 +378,34 @@ class PackageMenu(object):
         package.is_upgrade_opt_enabled = True
 
     def _apply_install_logic(self, package: VirtualPackage, mark: bool):
-        # TODO: _apply_install_logic should return T/F
-        #       to indicate success/failure
+        """Marks package for install changing flags of other packages accordingly
+
+        This procedure will mark requested package for install and make
+        sure this causes other packages to be also installed or prevented
+        from being removed respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for installed, False - unmark (give up installing)
+
+        Returns
+        -------
+        bool
+          True if packages install logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_install_successul = False
+
         # OpenOffice dependency tree
         if package.family == "OpenOffice":
             # OpenOffice is not supported and can never be installed
             # by this program - it can only be removed.
             # The code here should never execute.
+            is_apply_install_successul = False
             raise NotImplementedError(
                 "OpenOffice cannot be installed, it can only be uninstalled."
             )
@@ -431,6 +466,7 @@ class PackageMenu(object):
                         if candidate.family == "OpenOffice":
                             candidate.is_marked_for_removal = False
                             candidate.is_remove_opt_enabled = True
+                is_apply_install_successul = True
 
             # requesting install
             if mark is True:
@@ -463,16 +499,40 @@ class PackageMenu(object):
                 #     and thus the latest LO was added to self.packages
                 #     there is no need to care about other installed LO suits
                 #     Such situation should never occur.
+                is_apply_install_successul = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
             # As this is an independent package no special logic is needed,
             # just mark the package as requested.
             package.is_marked_for_install = mark
+            is_apply_install_successul = True
 
-    def _apply_removal_logic(self, package: VirtualPackage, mark: bool):
-        # TODO: _apply_removal_logic should return T/F
-        #       to indicate success/failure
+        return is_apply_install_successul
+
+    def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
+        """Marks package for removal changing flags of other packages accordingly
+
+        This procedure will mark requested package for removal and make
+        sure this causes other packages to be also removed or prevented
+        from removal respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for removal, False - unmark (give up removing)
+
+        Returns
+        -------
+        bool
+          True if packages removal logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_removal_successul = False
+
         # OpenOffice dependency tree
         if package.family == "OpenOffice":
             # unmarking the request for removal
@@ -490,6 +550,7 @@ class PackageMenu(object):
                 for candidate in self.packages:
                     if candidate.family == "OpenOffice":
                         candidate.is_marked_for_removal = False
+                is_apply_removal_successul = True
 
             # requesting removal
             if mark is True:
@@ -499,6 +560,7 @@ class PackageMenu(object):
                 for markpackege in self.packages:
                     if markpackege.family == "OpenOffice":
                         markpackege.is_marked_for_removal = True
+                is_apply_removal_successul = True
 
         # LibreOffice dependency tree
         if package.family == "LibreOffice":
@@ -521,6 +583,7 @@ class PackageMenu(object):
                             candidate.is_marked_for_removal = False
                             if candidate.is_installable:
                                 candidate.is_install_opt_enabled = True
+                is_apply_removal_successul = True
 
             # requesting removal of ...
             if mark is True:
@@ -550,29 +613,51 @@ class PackageMenu(object):
                 else:
                     # only mark yourself for removal
                     package.is_marked_for_removal = True
+                is_apply_removal_successul = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
             # As this is an independent package no special logic is needed,
             # just mark the package as requested.
             package.is_marked_for_removal = mark
+            is_apply_removal_successul = True
+
+        return is_apply_removal_successul
 
     def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
-        # TODO: _apply_upgrade_logic should return T/F
-        #       to indicate success/failure
+        """Marks package for upgrade changing flags of other packages accordingly
+
+        This procedure will mark requested package for upgrade and make
+        sure this causes other packages to be also upgraded or prevented
+        from being removed respecting dependencies.
+
+        Parameters
+        ----------
+        package : VirtualPackage
+
+        mark : bool
+          True - mark for upgrade, False - unmark (give up upgrading)
+
+        Returns
+        -------
+        bool
+          True if packages upgrade logic was applied successfully,
+          False otherwise
+        """
+
+        is_apply_upgrade_successul = False
+
         # OpenOffice dependency tree
         if package.family == "OpenOffice":
             # OpenOffice is not supported and can never be upgraded
             # by this program - it can only be removed.
             # The code here should never execute.
+            is_apply_upgrade_successul = False
             raise NotImplementedError(
                 "OpenOffice cannot be upgraded, it can only be uninstalled."
             )
 
         # LibreOffice dependency tree
-        # TODO: this procedure may not actually need separate mark = True/False
-        #       cases but keeping separate for now to make sure no edge case
-        #       slips by.
         if package.family == "LibreOffice":
             # unmarking the request for upgrade
             if mark is False:
@@ -603,6 +688,7 @@ class PackageMenu(object):
                         and candidate.is_upgradable
                     ):
                         candidate.is_marked_for_upgrade = False
+                is_apply_upgrade_successul = True
 
             # requesting upgrade
             if mark is True:
@@ -646,6 +732,7 @@ class PackageMenu(object):
                         and candidate.is_upgradable
                     ):
                         candidate.is_marked_for_upgrade = True
+                is_apply_upgrade_successul = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
@@ -658,6 +745,7 @@ class PackageMenu(object):
                 # - allow manual marking of its removal
                 package.is_marked_for_removal = False
                 package.is_remove_opt_enabled = True
+                is_apply_upgrade_successul = True
 
             # requesting upgrade
             if mark is True:
@@ -665,6 +753,9 @@ class PackageMenu(object):
                 # TODO: should it be also marked_for_removal ?
                 package.is_remove_opt_enabled = False
                 package.is_marked_for_upgrade = True
+                is_apply_upgrade_successul = True
+
+        return is_apply_upgrade_successul
 
     def _build_package_list(self) -> None:
         """Builds a list of virtual packages based on installed ones."""
