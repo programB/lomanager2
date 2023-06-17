@@ -1,5 +1,6 @@
 import sys
 from typing import Any, Tuple
+from PySide6 import QtGui
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -238,7 +239,20 @@ class PackageMenu(object):
 
     def _set_initial_state(self) -> None:
         """Decides on initial conditions for packages install/removal."""
-        pass
+        # TODO: Package flags set below just for GUI testing purposes.
+        #       Remove when writing proper code.
+        for package in self.packages:
+            if package.family == "OpenOffice":
+                package.is_removable = True
+                package.is_remove_opt_enabled = True
+                package.is_marked_for_removal = True
+            if package.family == "Clipart":
+                package.is_removable = True
+                package.is_remove_opt_enabled = False
+                package.is_marked_for_removal = True
+                package.is_upgradable = True
+                package.is_upgrade_opt_enabled = True
+                package.is_marked_for_upgrade = False
 
 
 class PackageMenuModel(QAbstractTableModel):
@@ -279,7 +293,54 @@ class PackageMenuModel(QAbstractTableModel):
         )
 
         if role == Qt.ItemDataRole.DisplayRole:
+            # This will be either
+            # strings for first 3 columns
+            # or marked/unmarked condition for the later 3
             return pf_base
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            # Check/Uncheck the cell in the View
+            # based on package base field
+            if column >= 3:
+                if pf_base is True:
+                    return Qt.CheckState.Checked
+                if pf_base is False:
+                    return Qt.CheckState.Unchecked
+
+        if role == Qt.ItemDataRole.BackgroundRole:
+            # Set background of the cell to darker
+            # shade of grey if the operation is in
+            # non enabled state
+            if column >= 3:
+                if pf_enabled is False:
+                    return QtGui.QColor("#484544")  # dark grey
+                if pf_enabled is True:
+                    return QtGui.QColor("#6d6967")  # light grey
+
+        if role == Qt.ItemDataRole.ForegroundRole:
+            # Set text color in the cell
+            # green - if the option is marked
+            # red   - if the option is not marked
+            # BUT
+            # grey - if the operation is in non enabled state
+            if column >= 3:
+                if pf_enabled is False:
+                    return QtGui.QColor("#635f5e")  # "middle" grey
+                if pf_enabled is True:
+                    if pf_base is True:
+                        return QtGui.QColor("light green")
+                    if pf_base is False:
+                        return QtGui.QColor("dark red")
+
+        if role == Qt.ItemDataRole.FontRole:
+            # Make text in the cell bold
+            # if package enabled condition is True
+            # (it will be default non-bold for when condition is False)
+            font = QtGui.QFont()
+            if column >= 3:
+                if pf_enabled is True:
+                    font.setBold(True)
+                    return font
 
     def rowCount(self, index) -> int:
         """Tells how many rows of data there are.
