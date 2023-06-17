@@ -1236,8 +1236,10 @@ class PackageMenuModel(QAbstractTableModel):
         if column >= 3:
             if value.upper() == "TRUE" or value == "1":
                 value_as_bool = True
-            if value.upper() == "FALSE" or value == "0":
+            elif value.upper() == "FALSE" or value == "0":
                 value_as_bool = False
+            else:
+                return False
         else:
             return False
 
