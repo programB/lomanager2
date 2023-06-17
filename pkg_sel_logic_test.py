@@ -363,23 +363,59 @@ class PackageMenu(object):
         package.is_upgrade_opt_visible = True
         package.is_upgrade_opt_enabled = True
 
-    def _apply_install_logic(self, package: VirtualPackage, value: bool):
-        # TODO: print for test purposes. Remove in final code
-        print("Install logic applied")
+    def _apply_install_logic(self, package: VirtualPackage, mark: bool):
         # TODO: _apply_install_logic should return T/F
         #       to indicate success/failure
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # OpenOffice is not supported and can never be installed
+            # by this program - it can only be removed.
+            # The code here should never execute.
+            raise NotImplementedError(
+                "OpenOffice cannot be installed, it can only be uninstalled."
+            )
 
-    def _apply_removal_logic(self, package: VirtualPackage, value: bool):
-        # TODO: print for test purposes. Remove in final code
-        print("Removal logic applied")
+    def _apply_removal_logic(self, package: VirtualPackage, mark: bool):
         # TODO: _apply_removal_logic should return T/F
         #       to indicate success/failure
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # unmarking the request for removal
+            if mark is False:
+                # If the users wants to unmark the removal of an OpenOffice
+                # (previously marked for removal) for whatever reason
+                # this should be allowed BUT:
+                # Since the OpenOffice is not supported and this is
+                # LibreOffice Manager not OpenOffice Manager there are
+                # only 2 options:
+                # - keep OpenOffice and not install LibreOffice at all
+                # - or completelty remove ANY and ALL OpenOffice packages
+                # This program will not allow for any paritial marking of
+                # OpenOffice packages.
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = False
 
-    def _apply_upgrade_logic(self, package: VirtualPackage, value: bool):
-        # TODO: print for test purposes. Remove in final code
-        print("Upgrade logic applied")
+            # requesting removal
+            if mark is True:
+                # In case the user marks ANY OpenOffice package for removal
+                # it's a good opportunity to get rid of all OpenOffice
+                # packages since this suite is NOT SUPPORTED
+                for markpackege in self.packages:
+                    if markpackege.family == "OpenOffice":
+                        markpackege.is_marked_for_removal = True
+
+    def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
         # TODO: _apply_upgrade_logic should return T/F
         #       to indicate success/failure
+        # OpenOffice dependency tree
+        if package.family == "OpenOffice":
+            # OpenOffice is not supported and can never be upgraded
+            # by this program - it can only be removed.
+            # The code here should never execute.
+            raise NotImplementedError(
+                "OpenOffice cannot be upgraded, it can only be uninstalled."
+            )
 
     def _build_package_list(self) -> None:
         """Builds a list of virtual packages based on installed ones."""
