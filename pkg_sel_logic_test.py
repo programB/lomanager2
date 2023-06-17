@@ -258,25 +258,50 @@ class PackageMenu(object):
             return (None, None, None)
 
     def set_package_field(self, row: int, column: int, value: bool) -> bool:
-        # TODO: This naive flags setting is for testing purposes only
-        #       Replace with proper code.
-
-        # TODO: Package selection logic should be applied in this method
-
         # TODO: this method should return True/False to provide GUI with
         #       some information if the package selection logic failed
         #       to set the desired state (for any reason)
         is_logic_applied = False
         package = self.packages[row]
         if column == 3:
-            package.is_marked_for_removal = value
-            is_logic_applied = True
+            if (
+                package.is_remove_opt_visible
+                and package.is_remove_opt_enabled
+                and package.is_removable
+            ):
+                # TODO: _apply_removal_logic should return T/F
+                #       to indicate success/failure
+                self._apply_removal_logic(package, value)
+            else:
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for removal"
+                )
         elif column == 4:
-            package.is_marked_for_upgrade = value
-            is_logic_applied = True
+            if (
+                package.is_upgrade_opt_visible
+                and package.is_upgrade_opt_enabled
+                and package.is_upgradable
+            ):
+                # TODO: _apply_upgrade_logic should return T/F
+                #       to indicate success/failure
+                self._apply_upgrade_logic(package, value)
+            else:
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for upgrade"
+                )
         elif column == 5:
-            package.is_marked_for_install = value
-            is_logic_applied = False
+            if (
+                package.is_install_opt_visible
+                and package.is_install_opt_enabled
+                and package.is_installable
+            ):
+                # TODO: _apply_install_logic should return T/F
+                #       to indicate success/failure
+                self._apply_install_logic(package, value)
+            else:
+                raise PermissionError(
+                    "It's not permited to mark/unmark this package for install"
+                )
         else:
             is_logic_applied = False
         return is_logic_applied
@@ -337,6 +362,24 @@ class PackageMenu(object):
         package.is_upgradable = True
         package.is_upgrade_opt_visible = True
         package.is_upgrade_opt_enabled = True
+
+    def _apply_install_logic(self, package: VirtualPackage, value: bool):
+        # TODO: print for test purposes. Remove in final code
+        print("Install logic applied")
+        # TODO: _apply_install_logic should return T/F
+        #       to indicate success/failure
+
+    def _apply_removal_logic(self, package: VirtualPackage, value: bool):
+        # TODO: print for test purposes. Remove in final code
+        print("Removal logic applied")
+        # TODO: _apply_removal_logic should return T/F
+        #       to indicate success/failure
+
+    def _apply_upgrade_logic(self, package: VirtualPackage, value: bool):
+        # TODO: print for test purposes. Remove in final code
+        print("Upgrade logic applied")
+        # TODO: _apply_upgrade_logic should return T/F
+        #       to indicate success/failure
 
     def _build_package_list(self) -> None:
         """Builds a list of virtual packages based on installed ones."""
