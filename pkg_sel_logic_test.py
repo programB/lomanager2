@@ -375,6 +375,95 @@ class PackageMenu(object):
                 "OpenOffice cannot be installed, it can only be uninstalled."
             )
 
+        # LibreOffice dependency tree
+        if package.family == "LibreOffice":
+            # unmarking the request for install
+            if mark is False:
+                # 1) unmark yourself
+                package.is_marked_for_install = False
+                # 2) If this is the request to unmark the last of all
+                #    new lang packs marked for install (user changes mind
+                #    and decides not to install any new languages) -
+                #    allow to uninstall existing (is exists) core-packages.
+                if package.kind != "core-packages":
+                    langs_left = []
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind != "core-packages"
+                            and candidate.is_installable is True
+                            and candidate.is_marked_for_install is True
+                        ):
+                            langs_left.append(candidate)
+
+                    if not langs_left:
+                        for candidate in self.packages:
+                            if (
+                                candidate.family == "LibreOffice"
+                                and candidate.version == package.version
+                                and candidate.kind == "core-packages"
+                            ):
+                                candidate.is_remove_opt_enabled = True
+                # 3) If this IS the core-packages
+                #    don't leave your lang packs hanging - unmark them
+                if package.kind == "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind != "core-packages"
+                        ):
+                            candidate.is_marked_for_install = False
+                        # 4) Unmark the removal field of any OpenOffice to
+                        #    prevent the case when the user changes mind
+                        #    and unmarks LibreOffice install but
+                        #    OpenOffice that was marked for uninstall
+                        #    (in the "requesting install" case below) stays
+                        #    marked and gets accidentally removed leaving
+                        #    the user with NO Office installed at all.
+                        #    This can be done ONLY IF no LibreOffice package
+                        #    is left marked for install. That is only after
+                        #    the last LibreOffice package that was marked
+                        #    for install gets unmarked - and this happens here
+                        #    automatically when the core-packages
+                        #    gets unmarked.
+                        if candidate.family == "OpenOffice":
+                            candidate.is_marked_for_removal = False
+                            candidate.is_remove_opt_enabled = True
+
+            # requesting install
+            if mark is True:
+                # 1) mark yourself for install
+                package.is_marked_for_install = True
+                # 2) If this is a lang pack
+                #    mark your parent (core-packages) as well
+                if package.kind != "core-packages":
+                    for candidate in self.packages:
+                        if (
+                            candidate.family == "LibreOffice"
+                            and candidate.version == package.version
+                            and candidate.kind == "core-packages"
+                        ):
+                            # core-packages already installed - prevent
+                            # it's removal
+                            if candidate.is_removable is True:
+                                candidate.is_remove_opt_enabled = False
+                            # core-packages not installed - mark for install
+                            else:
+                                candidate.is_marked_for_install = True
+                # 3) mark any OpenOffice for removal
+                #    and set is_remove_opt_enabled to False
+                for candidate in self.packages:
+                    if candidate.family == "OpenOffice":
+                        candidate.is_marked_for_removal = True
+                        candidate.is_remove_opt_enabled = False
+                # 4)  As the install option is only available
+                #     when no installed LO was detected
+                #     and thus the latest LO was added to self.packages
+                #     there is no need to care about other installed LO suits
+                #     Such situation should never occur.
+
         # Clipart dependency tree
         if package.family == "Clipart":
             # As this is an independent package no special logic is needed,
