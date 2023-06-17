@@ -375,6 +375,12 @@ class PackageMenu(object):
                 "OpenOffice cannot be installed, it can only be uninstalled."
             )
 
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # As this is an independent package no special logic is needed,
+            # just mark the package as requested.
+            package.is_marked_for_install = mark
+
     def _apply_removal_logic(self, package: VirtualPackage, mark: bool):
         # TODO: _apply_removal_logic should return T/F
         #       to indicate success/failure
@@ -405,6 +411,12 @@ class PackageMenu(object):
                     if markpackege.family == "OpenOffice":
                         markpackege.is_marked_for_removal = True
 
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # As this is an independent package no special logic is needed,
+            # just mark the package as requested.
+            package.is_marked_for_removal = mark
+
     def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
         # TODO: _apply_upgrade_logic should return T/F
         #       to indicate success/failure
@@ -416,6 +428,25 @@ class PackageMenu(object):
             raise NotImplementedError(
                 "OpenOffice cannot be upgraded, it can only be uninstalled."
             )
+
+        # Clipart dependency tree
+        if package.family == "Clipart":
+            # unmarking the request for upgrade
+            if mark is False:
+                # unmark yourself
+                package.is_marked_for_upgrade = False
+                # The user changed his mind and is unmarking update so:
+                # - unmarked removal of existing clipart package
+                # - allow manual marking of its removal
+                package.is_marked_for_removal = False
+                package.is_remove_opt_enabled = True
+
+            # requesting upgrade
+            if mark is True:
+                # mark yourself
+                # TODO: should it be also marked_for_removal ?
+                package.is_remove_opt_enabled = False
+                package.is_marked_for_upgrade = True
 
     def _build_package_list(self) -> None:
         """Builds a list of virtual packages based on installed ones."""
