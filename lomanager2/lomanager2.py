@@ -1,4 +1,5 @@
 import argparse
+from adapters import qt_adapter, cli_adapter
 
 parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")
@@ -24,10 +25,8 @@ print(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
 
 if is_running_as_root:
     if is_GUI_wanted is True:
-        # TODO: Implement
-        print("Running with GUI ... ")
+        qt_adapter.main()
     else:
-        # TODO: Implement
-        print("Running with CLI ... ")
+        cli_adapter.main()
 else:
     print("This program requires root privileges to run.")
