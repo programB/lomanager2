@@ -222,4 +222,5 @@ docs/*.dtmp
 # but not the locale folder itself
 # nor the top-level translation template file .pot inside it.
 lomanager2/locales/*
+tests/locales/*
 !*.pot
