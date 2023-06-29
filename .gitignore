@@ -221,5 +221,5 @@ docs/*.dtmp
 # locale - translated .mo files in subfolders
 # but not the locale folder itself
 # nor the top-level translation template file .pot inside it.
-locales/*
+lomanager2/locales/*
 !*.pot
