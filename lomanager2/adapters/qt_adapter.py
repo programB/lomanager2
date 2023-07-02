@@ -5,14 +5,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import (
     QObject,
-    QThreadPool,
-    Slot,
     Signal,
 )
 
 from applogic.packagelogic import MainLogic
 from applogic.subprocedures import install as install_subprocedure
-from gui import AppMainWindow
+from gui import AppMainWindow, ProgressDialog
 from viewmodels import PackageMenuViewModel
 from threads import InstallProcedureWorker
 
@@ -36,6 +34,11 @@ class Adapter(QObject):
         self._main_view = app_main_view
         self._package_menu_view = self._main_view.package_menu_view
         self._extra_langs_view = self._main_view.extra_langs_view.langs_view
+
+        # TODO: adding this extra window just for test
+        #       it should be rather defined directly in main_window
+        #       like the lang modal
+        self.progress_view = ProgressDialog(parent=self._main_view)
 
         # The viewmodel (PackageMenuViewModel) for the object responsible
         # for dealing with packages selection _main_view
@@ -70,6 +73,9 @@ class Adapter(QObject):
         self._main_view.button_apply_changes.clicked.connect(self._apply_changes)
         self.thread.progress.connect(self._progress_was_made)
         self.thread.finished.connect(self._thread_stopped_or_terminated)
+        # TODO: connecting to terminate just for tests
+        # self.progress_view.button_terminate.clicked.connect(self.thread.stop)
+        self.progress_view.button_terminate.clicked.connect(self.thread.terminate)
 
         # TODO: And there are buttons inside that modal window.
         #       Should they not be explicitly connected here?
@@ -87,16 +93,22 @@ class Adapter(QObject):
 
         # TODO: test connect "refresh" (custom signal)
         self.refresh.connect(self._do_something_on_refresh)
+        # TODO: is the refresh button needed? Connecting it for now
+        #       to the same slot as the "refresh" signal which is intended
+        #       for automatic (not manual) emission.
+        self._main_view.button_refresh.clicked.connect(self._do_something_on_refresh)
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
 
     def _apply_changes(self):
+        self.progress_view.show()
         self.thread.start()
 
     def _progress_was_made(self, progress):
         # TODO: print for test purposes, remove later
         print(f"Current progress (received in adapter's slot): {progress}")
+        self.progress_view.progress_bar.setValue(progress)
 
     def _thread_stopped_or_terminated(self):
         # TODO: this methods is most likely not needed at all
