@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QMainWindow,
+    QProgressBar,
     QPushButton,
     QTableView,
     QVBoxLayout,
@@ -96,6 +97,22 @@ class LangsModalWindow(QDialog):
         #       - in the viewmodel (how then to route the signals there)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
+
+
+class ProgressDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.setWindowTitle("installation progress")
+        main_layout = QVBoxLayout()
+
+        self.progress_bar = QProgressBar()
+        self.button_terminate = QPushButton("Terminate install (dangerous)!")
+
+        main_layout.addWidget(self.progress_bar)
+        main_layout.addWidget(self.button_terminate)
+
+        self.setLayout(main_layout)
 
 
 if __name__ == "__main__":
