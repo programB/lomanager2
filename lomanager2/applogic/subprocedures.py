@@ -1,4 +1,5 @@
 """Subprocedures for installing/removing packages"""
+import time  # TODO: just for the tests
 from . import configuration
 from . import PCLOS
 
@@ -35,9 +36,7 @@ def get_system_information() -> dict:
     # fmt: on
 
     # logging.debug(message)
-    configuration.logging.warning(
-        "WIP !" "May be sending fake data !!!"
-    )
+    configuration.logging.warning("WIP !" "May be sending fake data !!!")
     return system_information
 
 
@@ -80,8 +79,31 @@ def acquire_LO_package(filename, from_http, to_directory):
     return is_file_aquired
 
 
-def install(filenames_list, tmp_directory):
+def install(*args, **kwargs):
+    # TODO: This is dummy implementation for testing
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    # TODO: kwargs should also be used to pass
+    #       "filenames_list" -- list of rpm-s that need to be install/removed
+    #       "tmp_directory" -- where to store and unzip the downloaded files
+    #                         (alternatively this can be read
+    #                          from configuration --> TBD)
+    current_progress_is = kwargs["inform_about_progress"]
+
     is_install_successfull = False
+
+    total_time_sek = 5
+    steps = 30
+    for i in range(steps):
+        progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
+        time.sleep(total_time_sek / steps)
+
+        # reporting progress directly to log
+        configuration.logging.info(f"install progress: {progress}%")
+        # using callback (emitting Qt signal)
+        current_progress_is(progress)
+
+    is_install_successfull = True
     return is_install_successfull
 
 
