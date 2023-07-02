@@ -11,6 +11,7 @@ from PySide6.QtCore import (
 )
 
 from applogic.packagelogic import MainLogic
+from applogic.subprocedures import install as install_subprocedure
 from gui import AppMainWindow
 from viewmodels import PackageMenuViewModel
 from threads import InstallProcedureWorker
@@ -25,7 +26,7 @@ class Adapter(QObject):
         super().__init__()  # this is important when registering custom events
 
         # Prepare capacity for running some code in separate thread
-        self.threadpool = QThreadPool()
+        self.thread = InstallProcedureWorker(install_subprocedure)
 
         # TODO:  Naming: too many different names for the same thing
         #        logic/model/package_menu etc
@@ -64,19 +65,11 @@ class Adapter(QObject):
         # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
 
     def _connect_signals_and_slots(self):
-        # TODO: 1) the model should Implement the gather_system_info
-        #       2) clicking this button at wrong times may have unintended
-        #          consequences. It is model's responsibility to decide whether
-        #          handling this signal makes sense (it can be directly in the
-        #          gather_system_info procedure perhaps.)
-        #       3) Is Qt queueing signals? Will this result in
-        #          many events triggered if the signal gets ignored?
-        # self._main_view.button_refresh.clicked.connect(
-        #     self._main_model.gather_system_info
-        # )
-
-        # TODO: 1) Implement
+        # TODO: Will clicking this button at wrong times result in unintended
+        #       consequences? Should this be prevented by disabling this button?
         self._main_view.button_apply_changes.clicked.connect(self._apply_changes)
+        self.thread.progress.connect(self._progress_was_made)
+        self.thread.finished.connect(self._thread_stopped_or_terminated)
 
         # TODO: And there are buttons inside that modal window.
         #       Should they not be explicitly connected here?
@@ -99,21 +92,21 @@ class Adapter(QObject):
         print("Refreshing!")
 
     def _apply_changes(self):
-        # TODO: This is not the way to do it. Implement
-        self.threadpool.start(self.apply_in_external_thread)
-        # Simulate thread finishing here
-        # (I know this should be emitted from within the thread
-        # not here - test only)
-        self.refresh.emit()
+        self.thread.start()
 
-    # The reason why connect does not call this method directly
-    # but instead calls a an intermediate self._apply_changes first
-    # is the have the @Slot() decorator kept in this file and not
-    # import it in the MainLogic module
-    # This way MainLogic is independent from any Qt realated stuff.
-    @Slot()
-    def apply_in_external_thread(self):
-        self._main_model.apply_changes()
+    def _progress_was_made(self, progress):
+        # TODO: print for test purposes, remove later
+        print(f"Current progress (received in adapter's slot): {progress}")
+
+    def _thread_stopped_or_terminated(self):
+        # TODO: this methods is most likely not needed at all
+        # TODO: print for test purposes, remove later
+        print("Thread finished signal received.")
+        print(
+            f"thread: {self.thread}\n"
+            f"is running?: {self.thread.isRunning()}\n"
+            f"is finished?: {self.thread.isFinished()}"
+        )
 
 
 def main():
