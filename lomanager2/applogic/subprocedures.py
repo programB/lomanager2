@@ -120,6 +120,9 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
         configuration.logging.error(message)
         return install_status
 
+    # 2) detect and terminate (kill -9) LibreOffice quickstarter
+    terminate_LO_quickstarter()
+
     total_time_sek = 5
     steps = 30
     for i in range(steps):
@@ -132,7 +135,6 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
         # # using callback if available (emitting Qt signal)
         if callback_function is not None:
             current_progress_is(progress)
-
 
     message = "All packages successfully installed"
     install_status["is_install_successful"] = True
@@ -163,3 +165,13 @@ def install_Clipart():
 
 def uinstall_Clipart():
     pass
+
+
+def terminate_LO_quickstarter():
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Checking for LibreOffice quickstarter process...")
+    print("LibreOffice quickstarter is running (PID: ABCD)")
+    print("Terminating LibreOffice quickstarter...")
+    time.sleep(2)
+    print("...done.")
