@@ -182,6 +182,47 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
             configuration.logging.error(message)
             return install_status
 
+    # 5) Run Office install procedure if needed
+    any_Office_component_needs_to_be_installed = False
+
+    # TODO: Remove this test code !!!
+    configuration.logging.warning(
+        f"Adding phony Office package name to install list for tests !"
+    )
+    changes_to_make["packages_to_install"].append("LibreOffice-9.9-PHONY.rpm")
+
+    for rpm_name in changes_to_make["packages_to_install"]:
+        if "LibreOffice" in rpm_name or "Clipart" in rpm_name:
+            any_Office_component_needs_to_be_installed = True
+            break
+
+    if any_Office_component_needs_to_be_installed is True:
+        office_install_status = install_LibreOffice(
+            changes_to_make["packages_to_install"], callback_function
+        )
+
+        if office_install_status is False:
+            message = "Failed to install Office components."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
+
+    message = "All packages successfully installed"
+    install_status["is_install_successful"] = True
+    install_status["explanation"] = message
+    configuration.logging.info(message)
+    return install_status
+
+
+def install_LibreOffice(packages_to_install: list, callback_function) -> bool:
+    configuration.logging.warning("WIP. This function sends fake data.")
+    # TODO: naming
+    current_progress_is = callback_function
+
+    is_every_package_successfully_installed = False
+    configuration.logging.debug(f"Packages to install: {packages_to_install}")
+    configuration.logging.info("Installing packages...")
+
     total_time_sek = 5
     steps = 30
     for i in range(steps):
@@ -195,15 +236,10 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
         if callback_function is not None:
             current_progress_is(progress)
 
-    message = "All packages successfully installed"
-    install_status["is_install_successful"] = True
-    install_status["explanation"] = message
-    configuration.logging.info(message)
-    return install_status
+    is_every_package_successfully_installed = True
+    configuration.logging.info("...done installing packages.")
 
-
-def install_LibreOffice():
-    pass
+    return is_every_package_successfully_installed
 
 
 def install_Java() -> bool:
