@@ -207,6 +207,17 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
             configuration.logging.error(message)
             return install_status
 
+    # 6) Any Office base package was affected ?
+    # TODO: how to to do that?
+    #       Below are just naive checks
+    base_package_indentification_string = "SOMETHING"
+    if base_package_indentification_string in changes_to_make["packages_to_install"]:
+        disable_LO_update_checks()
+        add_templates_to_etcskel()
+    if base_package_indentification_string in changes_to_make["packages_to_remove"]:
+        clean_dot_desktop_files()
+
+
     message = "All packages successfully installed"
     install_status["is_install_successful"] = True
     install_status["explanation"] = message
@@ -295,3 +306,30 @@ def office_uninstall(packages_to_remove: list, callback_function) -> bool:
     configuration.logging.info("...done removing packages.")
 
     return is_every_package_successfully_removed
+
+def disable_LO_update_checks():
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Preventing LibreOffice from looking for updates on its own...")
+    time.sleep(1)
+    print("...done.")
+
+def add_templates_to_etcskel():
+    # TODO: This function should put a file (smth.xcu) to /etc/skel
+    #       in order to have LO properly set up for any new user
+    #       accounts created in the OS
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Adding files to /etc/skel ...") 
+    time.sleep(1)
+    print("...done.")
+
+def clean_dot_desktop_files():
+    # TODO: This function should remove association between LibreOffice
+    #       and Open Document file formats (odt, odf, etc.) from the
+    #       global .desktop file (and user files too?)
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Rebuilding menu entries...") 
+    time.sleep(1)
+    print("...done.")
