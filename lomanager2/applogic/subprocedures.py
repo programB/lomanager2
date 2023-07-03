@@ -79,16 +79,11 @@ def acquire_LO_package(filename, from_http, to_directory):
     return is_file_aquired
 
 
-def install(*args, **kwargs):
+def install(changes_to_make, tmp_directory, callback_function):
     # TODO: This is dummy implementation for testing
     configuration.logging.warning("WIP. This function sends fake data.")
 
-    # TODO: kwargs should also be used to pass
-    #       "filenames_list" -- list of rpm-s that need to be install/removed
-    #       "tmp_directory" -- where to store and unzip the downloaded files
-    #                         (alternatively this can be read
-    #                          from configuration --> TBD)
-    current_progress_is = kwargs["inform_about_progress"]
+    current_progress_is = callback_function
 
     is_install_successfull = False
 
@@ -98,10 +93,12 @@ def install(*args, **kwargs):
         progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
         time.sleep(total_time_sek / steps)
 
-        # reporting progress directly to log
+        # report progress
+        # # directly to log
         configuration.logging.info(f"install progress: {progress}%")
-        # using callback (emitting Qt signal)
-        current_progress_is(progress)
+        # # using callback if available (emitting Qt signal) 
+        if callback_function is not None:
+            current_progress_is(progress)
 
     is_install_successfull = True
     return is_install_successfull

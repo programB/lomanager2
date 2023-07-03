@@ -23,8 +23,6 @@ class Adapter(QObject):
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()  # this is important when registering custom events
 
-        # Prepare capacity for running some code in separate thread
-        self.thread = InstallProcedureWorker(install_subprocedure)
 
         # TODO:  Naming: too many different names for the same thing
         #        logic/model/package_menu etc
@@ -52,6 +50,10 @@ class Adapter(QObject):
 
         # TODO: Does not exist yet - Implement
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
+
+        # Prepare a separate thread that runs apply_changes function
+        # from the MainLogic object (don't start it yet though)
+        self.thread = InstallProcedureWorker(self._main_model.apply_changes)
 
         self._bind_views_to_viewmodels()
         # For the extra buttons outside table views I don't know how to
@@ -103,7 +105,7 @@ class Adapter(QObject):
 
     def _apply_changes(self):
         self.progress_view.show()
-        self.thread.start()
+        self.thread.start()  # starts the prepared thread
 
     def _progress_was_made(self, progress):
         # TODO: print for test purposes, remove later

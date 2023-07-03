@@ -94,10 +94,29 @@ class MainLogic(object):
     def get_warnings(self):
         return self._warnings
 
-    def apply_changes(self):
-        print("Applying changes...")
-        time.sleep(5)
-        print("...done")
+    def apply_changes(self, *args, **kwargs):
+        # TODO: This is dummy implementation for testing
+        configuration.logging.warning("WIP. This function sends fake data.")
+
+        # callback_function will most likely be the progress.emit Qt signal
+        # and will be passed here (in the kwargs dict) by the thread worked
+        # created in the adapter.
+        # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
+        if "inform_about_progress" in kwargs.keys():
+            callback_function = kwargs["inform_about_progress"]
+        else:
+            callback_function = None
+
+        # A dictionary of rpm-s that need to be installed/removed
+        changes_to_make = self._package_menu.package_delta
+
+        # A folder for storing and unziping the downloaded files
+        # TODO: Hardcoded for now. Change to something along the lines:
+        #       configuration.path_to_working_folder
+        tmp_directory = "/tmp"
+
+        configuration.logging.info("Applying changes...")
+        subprocedures.install(changes_to_make, tmp_directory, callback_function)
 
     def is_transition_in_progress(self) -> bool:
         return False
