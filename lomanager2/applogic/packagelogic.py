@@ -1,6 +1,6 @@
 from typing import Any, Tuple
 from . import PCLOS
-from .datatypes import VirtualPackage
+from .datatypes import VirtualPackage, SignalFlags
 from . import subprocedures
 from . import configuration
 
@@ -1272,14 +1272,3 @@ class PackageMenu(object):
                     #       self.packages list so we can see the result
                     #       of this logic in the View
                     self.packages.append(new_package)
-
-
-class SignalFlags(object):
-    def __init__(self) -> None:
-        self.block_viewing_installed = False
-        self.block_viewing_available = False
-        self.block_removal = False
-        self.block_network_install = False
-        self.block_local_copy_install = False
-        self.block_checking_4_updates = False
-        self.ready_to_apply_changes = False
