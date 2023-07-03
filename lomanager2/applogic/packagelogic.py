@@ -132,7 +132,8 @@ class MainLogic(object):
             # Block any other calls of this function and proceed with subprocedure
             self._flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
-            subprocedures.install(changes_to_make, tmp_directory, callback_function)
+            status = subprocedures.install(changes_to_make, tmp_directory, callback_function)
+            # TODO: do something with status variable
 
     def is_transition_in_progress(self) -> bool:
         return False

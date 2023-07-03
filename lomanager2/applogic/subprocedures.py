@@ -57,9 +57,19 @@ def detect_installed_software():
     return found_software
 
 
-def collect_packages(filenames_list, to_directory):
-    # TODO: Should this be a list or a dictionary ?
+def collect_packages(
+    packages_to_download: list, tmp_directory, callback_function
+) -> bool:
+    configuration.logging.warning("WIP. This function sends fake data.")
+
     is_every_package_collected = False
+
+    print(f"Packages to download: {packages_to_download}")
+    print("Collecting packages...")
+    time.sleep(2)
+    print("...done collecting packages.")
+
+    is_every_package_collected = True
     return is_every_package_collected
 
 
@@ -79,13 +89,36 @@ def acquire_LO_package(filename, from_http, to_directory):
     return is_file_aquired
 
 
-def install(changes_to_make, tmp_directory, callback_function):
+def install(changes_to_make, tmp_directory, callback_function) -> dict:
     # TODO: This is dummy implementation for testing
     configuration.logging.warning("WIP. This function sends fake data.")
 
+    # Preparations
     current_progress_is = callback_function
+    install_status = {
+        "is_install_successful": False,
+        "explanation": "Install procedure not executed.",
+    }
 
-    is_install_successfull = False
+    # 1) Run collect_packages subprocedure
+    # TODO: Is it always true that packages_to_download <=> packages_to_install
+    packages_to_download = changes_to_make["packages_to_install"]
+    # TODO: Should it be a different function or perhaps
+    #       callback_function should take some parameters other then
+    #       integer representing percentage progress eg. a dictionary
+    #       with information what progress is being reported:
+    #       download, install, a what file etc..
+    download_progress_callback = callback_function
+    collect_status = collect_packages(
+        packages_to_download,
+        tmp_directory,
+        download_progress_callback,
+    )
+    if collect_status is False:
+        message = "Failed to download all requested packages."
+        install_status["explanation"] = message
+        configuration.logging.error(message)
+        return install_status
 
     total_time_sek = 5
     steps = 30
@@ -96,12 +129,16 @@ def install(changes_to_make, tmp_directory, callback_function):
         # report progress
         # # directly to log
         configuration.logging.info(f"install progress: {progress}%")
-        # # using callback if available (emitting Qt signal) 
+        # # using callback if available (emitting Qt signal)
         if callback_function is not None:
             current_progress_is(progress)
 
-    is_install_successfull = True
-    return is_install_successfull
+
+    message = "All packages successfully installed"
+    install_status["is_install_successful"] = True
+    install_status["explanation"] = message
+    configuration.logging.info(message)
+    return install_status
 
 
 def install_LibreOffice():
