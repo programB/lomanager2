@@ -123,6 +123,28 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
     # 2) detect and terminate (kill -9) LibreOffice quickstarter
     terminate_LO_quickstarter()
 
+    # 3) Run Java install procedure if needed
+    is_Java_install_required = False
+
+    # TODO: Remove this test code !!!
+    configuration.logging.warning(f"Adding phony Java package name for tests !")
+    changes_to_make["packages_to_install"].append("Java-1.0-PHONY.rpm")
+
+    # if any([True for rpm_name in changes_to_make["packages_to_install"] if "Java" in rpm_name])
+    for rpm_name in changes_to_make["packages_to_install"]:
+        if "Java" in rpm_name:
+            is_Java_install_required = True
+            break
+
+    if is_Java_install_required is True:
+        java_install_status = install_Java()
+
+        if java_install_status is False:
+            message = "Failed to install Java."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
+
     total_time_sek = 5
     steps = 30
     for i in range(steps):
@@ -147,8 +169,18 @@ def install_LibreOffice():
     pass
 
 
-def install_Java():
-    pass
+def install_Java() -> bool:
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    is_java_successfully_installed = False
+    configuration.logging.info("Starting Java install procedure...")
+
+    time.sleep(2)
+
+    is_java_successfully_installed = True
+    configuration.logging.info("Java successfully installed.")
+
+    return is_java_successfully_installed
 
 
 def uinstall_LibreOffice():
