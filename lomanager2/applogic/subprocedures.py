@@ -217,6 +217,22 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
     if base_package_indentification_string in changes_to_make["packages_to_remove"]:
         clean_dot_desktop_files()
 
+    # 7) Should downloaded packages be removed ?
+    # TODO: this information has to be passed here from somewhere
+    # TODO: Remove this test code !!!
+    configuration.logging.warning(f"Manually setting <<keep_packages>> to <<True>>!")
+    keep_packages = True
+    configuration.logging.warning(
+        f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
+    )
+    offline_copy_folder = "/tmp/LO_saved_packages"
+    keep_packages = True
+    if keep_packages is True:
+        save_copy_for_offline_install(offline_copy_folder)
+
+    # 8) clean up temporary files
+    # TODO: Change the hard coded /tmp
+    clean_tmp_folder("/tmp")
 
     message = "All packages successfully installed"
     install_status["is_install_successful"] = True
@@ -307,6 +323,7 @@ def office_uninstall(packages_to_remove: list, callback_function) -> bool:
 
     return is_every_package_successfully_removed
 
+
 def disable_LO_update_checks():
     configuration.logging.warning("WIP. This function sends fake data.")
 
@@ -314,15 +331,17 @@ def disable_LO_update_checks():
     time.sleep(1)
     print("...done.")
 
+
 def add_templates_to_etcskel():
     # TODO: This function should put a file (smth.xcu) to /etc/skel
     #       in order to have LO properly set up for any new user
     #       accounts created in the OS
     configuration.logging.warning("WIP. This function sends fake data.")
 
-    print("Adding files to /etc/skel ...") 
+    print("Adding files to /etc/skel ...")
     time.sleep(1)
     print("...done.")
+
 
 def clean_dot_desktop_files():
     # TODO: This function should remove association between LibreOffice
@@ -330,6 +349,25 @@ def clean_dot_desktop_files():
     #       global .desktop file (and user files too?)
     configuration.logging.warning("WIP. This function sends fake data.")
 
-    print("Rebuilding menu entries...") 
+    print("Rebuilding menu entries...")
+    time.sleep(1)
+    print("...done.")
+
+
+def save_copy_for_offline_install(target_folder):
+    # TODO: This function should put all files needed for offline
+    #       installation in a structured way into the target_folder
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Saving files for offline install...")
+    time.sleep(1)
+    print("...done.")
+
+
+def clean_tmp_folder(tmp_directory):
+    # TODO: This function should remove all files from tmp_directory.
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Cleaning temporary files...")
     time.sleep(1)
     print("...done.")
