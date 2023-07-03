@@ -1,4 +1,3 @@
-import time
 from typing import Any, Tuple
 from . import PCLOS
 from .datatypes import VirtualPackage
@@ -77,7 +76,7 @@ class MainLogic(object):
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
         if total_space_needed < space_available:
-            self._flags.ready_for_state_transition = False
+            self._flags.ready_to_apply_changes = False
             self._warnings = [
                 {
                     "explanation": "Insufficient disk space for operation.",
@@ -88,35 +87,52 @@ class MainLogic(object):
                 }
             ]
         else:
-            self._flags.ready_for_state_transition = True
+            self._flags.ready_to_apply_changes = True
         return pms
 
     def get_warnings(self):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        # TODO: This is dummy implementation for testing
+        # TODO: This is draft implementation for testing
         configuration.logging.warning("WIP. This function sends fake data.")
 
-        # callback_function will most likely be the progress.emit Qt signal
-        # and will be passed here (in the kwargs dict) by the thread worked
-        # created in the adapter.
-        # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
-        if "inform_about_progress" in kwargs.keys():
-            callback_function = kwargs["inform_about_progress"]
-        else:
-            callback_function = None
+        configuration.logging.debug(
+            f"Flag <<ready_to_apply_changes>> is: <<{self._flags.ready_to_apply_changes}>>"
+        )
 
-        # A dictionary of rpm-s that need to be installed/removed
-        changes_to_make = self._package_menu.package_delta
+        # TODO: bypassing for tests
+        configuration.logging.warning(
+            f"Setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
+        )
+        self._flags.ready_to_apply_changes = True
 
-        # A folder for storing and unziping the downloaded files
-        # TODO: Hardcoded for now. Change to something along the lines:
-        #       configuration.path_to_working_folder
-        tmp_directory = "/tmp"
+        if self._flags.ready_to_apply_changes is False:
+            configuration.logging.warning("Cannot apply requested changes.")
+            return
 
-        configuration.logging.info("Applying changes...")
-        subprocedures.install(changes_to_make, tmp_directory, callback_function)
+        else:  # We are good to go
+            # callback_function will most likely be the progress.emit Qt signal
+            # and will be passed here (in the kwargs dict) by the thread worked
+            # created in the adapter.
+            # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
+            if "inform_about_progress" in kwargs.keys():
+                callback_function = kwargs["inform_about_progress"]
+            else:
+                callback_function = None
+
+            # A dictionary of rpm-s that need to be installed/removed
+            changes_to_make = self._package_menu.package_delta
+
+            # A directory for storing and unziping the downloaded files
+            # TODO: Hardcoded for now. Change to something along the lines:
+            #       configuration.path_to_working_folder
+            tmp_directory = "/tmp"
+
+            # Block any other calls of this function and proceed with subprocedure
+            self._flags.ready_to_apply_changes = False
+            configuration.logging.info("Applying changes...")
+            subprocedures.install(changes_to_make, tmp_directory, callback_function)
 
     def is_transition_in_progress(self) -> bool:
         return False
@@ -1266,4 +1282,4 @@ class SignalFlags(object):
         self.block_network_install = False
         self.block_local_copy_install = False
         self.block_checking_4_updates = False
-        self.ready_for_state_transition = False
+        self.ready_to_apply_changes = False
