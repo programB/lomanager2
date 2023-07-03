@@ -145,6 +145,43 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
             configuration.logging.error(message)
             return install_status
 
+    # At this point everything needed is downloaded and verified
+    # and Java is installed in the system.
+    # We can remove old Office components
+    # in preparation for the install step.
+    # 4) Run Office uninstall procedure if needed
+    any_Office_component_needs_to_be_removed = False
+
+    # TODO: Remove this test code !!!
+    configuration.logging.warning(
+        f"Adding phony Office package name to uninstall list for tests !"
+    )
+    changes_to_make["packages_to_remove"].append("OpenOffice-3.0-PHONY.rpm")
+
+    for rpm_name in changes_to_make["packages_to_remove"]:
+        if "Office" in rpm_name:
+            any_Office_component_needs_to_be_removed = True
+            break
+
+    if any_Office_component_needs_to_be_removed is True:
+        office_removal_status = office_uninstall(
+            changes_to_make["packages_to_remove"], callback_function
+        )
+
+        # If the procedure failed completely (no packages got uninstalled)
+        # there is no problem - system state has not changed.
+        # If however it succeeded but only partially this is a problem because
+        # Office might have gotten corrupted and is no longer working and new
+        # Office will not be installed. Recovery from such a condition is
+        # likely to require manual user intervention - not good.
+        # TODO: Can office_uninstall procedure be made to have dry-run option
+        #       to make sure that uninstall is atomic (all or none)?
+        if office_removal_status is False:
+            message = "Failed to remove Office components."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
+
     total_time_sek = 5
     steps = 30
     for i in range(steps):
@@ -207,3 +244,18 @@ def terminate_LO_quickstarter():
     print("Terminating LibreOffice quickstarter...")
     time.sleep(2)
     print("...done.")
+
+
+def office_uninstall(packages_to_remove: list, callback_function) -> bool:
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    is_every_package_successfully_removed = False
+    configuration.logging.debug(f"Packages to remove: {packages_to_remove}")
+    configuration.logging.info("Removing packages...")
+
+    time.sleep(2)
+
+    is_every_package_successfully_removed = True
+    configuration.logging.info("...done removing packages.")
+
+    return is_every_package_successfully_removed
