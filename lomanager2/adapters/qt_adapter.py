@@ -23,7 +23,6 @@ class Adapter(QObject):
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()  # this is important when registering custom events
 
-
         # TODO:  Naming: too many different names for the same thing
         #        logic/model/package_menu etc
 
@@ -51,9 +50,15 @@ class Adapter(QObject):
         # TODO: Does not exist yet - Implement
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 
-        # Prepare a separate thread that runs apply_changes function
-        # from the MainLogic object (don't start it yet though)
-        self.thread = InstallProcedureWorker(self._main_model.apply_changes)
+        # Prepare separate threads that run: apply_changes and
+        # install_from_local_copy functions
+        # from the MainLogic object (don't start them yet though)
+        self.thread_apply_changes = InstallProcedureWorker(
+            self._main_model.apply_changes
+        )
+        self.thread_local_copy_install = InstallProcedureWorker(
+            self._main_model.install_from_local_copy
+        )
 
         self._bind_views_to_viewmodels()
         # For the extra buttons outside table views I don't know how to
@@ -73,11 +78,13 @@ class Adapter(QObject):
         # TODO: Will clicking this button at wrong times result in unintended
         #       consequences? Should this be prevented by disabling this button?
         self._main_view.button_apply_changes.clicked.connect(self._apply_changes)
-        self.thread.progress.connect(self._progress_was_made)
-        self.thread.finished.connect(self._thread_stopped_or_terminated)
+        self.thread_apply_changes.progress.connect(self._progress_was_made)
+        self.thread_apply_changes.finished.connect(self._thread_stopped_or_terminated)
         # TODO: connecting to terminate just for tests
-        # self.progress_view.button_terminate.clicked.connect(self.thread.stop)
-        self.progress_view.button_terminate.clicked.connect(self.thread.terminate)
+        # self.progress_view.button_terminate.clicked.connect(self.thread_apply_changes.stop)
+        self.progress_view.button_terminate.clicked.connect(
+            self.thread_apply_changes.terminate
+        )
 
         # TODO: And there are buttons inside that modal window.
         #       Should they not be explicitly connected here?
@@ -98,14 +105,21 @@ class Adapter(QObject):
         # TODO: is the refresh button needed? Connecting it for now
         #       to the same slot as the "refresh" signal which is intended
         #       for automatic (not manual) emission.
-        self._main_view.button_refresh.clicked.connect(self._do_something_on_refresh)
+        self._main_view.button_install_from_local_copy.clicked.connect(
+            self._install_from_local_copy
+        )
+        self.thread_local_copy_install.finished.connect(self._thread_stopped_or_terminated)
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
 
     def _apply_changes(self):
         self.progress_view.show()
-        self.thread.start()  # starts the prepared thread
+        self.thread_apply_changes.start()  # starts the prepared thread
+
+    def _install_from_local_copy(self):
+        # self.progress_view.show()
+        self.thread_local_copy_install.start()
 
     def _progress_was_made(self, progress):
         # TODO: print for test purposes, remove later
@@ -117,9 +131,13 @@ class Adapter(QObject):
         # TODO: print for test purposes, remove later
         print("Thread finished signal received.")
         print(
-            f"thread: {self.thread}\n"
-            f"is running?: {self.thread.isRunning()}\n"
-            f"is finished?: {self.thread.isFinished()}"
+            f"thread: {self.thread_apply_changes}\n"
+            f"is running?: {self.thread_apply_changes.isRunning()}\n"
+            f"is finished?: {self.thread_apply_changes.isFinished()}"
+            "---\n"
+            f"thread: {self.thread_local_copy_install}\n"
+            f"is running?: {self.thread_local_copy_install.isRunning()}\n"
+            f"is finished?: {self.thread_local_copy_install.isFinished()}"
         )
 
 

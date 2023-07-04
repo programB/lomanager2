@@ -127,13 +127,59 @@ class MainLogic(object):
             # A directory for storing and unziping the downloaded files
             # TODO: Hardcoded for now. Change to something along the lines:
             #       configuration.path_to_working_folder
+            configuration.logging.warning(
+                f"Setting <<tmp_directory>> to <</tmp>> for the tests !"
+            )
             tmp_directory = "/tmp"
 
             # Block any other calls of this function and proceed with subprocedure
             self._flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
-            status = subprocedures.install(changes_to_make, tmp_directory, callback_function)
+            status = subprocedures.install(
+                changes_to_make,
+                tmp_directory,
+                mode="network_install",
+                source=None,
+                callback_function=callback_function,
+            )
             # TODO: do something with status variable
+
+    def install_from_local_copy(self, *args, **kwargs):
+        # TODO: This is draft implementation for testing
+        configuration.logging.warning("WIP. This function sends fake data.")
+
+        configuration.logging.warning(f"Not doing any checks !!!")
+
+        if "inform_about_progress" in kwargs.keys():
+            callback_function = kwargs["inform_about_progress"]
+        else:
+            callback_function = None
+
+        configuration.logging.warning(
+            f"Setting <<tmp_directory>> to <</tmp>> for the tests !"
+        )
+        tmp_directory = "/tmp"
+
+        configuration.logging.warning(f"Setting package list by hand !")
+        changes_to_make = {
+            "packages_to_remove": [],
+            "space_to_be_freed": 0,
+            "packages_to_install": [],
+            "space_to_be_used": 0,
+        }
+
+        configuration.logging.warning(
+            f"Setting <<source>> to <</tmp/saved_packages>> for the tests !"
+        )
+        source = "/tmp/saved_packages"
+
+        status = subprocedures.install(
+            changes_to_make,
+            tmp_directory,
+            mode="local_copy_install",
+            source=source,
+            callback_function=callback_function,
+        )
 
     def is_transition_in_progress(self) -> bool:
         return False

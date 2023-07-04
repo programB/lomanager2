@@ -89,7 +89,9 @@ def acquire_LO_package(filename, from_http, to_directory):
     return is_file_aquired
 
 
-def install(changes_to_make, tmp_directory, callback_function) -> dict:
+def install(
+    changes_to_make, tmp_directory, mode, source=None, callback_function=None
+) -> dict:
     # TODO: This is dummy implementation for testing
     configuration.logging.warning("WIP. This function sends fake data.")
 
@@ -99,27 +101,45 @@ def install(changes_to_make, tmp_directory, callback_function) -> dict:
         "is_install_successful": False,
         "explanation": "Install procedure not executed.",
     }
+    # 0) Check mode
+    if mode == "local_copy_install":
+        # 1 - local_copy_install) Check if files provided by the user can installed  
+        is_local_copy_usable = verify_local_copy(source)
+        if is_local_copy_usable is False:
+            message = "Provided packages cannot be installed."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
 
-    # 1) Run collect_packages subprocedure
-    # TODO: Is it always true that packages_to_download <=> packages_to_install
-    packages_to_download = changes_to_make["packages_to_install"]
-    # TODO: Should it be a different function or perhaps
-    #       callback_function should take some parameters other then
-    #       integer representing percentage progress eg. a dictionary
-    #       with information what progress is being reported:
-    #       download, install, a what file etc..
-    download_progress_callback = callback_function
-    collect_status = collect_packages(
-        packages_to_download,
-        tmp_directory,
-        download_progress_callback,
-    )
-    if collect_status is False:
-        message = "Failed to download all requested packages."
+    elif mode == "network_install":
+        # 1 - network_install) Run collect_packages subprocedure
+        # TODO: Is it always true that packages_to_download <=> packages_to_install
+        packages_to_download = changes_to_make["packages_to_install"]
+        # TODO: Should it be a different function or perhaps
+        #       callback_function should take some parameters other then
+        #       integer representing percentage progress eg. a dictionary
+        #       with information what progress is being reported:
+        #       download, install, a what file etc..
+        download_progress_callback = callback_function
+        collect_status = collect_packages(
+            packages_to_download,
+            tmp_directory,
+            download_progress_callback,
+        )
+        if collect_status is False:
+            message = "Failed to download all requested packages."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
+    else:
+        message = "Unknown mode."
         install_status["explanation"] = message
         configuration.logging.error(message)
         return install_status
 
+
+    # At this point network_install and local_copy_install
+    # procedures converge
     # 2) detect and terminate (kill -9) LibreOffice quickstarter
     terminate_LO_quickstarter()
 
@@ -371,3 +391,18 @@ def clean_tmp_folder(tmp_directory):
     print("Cleaning temporary files...")
     time.sleep(1)
     print("...done.")
+
+def verify_local_copy(local_copy_directory):
+    # TODO: This function should do a rough check whether the folder
+    #       provided by the user contains a coherent set of packages needed
+    #       for install. This check will be based on file names and expected
+    #       folder structure. As such it will not be giving guarantees
+    #       of successful install.
+
+    configuration.logging.warning("WIP. This function sends fake data.")
+
+    print("Verifying local copy integrity...")
+    time.sleep(1)
+    print("...done.")
+
+

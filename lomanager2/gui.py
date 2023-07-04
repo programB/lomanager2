@@ -31,13 +31,13 @@ class AppMainWindow(QMainWindow):
 
         # -- define other GUI elements
         #    (not belonging to Main View or Languages View)
-        self.button_refresh = QPushButton("Refresh")
+        self.button_install_from_local_copy = QPushButton("Install from local copy")
         self.button_add_langs = QPushButton("Add langs...")
         self.button_apply_changes = QPushButton("Apply changes")
         self.button_quit = QPushButton("Quit")
         # -- end define other GUI elements
 
-        main_layout.addWidget(self.button_refresh)
+        main_layout.addWidget(self.button_install_from_local_copy)
         main_layout.addWidget(self.package_menu_view)
         main_layout.addWidget(self.button_add_langs)
         main_layout.addWidget(self.button_apply_changes)
