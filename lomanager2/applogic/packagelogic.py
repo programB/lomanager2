@@ -107,13 +107,14 @@ class MainLogic(object):
         )
         self._flags.ready_to_apply_changes = True
 
+        # 1) Check if we can proceed with applying changes
         if self._flags.ready_to_apply_changes is False:
             configuration.logging.warning("Cannot apply requested changes.")
             return
 
         else:  # We are good to go
             # callback_function will most likely be the progress.emit Qt signal
-            # and will be passed here (in the kwargs dict) by the thread worked
+            # and will be passed here (in the kwargs dict) by the thread worker
             # created in the adapter.
             # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
             if "inform_about_progress" in kwargs.keys():
@@ -121,8 +122,42 @@ class MainLogic(object):
             else:
                 callback_function = None
 
-            # A dictionary of rpm-s that need to be installed/removed
-            changes_to_make = self._package_menu.package_delta
+            # 2) Decide what to do with Java
+            #
+            #    Create Java VirtualPackage for the install subprocedure
+            #    to know what to do (here all java_package flags are False)
+            java_package = VirtualPackage("core-packages", "Java", "")
+
+            is_java_installed = self._gather_system_info()["is Java installed"]
+
+            is_LO_core_requested_for_install = False
+            for package in self._virtual_packages:
+                if (
+                    package.family == "LibreOffice"
+                    and package.kind == "core-packages"
+                    and package.is_marked_for_install
+                ):
+                    is_LO_core_requested_for_install = True
+                    break
+
+            if is_java_installed is False and is_LO_core_requested_for_install is True:
+                java_package.is_to_be_downloaded = True
+                java_package.is_marked_for_install = True
+
+            if self._flags.force_download_java is True:
+                java_package.is_to_be_downloaded = True
+
+            #    Add Java VirtualPackage to the list
+            self._virtual_packages.append(java_package)
+
+
+            # 3) Decide whether to keep downloaded packages 
+            if self._flags.keep_packages is True:
+                for package in self._virtual_packages:
+                    if package.is_to_be_downloaded:
+                        package.is_to_be_kept = True
+
+            # changes_to_make = self._package_menu.package_delta
 
             # A directory for storing and unziping the downloaded files
             # TODO: Hardcoded for now. Change to something along the lines:
@@ -136,7 +171,7 @@ class MainLogic(object):
             self._flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
             status = subprocedures.install(
-                changes_to_make,
+                self._virtual_packages,
                 tmp_directory,
                 mode="network_install",
                 source=None,

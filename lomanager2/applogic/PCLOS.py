@@ -67,3 +67,7 @@ def is_lomanager2_latest(lomanger2_version: str) -> bool:
 def get_disk_space() -> int:
     # TODO: Implement
     return 0
+
+def is_java_installed() -> bool:
+    # TODO: Implement
+    return False

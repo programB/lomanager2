@@ -23,7 +23,7 @@ def get_system_information() -> dict:
     system_information["live session"] = PCLOS.is_live_session_active()
     # system_information["free HDD space"] = free_HDD_space(install_folder_root)
     system_information["installed software"] = detect_installed_software()
-    # system_information["Java installed"] = PCLOS.is_java_installed()
+    system_information["is Java installed"] = PCLOS.is_java_installed()
 
     # fmt: off
     # global _
@@ -103,7 +103,7 @@ def install(
     }
     # 0) Check mode
     if mode == "local_copy_install":
-        # 1 - local_copy_install) Check if files provided by the user can installed  
+        # 1 - local_copy_install) Check if files provided by the user can installed
         is_local_copy_usable = verify_local_copy(source)
         if is_local_copy_usable is False:
             message = "Provided packages cannot be installed."
@@ -136,7 +136,6 @@ def install(
         install_status["explanation"] = message
         configuration.logging.error(message)
         return install_status
-
 
     # At this point network_install and local_copy_install
     # procedures converge
@@ -392,6 +391,7 @@ def clean_tmp_folder(tmp_directory):
     time.sleep(1)
     print("...done.")
 
+
 def verify_local_copy(local_copy_directory):
     # TODO: This function should do a rough check whether the folder
     #       provided by the user contains a coherent set of packages needed
@@ -404,5 +404,3 @@ def verify_local_copy(local_copy_directory):
     print("Verifying local copy integrity...")
     time.sleep(1)
     print("...done.")
-
-

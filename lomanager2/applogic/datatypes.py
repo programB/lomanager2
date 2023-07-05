@@ -31,6 +31,14 @@ class VirtualPackage(object):
         - should it be in enabled state
           (or disabled even if it is visible).
 
+    Each package also has 2 other flags:
+        - is_to_be_downloaded
+        - is_to_be_kept
+    that signal whether packages associated with
+    this virtual package need to be downloaded from the internet
+    and if they should be deleted after install or kept for possible
+    future offline install.
+
     Attributes
     ----------
     kind : str
@@ -49,6 +57,8 @@ class VirtualPackage(object):
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
+    is_to_be_downloaded : bool
+    is_to_be_kept : bool
     """
 
     def __init__(self, kind: str, family: str, version: str) -> None:
@@ -87,6 +97,9 @@ class VirtualPackage(object):
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
         self.is_marked_for_install = False
+        # Action flags
+        self.is_to_be_downloaded = False
+        self.is_to_be_kept = False
 
 
 class SignalFlags(object):
@@ -98,3 +111,5 @@ class SignalFlags(object):
         self.block_local_copy_install = False
         self.block_checking_4_updates = False
         self.ready_to_apply_changes = False
+        self.keep_packages = False
+        self.force_download_java = False
