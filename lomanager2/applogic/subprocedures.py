@@ -90,7 +90,7 @@ def acquire_LO_package(filename, from_http, to_directory):
 
 
 def install(
-    changes_to_make, tmp_directory, mode, source=None, callback_function=None
+    virtual_packages, tmp_directory, install_mode, source=None, callback_function=None
 ) -> dict:
     # TODO: This is dummy implementation for testing
     configuration.logging.warning("WIP. This function sends fake data.")
@@ -102,7 +102,7 @@ def install(
         "explanation": "Install procedure not executed.",
     }
     # 0) Check mode
-    if mode == "local_copy_install":
+    if install_mode == "local_copy_install":
         # 1 - local_copy_install) Check if files provided by the user can installed
         is_local_copy_usable = verify_local_copy(source)
         if is_local_copy_usable is False:
@@ -111,10 +111,10 @@ def install(
             configuration.logging.error(message)
             return install_status
 
-    elif mode == "network_install":
+    elif install_mode == "network_install":
         # 1 - network_install) Run collect_packages subprocedure
-        # TODO: Is it always true that packages_to_download <=> packages_to_install
-        packages_to_download = changes_to_make["packages_to_install"]
+        packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+
         # TODO: Should it be a different function or perhaps
         #       callback_function should take some parameters other then
         #       integer representing percentage progress eg. a dictionary
@@ -126,6 +126,7 @@ def install(
             tmp_directory,
             download_progress_callback,
         )
+
         if collect_status is False:
             message = "Failed to download all requested packages."
             install_status["explanation"] = message
@@ -143,48 +144,29 @@ def install(
     terminate_LO_quickstarter()
 
     # 3) Run Java install procedure if needed
-    is_Java_install_required = False
+    for package in virtual_packages:
+        if package.family == "Java":
+            if package.is_marked_for_install:
+                java_install_status = install_Java()
 
-    # TODO: Remove this test code !!!
-    configuration.logging.warning(f"Adding phony Java package name for tests !")
-    changes_to_make["packages_to_install"].append("Java-1.0-PHONY.rpm")
-
-    # if any([True for rpm_name in changes_to_make["packages_to_install"] if "Java" in rpm_name])
-    for rpm_name in changes_to_make["packages_to_install"]:
-        if "Java" in rpm_name:
-            is_Java_install_required = True
-            break
-
-    if is_Java_install_required is True:
-        java_install_status = install_Java()
-
-        if java_install_status is False:
-            message = "Failed to install Java."
-            install_status["explanation"] = message
-            configuration.logging.error(message)
-            return install_status
+                if java_install_status is False:
+                    message = "Failed to install Java."
+                    install_status["explanation"] = message
+                    configuration.logging.error(message)
+                    return install_status
+                else:  # All good, Java installed
+                    break  # There can only ever be 1 Java virtual package
 
     # At this point everything needed is downloaded and verified
     # and Java is installed in the system.
     # We can remove old Office components
     # in preparation for the install step.
     # 4) Run Office uninstall procedure if needed
-    any_Office_component_needs_to_be_removed = False
-
-    # TODO: Remove this test code !!!
-    configuration.logging.warning(
-        f"Adding phony Office package name to uninstall list for tests !"
-    )
-    changes_to_make["packages_to_remove"].append("OpenOffice-3.0-PHONY.rpm")
-
-    for rpm_name in changes_to_make["packages_to_remove"]:
-        if "Office" in rpm_name:
-            any_Office_component_needs_to_be_removed = True
-            break
-
-    if any_Office_component_needs_to_be_removed is True:
+    packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
+    if packages_to_remove:  # Non empty list
         office_removal_status = office_uninstall(
-            changes_to_make["packages_to_remove"], callback_function
+            packages_to_remove,
+            callback_function,
         )
 
         # If the procedure failed completely (no packages got uninstalled)
@@ -202,22 +184,15 @@ def install(
             return install_status
 
     # 5) Run Office install procedure if needed
-    any_Office_component_needs_to_be_installed = False
-
-    # TODO: Remove this test code !!!
-    configuration.logging.warning(
-        f"Adding phony Office package name to install list for tests !"
-    )
-    changes_to_make["packages_to_install"].append("LibreOffice-9.9-PHONY.rpm")
-
-    for rpm_name in changes_to_make["packages_to_install"]:
-        if "LibreOffice" in rpm_name or "Clipart" in rpm_name:
-            any_Office_component_needs_to_be_installed = True
-            break
-
-    if any_Office_component_needs_to_be_installed is True:
+    packages_to_install = [
+        p
+        for p in virtual_packages
+        if (p.is_marked_for_install or p.is_marked_for_upgrade)
+    ]
+    if packages_to_install:  # Non empty list
         office_install_status = install_LibreOffice(
-            changes_to_make["packages_to_install"], callback_function
+            packages_to_install,
+            callback_function,
         )
 
         if office_install_status is False:
@@ -227,26 +202,27 @@ def install(
             return install_status
 
     # 6) Any Office base package was affected ?
-    # TODO: how to to do that?
-    #       Below are just naive checks
-    base_package_indentification_string = "SOMETHING"
-    if base_package_indentification_string in changes_to_make["packages_to_install"]:
-        disable_LO_update_checks()
-        add_templates_to_etcskel()
-    if base_package_indentification_string in changes_to_make["packages_to_remove"]:
-        clean_dot_desktop_files()
+    # TODO: Can this be done better ?
+    for package in packages_to_install:
+        if package.kind == "core-packages" and package.family == "LibreOffice":
+            disable_LO_update_checks()
+            add_templates_to_etcskel()
+    for package in packages_to_remove:
+        if package.kind == "core-packages" and package.family == "LibreOffice":
+            clean_dot_desktop_files()
 
     # 7) Should downloaded packages be removed ?
-    # TODO: this information has to be passed here from somewhere
-    # TODO: Remove this test code !!!
-    configuration.logging.warning(f"Manually setting <<keep_packages>> to <<True>>!")
-    keep_packages = True
-    configuration.logging.warning(
-        f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
-    )
-    offline_copy_folder = "/tmp/LO_saved_packages"
-    keep_packages = True
-    if keep_packages is True:
+    # TODO: Should this be done this way? Any package marked for keeping
+    #       should cause all packages to be kept?
+    #       There is no point in supporting partial removal!
+    #       Does it mean there is no point in defining is_to_be_kept for
+    #       every package and instead this should be simply the global
+    #       _flags.keep_packages flag?
+    if any([p.is_to_be_kept for p in virtual_packages]):
+        configuration.logging.warning(
+            f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
+        )
+        offline_copy_folder = "/tmp/LO_saved_packages"
         save_copy_for_offline_install(offline_copy_folder)
 
     # 8) clean up temporary files

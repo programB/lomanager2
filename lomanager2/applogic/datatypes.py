@@ -72,7 +72,7 @@ class VirtualPackage(object):
 
         family : str
             Software this virtual package represents: "OpenOffice",
-            "LibreOffice" or "Clipart"
+            "LibreOffice", "Clipart" or "Java"
 
         version : str
             Version of the package. Dot separated format eg. "2.4.1"
