@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QMainWindow,
@@ -35,8 +36,10 @@ class AppMainWindow(QMainWindow):
         self.button_add_langs = QPushButton("Add langs...")
         self.button_apply_changes = QPushButton("Apply changes")
         self.button_quit = QPushButton("Quit")
+        self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
         # -- end define other GUI elements
 
+        main_layout.addWidget(self.checkbox_keep_packages)
         main_layout.addWidget(self.button_install_from_local_copy)
         main_layout.addWidget(self.package_menu_view)
         main_layout.addWidget(self.button_add_langs)

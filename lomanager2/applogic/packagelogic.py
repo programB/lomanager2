@@ -94,6 +94,10 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
+        # TODO: try to extract keep_packages flag passed from GUI
+        if "keep_packages" in kwargs:
+            print(f'keep_packages = {kwargs["keep_packages"]}')
+
         # TODO: This is draft implementation for testing
         configuration.logging.warning("WIP. This function sends fake data.")
 

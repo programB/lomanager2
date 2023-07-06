@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import (
     QObject,
     Signal,
+    Qt,
 )
 
 from applogic.packagelogic import MainLogic
@@ -53,8 +54,18 @@ class Adapter(QObject):
         # Prepare separate threads that run: apply_changes and
         # install_from_local_copy functions
         # from the MainLogic object (don't start them yet though)
+
+        # TODO: passing _keep_packages like causes the Worker
+        #       to always have the value of _keep_packages = False,
+        #       any future updates of this variable are not
+        #       noticed. Worked MUST to be created when it's ready
+        #       to be started (or have methods of passing data to it
+        #       while it's already started which would
+        #       be unnecessarily complicated in this case.)
+        self._keep_packges = False
         self.thread_apply_changes = InstallProcedureWorker(
-            self._main_model.apply_changes
+            self._main_model.apply_changes,
+            keep_packages=self._keep_packges,
         )
         self.thread_local_copy_install = InstallProcedureWorker(
             self._main_model.install_from_local_copy
@@ -108,7 +119,14 @@ class Adapter(QObject):
         self._main_view.button_install_from_local_copy.clicked.connect(
             self._install_from_local_copy
         )
-        self.thread_local_copy_install.finished.connect(self._thread_stopped_or_terminated)
+        self.thread_local_copy_install.finished.connect(
+            self._thread_stopped_or_terminated
+        )
+
+        # Keep packages checkbox
+        self._main_view.checkbox_keep_packages.stateChanged.connect(
+            self._set_keep_packages_state
+        )
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
@@ -139,6 +157,15 @@ class Adapter(QObject):
             f"is running?: {self.thread_local_copy_install.isRunning()}\n"
             f"is finished?: {self.thread_local_copy_install.isFinished()}"
         )
+
+    def _set_keep_packages_state(self):
+        state = self._main_view.checkbox_keep_packages.checkState()
+        print(f"in GUI keep_packages checkbox is set to: {state}")
+        # Qt.PartiallyChecked doesn't make sense in this application
+        if state == Qt.CheckState.Checked:
+            self._keep_packges = True
+        if state == Qt.CheckState.Unchecked:
+            self._keep_packges = False
 
 
 def main():
