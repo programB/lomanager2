@@ -31,13 +31,10 @@ class VirtualPackage(object):
         - should it be in enabled state
           (or disabled even if it is visible).
 
-    Each package also has 2 other flags:
+    Each package also has the
         - is_to_be_downloaded
-        - is_to_be_kept
-    that signal whether packages associated with
-    this virtual package need to be downloaded from the internet
-    and if they should be deleted after install or kept for possible
-    future offline install.
+    flag that signal whether packages associated with
+    this virtual package need to be downloaded from the internet.
 
     Attributes
     ----------
@@ -58,7 +55,6 @@ class VirtualPackage(object):
     is_install_opt_enabled : bool
     is_marked_for_install : bool
     is_to_be_downloaded : bool
-    is_to_be_kept : bool
     """
 
     def __init__(self, kind: str, family: str, version: str) -> None:
@@ -99,7 +95,6 @@ class VirtualPackage(object):
         self.is_marked_for_install = False
         # Action flags
         self.is_to_be_downloaded = False
-        self.is_to_be_kept = False
 
 
 class SignalFlags(object):
