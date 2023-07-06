@@ -94,9 +94,6 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        # TODO: try to extract keep_packages flag passed from GUI
-        if "keep_packages" in kwargs:
-            print(f'keep_packages = {kwargs["keep_packages"]}')
 
         # TODO: This is draft implementation for testing
         configuration.logging.warning("WIP. This function sends fake data.")
@@ -156,10 +153,10 @@ class MainLogic(object):
 
 
             # 3) Decide whether to keep downloaded packages 
-            if self._flags.keep_packages is True:
-                for package in self._virtual_packages:
-                    if package.is_to_be_downloaded:
-                        package.is_to_be_kept = True
+            if "keep_packages" in kwargs:
+                configuration.logging.debug(f'keep_packages = {kwargs["keep_packages"]}')
+                # This flag is False by defualt and gets set again only here
+                self._flags.keep_packages = kwargs["keep_packages"]
 
             # changes_to_make = self._package_menu.package_delta
 
@@ -177,6 +174,7 @@ class MainLogic(object):
             status = subprocedures.install(
                 self._virtual_packages,
                 tmp_directory,
+                keep_packages=self._flags.keep_packages,
                 install_mode="network_install",
                 source=None,
                 callback_function=callback_function,

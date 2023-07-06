@@ -90,7 +90,12 @@ def acquire_LO_package(filename, from_http, to_directory):
 
 
 def install(
-    virtual_packages, tmp_directory, install_mode, source=None, callback_function=None
+    virtual_packages,
+    tmp_directory,
+    keep_packages,
+    install_mode,
+    source=None,
+    callback_function=None,
 ) -> dict:
     # TODO: This is dummy implementation for testing
     configuration.logging.warning("WIP. This function sends fake data.")
@@ -212,13 +217,8 @@ def install(
             clean_dot_desktop_files()
 
     # 7) Should downloaded packages be removed ?
-    # TODO: Should this be done this way? Any package marked for keeping
-    #       should cause all packages to be kept?
-    #       There is no point in supporting partial removal!
-    #       Does it mean there is no point in defining is_to_be_kept for
-    #       every package and instead this should be simply the global
-    #       _flags.keep_packages flag?
-    if any([p.is_to_be_kept for p in virtual_packages]):
+    configuration.logging.debug(f'keep_packages = {keep_packages}')
+    if keep_packages is True:
         configuration.logging.warning(
             f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
         )
