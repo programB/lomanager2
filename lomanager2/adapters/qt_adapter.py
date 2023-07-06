@@ -20,6 +20,7 @@ class Adapter(QObject):
     # register custom "refresh" signal (no data passed with it)
     # This is a class attribute (defined before outside __init__)
     refresh = Signal()
+    start_apply = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()  # this is important when registering custom events
@@ -124,16 +125,25 @@ class Adapter(QObject):
         )
 
         # Keep packages checkbox
-        self._main_view.checkbox_keep_packages.stateChanged.connect(
-            self._set_keep_packages_state
-        )
+        self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(self._set_keep_packages_state) 
+        # self._main_view.checkbox_keep_packages.stateChanged.connect(
+        #     self._set_keep_packages_state
+        # )
+        self.start_apply.connect(self._start_apply_changes_subprocedure)
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
 
     def _apply_changes(self):
-        self.progress_view.show()
-        self.thread_apply_changes.start()  # starts the prepared thread
+        if self._main_view.confirm_apply_view.exec():
+            self.start_apply.emit()
+        else:
+            print("Aborted")
+
+    def _start_apply_changes_subprocedure(self):
+        print("Apply Accepted")
+        # self.progress_view.show()
+        # self.thread_apply_changes.start()  # starts the prepared thread
 
     def _install_from_local_copy(self):
         # self.progress_view.show()
@@ -159,7 +169,7 @@ class Adapter(QObject):
         )
 
     def _set_keep_packages_state(self):
-        state = self._main_view.checkbox_keep_packages.checkState()
+        state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
         print(f"in GUI keep_packages checkbox is set to: {state}")
         # Qt.PartiallyChecked doesn't make sense in this application
         if state == Qt.CheckState.Checked:

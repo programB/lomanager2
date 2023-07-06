@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QTableView,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
     QHeaderView,
@@ -30,16 +31,18 @@ class AppMainWindow(QMainWindow):
         self.extra_langs_view = LangsModalWindow(parent=self)
         # -- end define Languages View
 
+        # -- define Apply changes confirmation dialog
+        self.confirm_apply_view = ConfirmApplyDialog(parent=self)
+        # -- end define Apply changes confirmation dialog
+
         # -- define other GUI elements
         #    (not belonging to Main View or Languages View)
         self.button_install_from_local_copy = QPushButton("Install from local copy")
         self.button_add_langs = QPushButton("Add langs...")
         self.button_apply_changes = QPushButton("Apply changes")
         self.button_quit = QPushButton("Quit")
-        self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
         # -- end define other GUI elements
 
-        main_layout.addWidget(self.checkbox_keep_packages)
         main_layout.addWidget(self.button_install_from_local_copy)
         main_layout.addWidget(self.package_menu_view)
         main_layout.addWidget(self.button_add_langs)
@@ -116,6 +119,44 @@ class ProgressDialog(QDialog):
         main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
+
+
+class ConfirmApplyDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.setWindowTitle("Apply changes")
+        main_layout = QVBoxLayout()
+
+        self.info_box = QTextEdit()
+        self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
+
+        self.buttonBox = QDialogButtonBox()
+        self.apply_button = self.buttonBox.addButton(
+            QDialogButtonBox.StandardButton.Apply
+        )
+        self.cancel_button = self.buttonBox.addButton(
+            QDialogButtonBox.StandardButton.Cancel
+        )
+
+        main_layout.addWidget(self.info_box)
+        main_layout.addWidget(self.checkbox_keep_packages)
+        main_layout.addWidget(self.buttonBox)
+
+        self.setLayout(main_layout)
+
+        # Cancel button sends this so we can connect directly
+        self.buttonBox.rejected.connect(self.reject)
+        # Apply button sends something else so we will
+        # check which button was pressed and ...
+        self.buttonBox.clicked.connect(self._which_button)
+        self.buttonBox.accepted.connect(self.accept)
+
+    def _which_button(self, clicked_button):
+        # ... if it is apply button we will make it
+        #     send the 'accepted' signal
+        if clicked_button is self.apply_button:
+            self.buttonBox.accepted.emit()
 
 
 if __name__ == "__main__":
