@@ -173,7 +173,7 @@ class MainLogic(object):
             status = subprocedures.install(
                 self._virtual_packages,
                 tmp_directory,
-                mode="network_install",
+                install_mode="network_install",
                 source=None,
                 callback_function=callback_function,
             )
@@ -211,7 +211,7 @@ class MainLogic(object):
         status = subprocedures.install(
             changes_to_make,
             tmp_directory,
-            mode="local_copy_install",
+            install_mode="local_copy_install",
             source=source,
             callback_function=callback_function,
         )
