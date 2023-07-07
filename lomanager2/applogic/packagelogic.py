@@ -58,7 +58,6 @@ class MainLogic(object):
     # TODO: This method should not exist
     #       See coulmnCount method of PackageMenuViewModel
     def get_PackageMenu_column_count(self):
-        # print(f"getting from MainLogic {random()}")
         return self._package_menu.get_column_count()
 
     def set_PackageMenu_field(self, row, column, value_as_bool):
@@ -94,7 +93,6 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-
         # TODO: This is draft implementation for testing
         configuration.logging.warning("WIP. This function sends fake data.")
 
@@ -151,10 +149,11 @@ class MainLogic(object):
             #    Add Java VirtualPackage to the list
             self._virtual_packages.append(java_package)
 
-
-            # 3) Decide whether to keep downloaded packages 
+            # 3) Decide whether to keep downloaded packages
             if "keep_packages" in kwargs:
-                configuration.logging.debug(f'keep_packages = {kwargs["keep_packages"]}')
+                configuration.logging.debug(
+                    f'keep_packages = {kwargs["keep_packages"]}'
+                )
                 # This flag is False by defualt and gets set again only here
                 self._flags.keep_packages = kwargs["keep_packages"]
 
@@ -225,7 +224,7 @@ class MainLogic(object):
         pass
 
     def refresh_state(self):
-        # Reset packages list 
+        # Reset packages list
         self._virtual_packages = []
         # 4) Gather system information
         system_info = self._gather_system_info()
@@ -1196,12 +1195,14 @@ class PackageMenu(object):
         self.newest_installed_LO_version = self._get_newest_installed_LO_version()
 
         if self.newest_installed_LO_version:  # a LibreOffice is installed
-            # TODO: print for test purposes. Remove in final code
-            print(f"Newest installed LO: {self.newest_installed_LO_version}")
+            configuration.logging.debug(
+                f"Newest installed LO: {self.newest_installed_LO_version}"
+            )
             # b) latest version already installed
             if self.newest_installed_LO_version == self.latest_available_LO_version:
-                # TODO: print for test purposes. Remove in final code
-                print("Your LO is already at latest available version")
+                configuration.logging.debug(
+                    "Your LO is already at latest available version"
+                )
                 # Allow for additional lang packs INSTALL coming...
                 # ...FROM THE LIST of LATEST AVAILABLE PACKAGES
                 # (LibreOffice only !!! OpenOffice office is not supported.)

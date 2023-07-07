@@ -36,7 +36,7 @@ def get_system_information() -> dict:
     # fmt: on
 
     # logging.debug(message)
-    configuration.logging.warning("WIP !" "May be sending fake data !!!")
+    configuration.logging.debug("WIP !" "Sending dummy data !!!")
     return system_information
 
 
@@ -49,25 +49,21 @@ def detect_installed_software():
         ["LibreOffice", "7.5", "jp", "pl"],
         ["Clipart", "5.3"],
     ]
-    for item in found_software:
-        print(item)
-    configuration.logging.warning(
-        "Function not yet implemented. " "Sending fake data !!!"
-    )
+    configuration.logging.debug(f"found_software: {found_software}")
     return found_software
 
 
 def collect_packages(
     packages_to_download: list, tmp_directory, callback_function
 ) -> bool:
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
     is_every_package_collected = False
 
-    print(f"Packages to download: {packages_to_download}")
-    print("Collecting packages...")
+    configuration.logging.debug(f"Packages to download: {packages_to_download}")
+    configuration.logging.debug("Collecting packages...")
     time.sleep(2)
-    print("...done collecting packages.")
+    configuration.logging.debug("...done collecting packages.")
 
     is_every_package_collected = True
     return is_every_package_collected
@@ -98,7 +94,7 @@ def install(
     callback_function=None,
 ) -> dict:
     # TODO: This is dummy implementation for testing
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
     # Preparations
     current_progress_is = callback_function
@@ -220,9 +216,9 @@ def install(
             clean_dot_desktop_files()
 
     # 7) Should downloaded packages be removed ?
-    configuration.logging.debug(f'keep_packages = {keep_packages}')
+    configuration.logging.debug(f"keep_packages = {keep_packages}")
     if keep_packages is True:
-        configuration.logging.warning(
+        configuration.logging.debug(
             f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
         )
         offline_copy_folder = "/tmp/LO_saved_packages"
@@ -240,7 +236,7 @@ def install(
 
 
 def install_LibreOffice(packages_to_install: list, callback_function) -> bool:
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
     # TODO: naming
     current_progress_is = callback_function
 
@@ -268,7 +264,7 @@ def install_LibreOffice(packages_to_install: list, callback_function) -> bool:
 
 
 def install_Java() -> bool:
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
     is_java_successfully_installed = False
     configuration.logging.info("Starting Java install procedure...")
@@ -298,17 +294,17 @@ def uinstall_Clipart():
 
 
 def terminate_LO_quickstarter():
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Checking for LibreOffice quickstarter process...")
-    print("LibreOffice quickstarter is running (PID: ABCD)")
-    print("Terminating LibreOffice quickstarter...")
+    configuration.logging.debug("Checking for LibreOffice quickstarter process...")
+    configuration.logging.debug("LibreOffice quickstarter is running (PID: ABCD)")
+    configuration.logging.debug("Terminating LibreOffice quickstarter...")
     time.sleep(2)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def office_uninstall(packages_to_remove: list, callback_function) -> bool:
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
     is_every_package_successfully_removed = False
     configuration.logging.debug(f"Packages to remove: {packages_to_remove}")
@@ -323,52 +319,52 @@ def office_uninstall(packages_to_remove: list, callback_function) -> bool:
 
 
 def disable_LO_update_checks():
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Preventing LibreOffice from looking for updates on its own...")
+    configuration.logging.debug("Preventing LibreOffice from looking for updates on its own...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def add_templates_to_etcskel():
     # TODO: This function should put a file (smth.xcu) to /etc/skel
     #       in order to have LO properly set up for any new user
     #       accounts created in the OS
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Adding files to /etc/skel ...")
+    configuration.logging.debug("Adding files to /etc/skel ...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def clean_dot_desktop_files():
     # TODO: This function should remove association between LibreOffice
     #       and Open Document file formats (odt, odf, etc.) from the
     #       global .desktop file (and user files too?)
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Rebuilding menu entries...")
+    configuration.logging.debug("Rebuilding menu entries...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def save_copy_for_offline_install(target_folder):
     # TODO: This function should put all files needed for offline
     #       installation in a structured way into the target_folder
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Saving files for offline install...")
+    configuration.logging.debug("Saving files for offline install...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def clean_tmp_folder(tmp_directory):
     # TODO: This function should remove all files from tmp_directory.
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Cleaning temporary files...")
+    configuration.logging.debug("Cleaning temporary files...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
 
 
 def verify_local_copy(local_copy_directory):
@@ -378,8 +374,8 @@ def verify_local_copy(local_copy_directory):
     #       folder structure. As such it will not be giving guarantees
     #       of successful install.
 
-    configuration.logging.warning("WIP. This function sends fake data.")
+    configuration.logging.debug("WIP. This function sends fake data.")
 
-    print("Verifying local copy integrity...")
+    configuration.logging.debug("Verifying local copy integrity...")
     time.sleep(1)
-    print("...done.")
+    configuration.logging.debug("...done.")
