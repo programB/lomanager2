@@ -107,6 +107,7 @@ class Adapter(QObject):
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
+        self._main_model.refresh_state()
 
     def _apply_changes_was_requested(self):
         if self._main_view.confirm_apply_view.exec():
@@ -164,6 +165,8 @@ class Adapter(QObject):
             f"is running?: {self.apply_changes_thread.isRunning()}\n"
             f"is finished?: {self.apply_changes_thread.isFinished()}"
         )
+        print("Emiting refresh signal to rebuild packages state")
+        self.refresh.emit()
 
     def _set_keep_packages_state(self):
         state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()

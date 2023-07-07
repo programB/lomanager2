@@ -119,6 +119,7 @@ def install(
     elif install_mode == "network_install":
         # 1 - network_install) Run collect_packages subprocedure
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+        configuration.logging.debug(f"packages_to_download: {packages_to_download}")
 
         # TODO: Should it be a different function or perhaps
         #       callback_function should take some parameters other then
@@ -168,6 +169,7 @@ def install(
     # in preparation for the install step.
     # 4) Run Office uninstall procedure if needed
     packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
+    configuration.logging.debug(f"packages_to_remove: {packages_to_remove}")
     if packages_to_remove:  # Non empty list
         office_removal_status = office_uninstall(
             packages_to_remove,
@@ -194,6 +196,7 @@ def install(
         for p in virtual_packages
         if (p.is_marked_for_install or p.is_marked_for_upgrade)
     ]
+    configuration.logging.debug(f"packages_to_install: {packages_to_install}")
     if packages_to_install:  # Non empty list
         office_install_status = install_LibreOffice(
             packages_to_install,

@@ -225,6 +225,8 @@ class MainLogic(object):
         pass
 
     def refresh_state(self):
+        # Reset packages list 
+        self._virtual_packages = []
         # 4) Gather system information
         system_info = self._gather_system_info()
 
