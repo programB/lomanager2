@@ -24,6 +24,7 @@ class VirtualPackage(object):
 
     Each virtual package has a state, represented by a number of
     flags/attributes. These describe whether:
+        - the package is currently installed
         - the package was marked for specific operation
           (install/removal/upgrade)
         - if it can be marked for such operation,
@@ -42,6 +43,7 @@ class VirtualPackage(object):
     family :str
     version : str
     real_packages = list[dict[str, int]]
+    is_installed: bool
     is_removable : bool
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
@@ -78,6 +80,7 @@ class VirtualPackage(object):
         self.family = family
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
+        self.is_installed = False
         # Remove flags
         self.is_removable = False
         self.is_remove_opt_visible = False
