@@ -3,6 +3,9 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLineEdit,
     QMainWindow,
     QProgressBar,
     QPushButton,
@@ -35,6 +38,10 @@ class AppMainWindow(QMainWindow):
         self.confirm_apply_view = ConfirmApplyDialog(parent=self)
         # -- end define Apply changes confirmation dialog
 
+        # -- define Local copy install confirmation dialog
+        self.confirm_local_copy_view = LocalCopyInstallDialog(parent=self)
+        # -- end define Local copy install confirmation dialog
+
         # -- define other GUI elements
         #    (not belonging to Main View or Languages View)
         self.button_install_from_local_copy = QPushButton("Install from local copy")
@@ -55,6 +62,9 @@ class AppMainWindow(QMainWindow):
 
     def open_langs_selection_modal_window(self, s):
         self.extra_langs_view.exec()
+
+    def open_local_copy_confirmation_modal_window(self):
+        self.confirm_local_copy_view.show()
 
 
 class LangsModalWindow(QDialog):
@@ -157,6 +167,73 @@ class ConfirmApplyDialog(QDialog):
         #     send the 'accepted' signal
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
+
+
+class LocalCopyInstallDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.setWindowTitle("Install from local copy")
+        main_layout = QVBoxLayout()
+
+        # PAGE 128
+        self.info_box = QTextEdit()
+
+        file_input_layout = QHBoxLayout()
+        self.initial_dir = "/"
+        self.directory_choice_box = QLineEdit()
+        self.directory_choice_box.setReadOnly(True)
+        self.directory_choice_box.setPlaceholderText(self.initial_dir)
+        self.button_choose_directory = QPushButton("Choose directory...")
+        file_input_layout.addWidget(self.directory_choice_box)
+        file_input_layout.addWidget(self.button_choose_directory)
+
+        self.buttonBox = QDialogButtonBox()
+        self.apply_button = self.buttonBox.addButton(
+            QDialogButtonBox.StandardButton.Apply
+        )
+        self.cancel_button = self.buttonBox.addButton(
+            QDialogButtonBox.StandardButton.Cancel
+        )
+
+        main_layout.addWidget(self.info_box)
+        main_layout.addItem(file_input_layout)
+        main_layout.addWidget(self.buttonBox)
+
+        self.setLayout(main_layout)
+
+        self.button_choose_directory.clicked.connect(self._chose_directory)
+
+        # Cancel button sends this so we can connect directly
+        self.buttonBox.rejected.connect(self.reject)
+        # Apply button sends something else so we will
+        # check which button was pressed and ...
+        self.buttonBox.clicked.connect(self._which_button)
+        self.buttonBox.accepted.connect(self.accept)
+
+    def _which_button(self, clicked_button):
+        # ... if it is the apply button we will
+        #     emit the 'accepted' signal that is connected
+        #     to the accept slot.
+        if clicked_button is self.apply_button:
+            self.buttonBox.accepted.emit()
+
+    def _chose_directory(self):
+        caption = "Select directory"
+
+        selection_dialog = QFileDialog()
+        selection_dialog.setWindowTitle(caption)
+        selection_dialog.setDirectory(self.initial_dir)
+        selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
+
+        is_selection_made = selection_dialog.exec()
+        print(
+            f"Dialog_returned: {is_selection_made }, selectedFiles: "
+            f"{selection_dialog.selectedFiles()} selectedNameFilter: "
+            f"{selection_dialog.selectedNameFilter()}"
+        )
+        if is_selection_made == 1:
+            self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])
 
 
 if __name__ == "__main__":

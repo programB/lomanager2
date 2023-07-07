@@ -92,15 +92,18 @@ class Adapter(QObject):
         # TODO: test connect "refresh" (custom signal)
         self.refresh.connect(self._do_something_on_refresh)
 
-        self._main_view.button_install_from_local_copy.clicked.connect(
-            self._install_from_local_copy_was_requested
-        )
+        # self._main_view.button_install_from_local_copy.clicked.connect(
+        #     self._install_from_local_copy_was_requested
+        # )
 
         # Keep packages checkbox
         self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(
             self._set_keep_packages_state
         )
         self.run_install_in_mode.connect(self._start_apply_changes_subprocedure)
+
+        #Local copy folder selection and confirmation
+        self._main_view.button_install_from_local_copy.clicked.connect(self._main_view.open_local_copy_confirmation_modal_window)
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
