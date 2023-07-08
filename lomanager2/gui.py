@@ -36,6 +36,10 @@ class AppMainWindow(QMainWindow):
         self.extra_langs_view = LangsModalWindow(parent=self)
         # -- end define Languages View
 
+        # -- define Progress dialog
+        self.progress_view = ProgressDialog(parent=self)
+        # -- end define Progress dialog
+
         # -- define Apply changes confirmation dialog
         self.confirm_apply_view = ConfirmApplyDialog(parent=self)
         # -- end define Apply changes confirmation dialog

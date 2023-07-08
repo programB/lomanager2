@@ -33,11 +33,7 @@ class Adapter(QObject):
         self._main_view = app_main_view
         self._package_menu_view = self._main_view.package_menu_view
         self._extra_langs_view = self._main_view.extra_langs_view.langs_view
-
-        # TODO: adding this extra window just for test
-        #       it should be rather defined directly in main_window
-        #       like the lang modal
-        self._progress_view = ProgressDialog(parent=self._main_view)
+        self._progress_view = self._main_view.progress_view
 
         # The viewmodel (PackageMenuViewModel) for the object responsible
         # for dealing with packages selection _main_view
