@@ -10,7 +10,7 @@ from PySide6.QtCore import (
 )
 
 from applogic.packagelogic import MainLogic
-from gui import AppMainWindow, ProgressDialog
+from gui import AppMainWindow
 from viewmodels import PackageMenuViewModel
 from threads import InstallProcedureWorker
 import configuration
