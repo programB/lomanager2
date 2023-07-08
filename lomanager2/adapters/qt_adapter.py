@@ -74,7 +74,7 @@ class Adapter(QObject):
         # TODO: Will clicking this button at wrong times result in unintended
         #       consequences? Should this be prevented by disabling this button?
         self._main_view.button_apply_changes.clicked.connect(
-            self._apply_changes_was_requested
+            self._confirm_and_start_applying_changes
         )
 
         # TODO: And there are buttons inside that modal window.
@@ -102,7 +102,6 @@ class Adapter(QObject):
         self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(
             self._set_keep_packages_state
         )
-        self.run_install_in_mode.connect(self._start_apply_changes_subprocedure)
 
         # Local copy folder selection and confirmation
         self._main_view.button_install_from_local_copy.clicked.connect(
@@ -116,13 +115,6 @@ class Adapter(QObject):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
 
-    def _apply_changes_was_requested(self):
-        if self._main_view.confirm_apply_view.exec():
-            configuration.logging.debug("Applying changes...")
-            self.run_install_in_mode.emit("network_install")
-        else:
-            configuration.logging.debug("Cancel clicked: User decided not to apply changes.")
-
     def _install_from_local_copy_was_requested(self):
         # TODO: - Add local copy dialog to GUI to allow the user
         #       to point to a folder with saved packages and
@@ -135,32 +127,46 @@ class Adapter(QObject):
         configuration.logging.debug("Install from local copy")
         self.run_install_in_mode.emit("local_copy_install")
 
-    def _start_apply_changes_subprocedure(self, install_mode: str):
-        # Creating separete thread
-        self.apply_changes_thread = InstallProcedureWorker(
-            function_to_run=self._main_model.apply_changes,
-            keep_packages=self._keep_packages,
-            install_mode=install_mode,
-            local_copy_folder=self._local_copy_folder,
-            report_status=self.status_signal.emit,
-        )
-        # Connecting its signals
-        self.apply_changes_thread.progress.connect(self._progress_was_made)
-        self.apply_changes_thread.finished.connect(self._thread_stopped_or_terminated)
-        self._progress_view.button_terminate.clicked.connect(
-            self.apply_changes_thread.terminate
-        )
+    def _confirm_and_start_applying_changes(self, install_mode: str):
+        # Ask the user for confirmation
+        if self._main_view.confirm_apply_view.exec():
+            configuration.logging.debug("Applying changes...")
+            # Create separate thread worker
+            # and pass the MainLogic's method to execute
+            # along with (values collected from GUI) it would need.
+            self.apply_changes_thread = InstallProcedureWorker(
+                function_to_run=self._main_model.apply_changes,
+                keep_packages=self._keep_packages,
+                install_mode=install_mode,
+                local_copy_folder=self._local_copy_folder,
+                report_status=self.status_signal.emit,
+            )
+            # Connect thread signals
+            self.apply_changes_thread.progress.connect(self._progress_was_made)
+            self.apply_changes_thread.finished.connect(
+                self._thread_stopped_or_terminated
+            )
+            # TODO: just for test. This MUST not be available to user
+            self._progress_view.button_terminate.clicked.connect(
+                self.apply_changes_thread.terminate
+            )
 
-        self._progress_view.show()
-        # TODO: Block certain buttons in the main iterface here to
-        #       prevent from another thread being started. But not
-        #       all of them (eg. log output (aka console)
-        #       should be operational)
+            self._progress_view.show()
+            # TODO: Block certain buttons in the main interface here to
+            #       prevent from another thread being started. But not
+            #       all of them (eg. log output (aka console)
+            #       should be operational)
 
-        self.apply_changes_thread.start()  # starts the prepared thread
+            self.apply_changes_thread.start()  # start the prepared thread
+        else:
+            configuration.logging.debug(
+                "Cancel clicked: User decided not to apply changes."
+            )
 
     def _progress_was_made(self, progress):
-        configuration.logging.debug(f"Current progress (received in adapter's slot): {progress}")
+        configuration.logging.debug(
+            f"Current progress (received in adapter's slot): {progress}"
+        )
         self._progress_view.progress_bar.setValue(progress)
 
     def _thread_stopped_or_terminated(self):
