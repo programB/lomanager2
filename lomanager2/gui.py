@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QTableView,
@@ -48,6 +49,7 @@ class AppMainWindow(QMainWindow):
         self.button_add_langs = QPushButton("Add langs...")
         self.button_apply_changes = QPushButton("Apply changes")
         self.button_quit = QPushButton("Quit")
+        self.info_dialog = QMessageBox()
         # -- end define other GUI elements
 
         main_layout.addWidget(self.button_install_from_local_copy)
@@ -65,6 +67,9 @@ class AppMainWindow(QMainWindow):
 
     def open_local_copy_confirmation_modal_window(self):
         self.confirm_local_copy_view.show()
+
+    def open_information_modal_window(self):
+        self.info_dialog.exec()
 
 
 class LangsModalWindow(QDialog):

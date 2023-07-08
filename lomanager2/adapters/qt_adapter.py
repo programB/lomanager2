@@ -18,8 +18,9 @@ from threads import InstallProcedureWorker
 class Adapter(QObject):
     # register custom "refresh" signal (no data passed with it)
     # This is a class attribute (defined before outside __init__)
-    refresh = Signal()
+    refresh_signal = Signal()
     run_install_in_mode = Signal(str)
+    status_signal = Signal(dict)
 
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()  # this is important when registering custom events
@@ -90,7 +91,7 @@ class Adapter(QObject):
         self._main_view.button_quit.clicked.connect(self._main_view.close)
 
         # TODO: test connect "refresh" (custom signal)
-        self.refresh.connect(self._do_something_on_refresh)
+        self.refresh_signal.connect(self._do_something_on_refresh)
 
         # self._main_view.button_install_from_local_copy.clicked.connect(
         #     self._install_from_local_copy_was_requested
@@ -102,8 +103,13 @@ class Adapter(QObject):
         )
         self.run_install_in_mode.connect(self._start_apply_changes_subprocedure)
 
-        #Local copy folder selection and confirmation
-        self._main_view.button_install_from_local_copy.clicked.connect(self._main_view.open_local_copy_confirmation_modal_window)
+        # Local copy folder selection and confirmation
+        self._main_view.button_install_from_local_copy.clicked.connect(
+            self._main_view.open_local_copy_confirmation_modal_window
+        )
+
+        # Status_signal
+        self.status_signal.connect(self._display_status_information)
 
     def _do_something_on_refresh(self):
         print("Refreshing!")
@@ -166,7 +172,9 @@ class Adapter(QObject):
             f"is finished?: {self.apply_changes_thread.isFinished()}"
         )
         print("Emiting refresh signal to rebuild packages state")
-        self.refresh.emit()
+        self.refresh_signal.emit()
+        # TODO: Testing emitting status_signal
+        self.status_signal.emit({"explanation": "Thread finished signal received."})
 
     def _set_keep_packages_state(self):
         state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
@@ -176,6 +184,13 @@ class Adapter(QObject):
             self._keep_packages = True
         if state == Qt.CheckState.Unchecked:
             self._keep_packages = False
+
+    def _display_status_information(self, status):
+        info = ""
+        if "explanation" in status.keys():
+            info = status["explanation"]
+        self._main_view.info_dialog.setText(info)
+        self._main_view.open_information_modal_window()
 
 
 def main():
