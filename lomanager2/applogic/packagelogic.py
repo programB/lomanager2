@@ -178,6 +178,8 @@ class MainLogic(object):
                 source=None,
                 callback_function=callback_function,
             )
+            if status["is_install_successful"] is True:
+                kwargs["report_status"]({"explanation": "Changes successfully applied"})
             # TODO: do something with status variable
 
     def install_from_local_copy(self, *args, **kwargs):

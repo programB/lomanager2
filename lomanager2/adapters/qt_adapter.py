@@ -141,6 +141,7 @@ class Adapter(QObject):
             keep_packages=self._keep_packages,
             install_mode=install_mode,
             local_copy_folder=self._local_copy_folder,
+            report_status=self.status_signal.emit,
         )
         # Connecting its signals
         self.apply_changes_thread.progress.connect(self._progress_was_made)
@@ -173,8 +174,6 @@ class Adapter(QObject):
         )
         print("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
-        # TODO: Testing emitting status_signal
-        self.status_signal.emit({"explanation": "Thread finished signal received."})
 
     def _set_keep_packages_state(self):
         state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
