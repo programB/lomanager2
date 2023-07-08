@@ -88,7 +88,7 @@ class Adapter(QObject):
 
         # Internal Signal: Refresh state of the menu
         # TODO: test connect "refresh" (custom signal)
-        self.refresh_signal.connect(self._do_something_on_refresh)
+        self.refresh_signal.connect(self._refresh_package_menu_state)
 
         # Internal Signal: Shows dialog with information returned by procedures
         self.status_signal.connect(self._display_status_information)
@@ -98,7 +98,7 @@ class Adapter(QObject):
             self._set_keep_packages_state
         )
 
-    def _do_something_on_refresh(self):
+    def _refresh_package_menu_state(self):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
 
