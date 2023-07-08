@@ -1,7 +1,6 @@
-import time
 from typing import Any, Tuple
 from . import PCLOS
-from .datatypes import VirtualPackage
+from .datatypes import VirtualPackage, SignalFlags
 from . import subprocedures
 from . import configuration
 
@@ -59,7 +58,6 @@ class MainLogic(object):
     # TODO: This method should not exist
     #       See coulmnCount method of PackageMenuViewModel
     def get_PackageMenu_column_count(self):
-        # print(f"getting from MainLogic {random()}")
         return self._package_menu.get_column_count()
 
     def set_PackageMenu_field(self, row, column, value_as_bool):
@@ -77,7 +75,7 @@ class MainLogic(object):
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
         if total_space_needed < space_available:
-            self._flags.ready_for_state_transition = False
+            self._flags.ready_to_apply_changes = False
             self._warnings = [
                 {
                     "explanation": "Insufficient disk space for operation.",
@@ -88,16 +86,127 @@ class MainLogic(object):
                 }
             ]
         else:
-            self._flags.ready_for_state_transition = True
+            self._flags.ready_to_apply_changes = True
         return pms
 
     def get_warnings(self):
         return self._warnings
 
-    def apply_changes(self):
-        print("Applying changes...")
-        time.sleep(5)
-        print("...done")
+    def apply_changes(self, *args, **kwargs):
+        # TODO: This is draft implementation for testing
+        configuration.logging.warning("WIP. This function sends fake data.")
+
+        configuration.logging.debug(
+            f"Flag <<ready_to_apply_changes>> is: <<{self._flags.ready_to_apply_changes}>>"
+        )
+
+        # TODO: bypassing for tests
+        configuration.logging.warning(
+            f"Setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
+        )
+        self._flags.ready_to_apply_changes = True
+
+        # 1) Check if we can proceed with applying changes
+        if self._flags.ready_to_apply_changes is False:
+            configuration.logging.warning("Cannot apply requested changes.")
+            return
+
+        else:  # We are good to go
+            # callback_function will most likely be the progress.emit Qt signal
+            # and will be passed here (in the kwargs dict) by the thread worker
+            # created in the adapter.
+            # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
+            if "inform_about_progress" in kwargs.keys():
+                callback_function = kwargs["inform_about_progress"]
+            else:
+                callback_function = None
+
+            # 2) Decide what to do with Java
+            #
+            #    Create Java VirtualPackage for the install subprocedure
+            #    to know what to do (here all java_package flags are False)
+            java_package = VirtualPackage("core-packages", "Java", "")
+
+            is_java_installed = self._gather_system_info()["is Java installed"]
+
+            is_LO_core_requested_for_install = False
+            for package in self._virtual_packages:
+                if (
+                    package.family == "LibreOffice"
+                    and package.kind == "core-packages"
+                    and package.is_marked_for_install
+                ):
+                    is_LO_core_requested_for_install = True
+                    break
+
+            if is_java_installed is False and is_LO_core_requested_for_install is True:
+                java_package.is_to_be_downloaded = True
+                java_package.is_marked_for_install = True
+
+            if self._flags.force_download_java is True:
+                java_package.is_to_be_downloaded = True
+
+            #    Add Java VirtualPackage to the list
+            self._virtual_packages.append(java_package)
+
+            # 3) Decide whether to keep downloaded packages
+            if "keep_packages" in kwargs:
+                configuration.logging.debug(
+                    f'keep_packages = {kwargs["keep_packages"]}'
+                )
+                # This flag is False by defualt and gets set again only here
+                self._flags.keep_packages = kwargs["keep_packages"]
+
+            # changes_to_make = self._package_menu.package_delta
+
+            # A directory for storing and unziping the downloaded files
+            # TODO: Hardcoded for now. Change to something along the lines:
+            #       configuration.path_to_working_folder
+            configuration.logging.warning(
+                f"Setting <<tmp_directory>> to <</tmp>> for the tests !"
+            )
+            tmp_directory = "/tmp"
+
+            # Block any other calls of this function and proceed with subprocedure
+            self._flags.ready_to_apply_changes = False
+            configuration.logging.info("Applying changes...")
+            status = subprocedures.install(
+                self._virtual_packages,
+                tmp_directory,
+                keep_packages=self._flags.keep_packages,
+                install_mode="network_install",
+                source=None,
+                callback_function=callback_function,
+            )
+            if status["is_install_successful"] is True:
+                kwargs["report_status"]({"explanation": "Changes successfully applied"})
+            # TODO: do something with status variable
+
+    def install_from_local_copy(self, *args, **kwargs):
+        # TODO: This is a draft implementation for testing
+        configuration.logging.debug("WIP")
+
+        if "inform_about_progress" in kwargs.keys():
+            callback_function = kwargs["inform_about_progress"]
+        else:
+            callback_function = None
+
+        configuration.logging.debug(f"MANUALLY SETTING <<tmp_directory>> TO <</tmp>>")
+        tmp_directory = "/tmp"
+
+        configuration.logging.warning(
+            f"Setting <<source>> to <</tmp/saved_packages>> for the tests !"
+        )
+        local_copy_directory = "/tmp/saved_packages"
+
+        status = subprocedures.local_copy_install_procedure(
+            self._virtual_packages,
+            tmp_directory,
+            keep_packages=True,  # never delete local copy provided by the user
+            install_mode="local_copy_install",
+            local_copy_directory=local_copy_directory,
+            callback_function=callback_function,
+        )
 
     def is_transition_in_progress(self) -> bool:
         return False
@@ -106,6 +215,8 @@ class MainLogic(object):
         pass
 
     def refresh_state(self):
+        # Reset packages list
+        self._virtual_packages = []
         # 4) Gather system information
         system_info = self._gather_system_info()
 
@@ -1075,12 +1186,14 @@ class PackageMenu(object):
         self.newest_installed_LO_version = self._get_newest_installed_LO_version()
 
         if self.newest_installed_LO_version:  # a LibreOffice is installed
-            # TODO: print for test purposes. Remove in final code
-            print(f"Newest installed LO: {self.newest_installed_LO_version}")
+            configuration.logging.debug(
+                f"Newest installed LO: {self.newest_installed_LO_version}"
+            )
             # b) latest version already installed
             if self.newest_installed_LO_version == self.latest_available_LO_version:
-                # TODO: print for test purposes. Remove in final code
-                print("Your LO is already at latest available version")
+                configuration.logging.debug(
+                    "Your LO is already at latest available version"
+                )
                 # Allow for additional lang packs INSTALL coming...
                 # ...FROM THE LIST of LATEST AVAILABLE PACKAGES
                 # (LibreOffice only !!! OpenOffice office is not supported.)
@@ -1237,14 +1350,3 @@ class PackageMenu(object):
                     #       self.packages list so we can see the result
                     #       of this logic in the View
                     self.packages.append(new_package)
-
-
-class SignalFlags(object):
-    def __init__(self) -> None:
-        self.block_viewing_installed = False
-        self.block_viewing_available = False
-        self.block_removal = False
-        self.block_network_install = False
-        self.block_local_copy_install = False
-        self.block_checking_4_updates = False
-        self.ready_for_state_transition = False

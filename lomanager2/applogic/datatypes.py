@@ -24,6 +24,7 @@ class VirtualPackage(object):
 
     Each virtual package has a state, represented by a number of
     flags/attributes. These describe whether:
+        - the package is currently installed
         - the package was marked for specific operation
           (install/removal/upgrade)
         - if it can be marked for such operation,
@@ -31,12 +32,18 @@ class VirtualPackage(object):
         - should it be in enabled state
           (or disabled even if it is visible).
 
+    Each package also has the
+        - is_to_be_downloaded
+    flag that signal whether packages associated with
+    this virtual package need to be downloaded from the internet.
+
     Attributes
     ----------
     kind : str
     family :str
     version : str
     real_packages = list[dict[str, int]]
+    is_installed: bool
     is_removable : bool
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
@@ -49,6 +56,7 @@ class VirtualPackage(object):
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
+    is_to_be_downloaded : bool
     """
 
     def __init__(self, kind: str, family: str, version: str) -> None:
@@ -62,7 +70,7 @@ class VirtualPackage(object):
 
         family : str
             Software this virtual package represents: "OpenOffice",
-            "LibreOffice" or "Clipart"
+            "LibreOffice", "Clipart" or "Java"
 
         version : str
             Version of the package. Dot separated format eg. "2.4.1"
@@ -72,6 +80,7 @@ class VirtualPackage(object):
         self.family = family
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
+        self.is_installed = False
         # Remove flags
         self.is_removable = False
         self.is_remove_opt_visible = False
@@ -87,4 +96,18 @@ class VirtualPackage(object):
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
         self.is_marked_for_install = False
+        # Action flags
+        self.is_to_be_downloaded = False
 
+
+class SignalFlags(object):
+    def __init__(self) -> None:
+        self.block_viewing_installed = False
+        self.block_viewing_available = False
+        self.block_removal = False
+        self.block_network_install = False
+        self.block_local_copy_install = False
+        self.block_checking_4_updates = False
+        self.ready_to_apply_changes = False
+        self.keep_packages = False
+        self.force_download_java = False
