@@ -63,11 +63,8 @@ class AppMainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         self.setMinimumSize(900, 550)
 
-    def open_langs_selection_modal_window(self, s):
+    def open_langs_selection_modal_window(self):
         self.extra_langs_view.exec()
-
-    def open_local_copy_confirmation_modal_window(self):
-        self.confirm_local_copy_view.show()
 
     def open_information_modal_window(self):
         self.info_dialog.exec()

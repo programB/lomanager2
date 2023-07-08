@@ -94,10 +94,6 @@ class Adapter(QObject):
         # TODO: test connect "refresh" (custom signal)
         self.refresh_signal.connect(self._do_something_on_refresh)
 
-        # self._main_view.button_install_from_local_copy.clicked.connect(
-        #     self._install_from_local_copy_was_requested
-        # )
-
         # Keep packages checkbox
         self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(
             self._set_keep_packages_state
@@ -105,7 +101,7 @@ class Adapter(QObject):
 
         # Local copy folder selection and confirmation
         self._main_view.button_install_from_local_copy.clicked.connect(
-            self._main_view.open_local_copy_confirmation_modal_window
+            self._choose_dir_and_install_from_local_copy
         )
 
         # Status_signal
@@ -115,17 +111,17 @@ class Adapter(QObject):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
 
-    def _install_from_local_copy_was_requested(self):
-        # TODO: - Add local copy dialog to GUI to allow the user
-        #       to point to a folder with saved packages and
-        #       - Open this dialog here (in which the user
-        #         will set folder variable accoringly) (ADD IT to self.)
-        #       - emit signal to start self._start_apply_changes_subprocedure()
-        #          (and that method should use folder path stored in variable
-        #          to pass it to the worker thread).
-        # TODO: dummy call for now
-        configuration.logging.debug("Install from local copy")
-        self.run_install_in_mode.emit("local_copy_install")
+    def _choose_dir_and_install_from_local_copy(self):
+        # Ask the user to point to a directory with saved packages
+        # intended for installation (opens a dialog).
+        if self._main_view.confirm_local_copy_view.exec():
+            configuration.logging.debug("Installing from local copy...")
+            # TODO: Implement getting the folder path,
+            #       creating worker thread and starting it
+        else:
+            configuration.logging.debug(
+                "Cancel clicked: User gave up installing from local copy"
+            )
 
     def _confirm_and_start_applying_changes(self, install_mode: str):
         # Ask the user for confirmation
