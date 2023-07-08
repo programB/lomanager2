@@ -20,7 +20,6 @@ class Adapter(QObject):
     # register custom "refresh" signal (no data passed with it)
     # This is a class attribute (defined before outside __init__)
     refresh_signal = Signal()
-    run_install_in_mode = Signal(str)
     status_signal = Signal(dict)
 
     def __init__(self, app_main_model, app_main_view) -> None:
