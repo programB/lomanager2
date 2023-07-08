@@ -2,7 +2,7 @@
 import pathlib
 import time  # TODO: just for the tests
 import re
-from . import configuration
+import configuration
 from . import PCLOS
 
 # TODO: The list of procedures is not complete

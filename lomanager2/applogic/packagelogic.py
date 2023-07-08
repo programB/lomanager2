@@ -1,8 +1,8 @@
+import configuration
 from typing import Any, Tuple
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
 from . import subprocedures
-from . import configuration
 
 
 class MainLogic(object):

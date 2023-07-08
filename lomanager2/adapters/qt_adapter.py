@@ -13,6 +13,7 @@ from applogic.packagelogic import MainLogic
 from gui import AppMainWindow, ProgressDialog
 from viewmodels import PackageMenuViewModel
 from threads import InstallProcedureWorker
+import configuration
 
 
 class Adapter(QObject):
@@ -112,15 +113,15 @@ class Adapter(QObject):
         self.status_signal.connect(self._display_status_information)
 
     def _do_something_on_refresh(self):
-        print("Refreshing!")
+        configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
 
     def _apply_changes_was_requested(self):
         if self._main_view.confirm_apply_view.exec():
-            print("Applying changes...")
+            configuration.logging.debug("Applying changes...")
             self.run_install_in_mode.emit("network_install")
         else:
-            print("Cancel clicked: User decided not to apply changes.")
+            configuration.logging.debug("Cancel clicked: User decided not to apply changes.")
 
     def _install_from_local_copy_was_requested(self):
         # TODO: - Add local copy dialog to GUI to allow the user
@@ -131,7 +132,7 @@ class Adapter(QObject):
         #          (and that method should use folder path stored in variable
         #          to pass it to the worker thread).
         # TODO: dummy call for now
-        print("Install from local copy")
+        configuration.logging.debug("Install from local copy")
         self.run_install_in_mode.emit("local_copy_install")
 
     def _start_apply_changes_subprocedure(self, install_mode: str):
@@ -159,25 +160,24 @@ class Adapter(QObject):
         self.apply_changes_thread.start()  # starts the prepared thread
 
     def _progress_was_made(self, progress):
-        # TODO: print for test purposes, remove later
-        print(f"Current progress (received in adapter's slot): {progress}")
+        configuration.logging.debug(f"Current progress (received in adapter's slot): {progress}")
         self._progress_view.progress_bar.setValue(progress)
 
     def _thread_stopped_or_terminated(self):
         self._progress_view.hide()
         self._progress_view.progress_bar.setValue(0)
-        print("Thread finished signal received.")
-        print(
+        configuration.logging.debug("Thread finished signal received.")
+        configuration.logging.debug(
             f"thread: {self.apply_changes_thread}\n"
             f"is running?: {self.apply_changes_thread.isRunning()}\n"
             f"is finished?: {self.apply_changes_thread.isFinished()}"
         )
-        print("Emiting refresh signal to rebuild packages state")
+        configuration.logging.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
 
     def _set_keep_packages_state(self):
         state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
-        print(f"in GUI keep_packages checkbox is set to: {state}")
+        configuration.logging.debug(f"in GUI keep_packages checkbox is set to: {state}")
         # Qt.PartiallyChecked doesn't make sense in this application
         if state == Qt.CheckState.Checked:
             self._keep_packages = True

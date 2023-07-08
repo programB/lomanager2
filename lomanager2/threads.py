@@ -2,7 +2,7 @@ import time
 
 from PySide6.QtCore import QThread, Signal, Slot
 
-from applogic import configuration
+import configuration
 
 
 class InstallProcedureWorker(QThread):
