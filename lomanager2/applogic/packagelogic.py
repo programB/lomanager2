@@ -181,39 +181,28 @@ class MainLogic(object):
             # TODO: do something with status variable
 
     def install_from_local_copy(self, *args, **kwargs):
-        # TODO: This is draft implementation for testing
-        configuration.logging.warning("WIP. This function sends fake data.")
-
-        configuration.logging.warning(f"Not doing any checks !!!")
+        # TODO: This is a draft implementation for testing
+        configuration.logging.debug("WIP")
 
         if "inform_about_progress" in kwargs.keys():
             callback_function = kwargs["inform_about_progress"]
         else:
             callback_function = None
 
-        configuration.logging.warning(
-            f"Setting <<tmp_directory>> to <</tmp>> for the tests !"
-        )
+        configuration.logging.debug(f"MANUALLY SETTING <<tmp_directory>> TO <</tmp>>")
         tmp_directory = "/tmp"
-
-        configuration.logging.warning(f"Setting package list by hand !")
-        changes_to_make = {
-            "packages_to_remove": [],
-            "space_to_be_freed": 0,
-            "packages_to_install": [],
-            "space_to_be_used": 0,
-        }
 
         configuration.logging.warning(
             f"Setting <<source>> to <</tmp/saved_packages>> for the tests !"
         )
-        source = "/tmp/saved_packages"
+        local_copy_directory = "/tmp/saved_packages"
 
-        status = subprocedures.install(
-            changes_to_make,
+        status = subprocedures.local_copy_install_procedure(
+            self._virtual_packages,
             tmp_directory,
+            keep_packages=True,  # never delete local copy provided by the user
             install_mode="local_copy_install",
-            source=source,
+            local_copy_directory=local_copy_directory,
             callback_function=callback_function,
         )
 
