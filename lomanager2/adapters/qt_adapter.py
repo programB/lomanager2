@@ -114,7 +114,7 @@ class Adapter(QObject):
                 "Cancel clicked: User gave up installing from local copy"
             )
 
-    def _confirm_and_start_applying_changes(self, install_mode: str):
+    def _confirm_and_start_applying_changes(self):
         # Ask the user for confirmation
         if self._main_view.confirm_apply_view.exec():
             configuration.logging.debug("Applying changes...")
@@ -124,7 +124,6 @@ class Adapter(QObject):
             self.apply_changes_thread = InstallProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
-                install_mode=install_mode,
                 local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
             )

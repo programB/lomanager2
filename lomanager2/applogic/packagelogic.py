@@ -175,7 +175,6 @@ class MainLogic(object):
                 self._virtual_packages,
                 tmp_directory,
                 keep_packages=self._flags.keep_packages,
-                install_mode="network_install",
                 source=None,
                 callback_function=callback_function,
             )
@@ -509,7 +508,6 @@ class MainLogic(object):
         virtual_packages,
         tmp_directory,
         keep_packages,
-        install_mode,
         source,
         callback_function=None,
     ) -> dict:
@@ -522,42 +520,27 @@ class MainLogic(object):
             "is_install_successful": False,
             "explanation": "Install procedure not executed.",
         }
-        # 0) Check mode
-        if install_mode == "local_copy_install":
-            # 1 - local_copy_install) Check if files provided by the user can installed
-            is_local_copy_usable = subprocedures.verify_local_copy(source)
-            if is_local_copy_usable is False:
-                message = "Provided packages cannot be installed."
-                install_status["explanation"] = message
-                configuration.logging.error(message)
-                return install_status
 
-        elif install_mode == "network_install":
-            # 1 - network_install) Run collect_packages subprocedure
-            packages_to_download = [
-                p for p in virtual_packages if p.is_to_be_downloaded
-            ]
-            configuration.logging.debug(f"packages_to_download: {packages_to_download}")
+        # 1 - Run collect_packages subprocedure
+        packages_to_download = [
+            p for p in virtual_packages if p.is_to_be_downloaded
+        ]
+        configuration.logging.debug(f"packages_to_download: {packages_to_download}")
 
-            # TODO: Should it be a different function or perhaps
-            #       callback_function should take some parameters other then
-            #       integer representing percentage progress eg. a dictionary
-            #       with information what progress is being reported:
-            #       download, install, a what file etc..
-            download_progress_callback = callback_function
-            collect_status = self._collect_packages(
-                packages_to_download,
-                tmp_directory,
-                download_progress_callback,
-            )
+        # TODO: Should it be a different function or perhaps
+        #       callback_function should take some parameters other then
+        #       integer representing percentage progress eg. a dictionary
+        #       with information what progress is being reported:
+        #       download, install, a what file etc..
+        download_progress_callback = callback_function
+        collect_status = self._collect_packages(
+            packages_to_download,
+            tmp_directory,
+            download_progress_callback,
+        )
 
-            if collect_status is False:
-                message = "Failed to download all requested packages."
-                install_status["explanation"] = message
-                configuration.logging.error(message)
-                return install_status
-        else:
-            message = "Unknown mode."
+        if collect_status is False:
+            message = "Failed to download all requested packages."
             install_status["explanation"] = message
             configuration.logging.error(message)
             return install_status
