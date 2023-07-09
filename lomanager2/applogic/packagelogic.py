@@ -589,7 +589,7 @@ class MainLogic(object):
         packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
         configuration.logging.debug(f"packages_to_remove: {packages_to_remove}")
         if packages_to_remove:  # Non empty list
-            office_removal_status = subprocedures.office_uninstall(
+            office_removal_status = self._office_uninstall(
                 packages_to_remove,
                 callback_function,
             )
@@ -692,6 +692,24 @@ class MainLogic(object):
         configuration.logging.info("Java successfully installed.")
 
         return is_java_successfully_installed
+
+    def _office_uninstall(
+        self,
+        packages_to_remove: list,
+        callback_function,
+    ) -> bool:
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        is_every_package_successfully_removed = False
+        configuration.logging.debug(f"Packages to remove: {packages_to_remove}")
+        configuration.logging.info("Removing packages...")
+
+        time.sleep(2)
+
+        is_every_package_successfully_removed = True
+        configuration.logging.info("...done removing packages.")
+
+        return is_every_package_successfully_removed
         # -- end Private methods of MainLogic
 
 

@@ -226,21 +226,6 @@ def uinstall_Clipart():
     pass
 
 
-def office_uninstall(packages_to_remove: list, callback_function) -> bool:
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    is_every_package_successfully_removed = False
-    configuration.logging.debug(f"Packages to remove: {packages_to_remove}")
-    configuration.logging.info("Removing packages...")
-
-    time.sleep(2)
-
-    is_every_package_successfully_removed = True
-    configuration.logging.info("...done removing packages.")
-
-    return is_every_package_successfully_removed
-
-
 def disable_LO_update_checks():
     configuration.logging.debug("WIP. This function sends fake data.")
 
