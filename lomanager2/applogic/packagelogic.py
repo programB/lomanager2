@@ -631,7 +631,7 @@ class MainLogic(object):
         # TODO: Can this be done better ?
         for package in packages_to_install:
             if package.kind == "core-packages" and package.family == "LibreOffice":
-                subprocedures.disable_LO_update_checks()
+                self._disable_LO_update_checks()
                 subprocedures.add_templates_to_etcskel()
         for package in packages_to_remove:
             if package.kind == "core-packages" and package.family == "LibreOffice":
@@ -741,6 +741,15 @@ class MainLogic(object):
         configuration.logging.info("...done installing packages.")
 
         return is_every_package_successfully_installed
+
+    def _disable_LO_update_checks(self):
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug(
+            "Preventing LibreOffice from looking for updates on its own..."
+        )
+        time.sleep(1)
+        configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic
 
 

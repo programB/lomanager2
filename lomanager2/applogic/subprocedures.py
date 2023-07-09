@@ -198,16 +198,6 @@ def uinstall_Clipart():
     pass
 
 
-def disable_LO_update_checks():
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug(
-        "Preventing LibreOffice from looking for updates on its own..."
-    )
-    time.sleep(1)
-    configuration.logging.debug("...done.")
-
-
 def add_templates_to_etcskel():
     # TODO: This function should put a file (smth.xcu) to /etc/skel
     #       in order to have LO properly set up for any new user
