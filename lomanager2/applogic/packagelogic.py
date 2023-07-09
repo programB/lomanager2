@@ -208,12 +208,6 @@ class MainLogic(object):
             callback_function=callback_function,
         )
 
-    def is_transition_in_progress(self) -> bool:
-        return False
-
-    def get_progress(self):
-        pass
-
     def refresh_state(self):
         # Reset packages list
         self._virtual_packages = []
