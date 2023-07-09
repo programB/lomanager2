@@ -534,7 +534,9 @@ class MainLogic(object):
 
         elif install_mode == "network_install":
             # 1 - network_install) Run collect_packages subprocedure
-            packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+            packages_to_download = [
+                p for p in virtual_packages if p.is_to_be_downloaded
+            ]
             configuration.logging.debug(f"packages_to_download: {packages_to_download}")
 
             # TODO: Should it be a different function or perhaps
@@ -563,7 +565,7 @@ class MainLogic(object):
         # At this point network_install and local_copy_install
         # procedures converge
         # 2) detect and terminate (kill -9) LibreOffice quickstarter
-        subprocedures.terminate_LO_quickstarter()
+        self._terminate_LO_quickstarter()
 
         # 3) Run Java install procedure if needed
         for package in virtual_packages:
@@ -629,11 +631,11 @@ class MainLogic(object):
         # TODO: Can this be done better ?
         for package in packages_to_install:
             if package.kind == "core-packages" and package.family == "LibreOffice":
-               subprocedures.disable_LO_update_checks()
-               subprocedures.add_templates_to_etcskel()
+                subprocedures.disable_LO_update_checks()
+                subprocedures.add_templates_to_etcskel()
         for package in packages_to_remove:
             if package.kind == "core-packages" and package.family == "LibreOffice":
-               subprocedures.clean_dot_desktop_files()
+                subprocedures.clean_dot_desktop_files()
 
         # 7) Should downloaded packages be removed ?
         configuration.logging.debug(f"keep_packages = {keep_packages}")
@@ -654,8 +656,8 @@ class MainLogic(object):
         configuration.logging.info(message)
         return install_status
 
-    def _collect_packages(self,
-        packages_to_download: list, tmp_directory, callback_function
+    def _collect_packages(
+        self, packages_to_download: list, tmp_directory, callback_function
     ) -> bool:
         configuration.logging.debug("WIP. This function sends fake data.")
 
@@ -668,6 +670,15 @@ class MainLogic(object):
 
         is_every_package_collected = True
         return is_every_package_collected
+
+    def _terminate_LO_quickstarter(self):
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug("Checking for LibreOffice quickstarter process...")
+        configuration.logging.debug("LibreOffice quickstarter is running (PID: ABCD)")
+        configuration.logging.debug("Terminating LibreOffice quickstarter...")
+        time.sleep(2)
+        configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic
 
 

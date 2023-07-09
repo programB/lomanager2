@@ -240,16 +240,6 @@ def uinstall_Clipart():
     pass
 
 
-def terminate_LO_quickstarter():
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug("Checking for LibreOffice quickstarter process...")
-    configuration.logging.debug("LibreOffice quickstarter is running (PID: ABCD)")
-    configuration.logging.debug("Terminating LibreOffice quickstarter...")
-    time.sleep(2)
-    configuration.logging.debug("...done.")
-
-
 def office_uninstall(packages_to_remove: list, callback_function) -> bool:
     configuration.logging.debug("WIP. This function sends fake data.")
 
