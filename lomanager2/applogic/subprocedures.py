@@ -198,15 +198,6 @@ def uinstall_Clipart():
     pass
 
 
-def clean_tmp_folder(tmp_directory):
-    # TODO: This function should remove all files from tmp_directory.
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug("Cleaning temporary files...")
-    time.sleep(1)
-    configuration.logging.debug("...done.")
-
-
 def verify_local_copy(local_copy_directory: str) -> tuple[bool, bool, bool, bool]:
     """Checks for presence of saved packages based on file name convention
 

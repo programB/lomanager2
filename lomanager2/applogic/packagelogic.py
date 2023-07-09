@@ -648,7 +648,7 @@ class MainLogic(object):
 
         # 8) clean up temporary files
         # TODO: Change the hard coded /tmp
-        subprocedures.clean_tmp_folder("/tmp")
+        self._clean_tmp_folder("/tmp")
 
         message = "All packages successfully installed"
         install_status["is_install_successful"] = True
@@ -777,6 +777,14 @@ class MainLogic(object):
         configuration.logging.debug("WIP. This function sends fake data.")
 
         configuration.logging.debug("Saving files for offline install...")
+        time.sleep(1)
+        configuration.logging.debug("...done.")
+
+    def _clean_tmp_folder(self, tmp_directory):
+        # TODO: This function should remove all files from tmp_directory.
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug("Cleaning temporary files...")
         time.sleep(1)
         configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic
