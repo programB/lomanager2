@@ -198,17 +198,6 @@ def uinstall_Clipart():
     pass
 
 
-def add_templates_to_etcskel():
-    # TODO: This function should put a file (smth.xcu) to /etc/skel
-    #       in order to have LO properly set up for any new user
-    #       accounts created in the OS
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug("Adding files to /etc/skel ...")
-    time.sleep(1)
-    configuration.logging.debug("...done.")
-
-
 def clean_dot_desktop_files():
     # TODO: This function should remove association between LibreOffice
     #       and Open Document file formats (odt, odf, etc.) from the

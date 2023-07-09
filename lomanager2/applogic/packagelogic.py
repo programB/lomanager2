@@ -632,7 +632,7 @@ class MainLogic(object):
         for package in packages_to_install:
             if package.kind == "core-packages" and package.family == "LibreOffice":
                 self._disable_LO_update_checks()
-                subprocedures.add_templates_to_etcskel()
+                self._add_templates_to_etcskel()
         for package in packages_to_remove:
             if package.kind == "core-packages" and package.family == "LibreOffice":
                 subprocedures.clean_dot_desktop_files()
@@ -748,6 +748,16 @@ class MainLogic(object):
         configuration.logging.debug(
             "Preventing LibreOffice from looking for updates on its own..."
         )
+        time.sleep(1)
+        configuration.logging.debug("...done.")
+
+    def _add_templates_to_etcskel(self):
+        # TODO: This function should put a file (smth.xcu) to /etc/skel
+        #       in order to have LO properly set up for any new user
+        #       accounts created in the OS
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug("Adding files to /etc/skel ...")
         time.sleep(1)
         configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic
