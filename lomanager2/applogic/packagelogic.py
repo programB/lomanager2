@@ -644,7 +644,7 @@ class MainLogic(object):
                 f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
             )
             offline_copy_folder = "/tmp/LO_saved_packages"
-            subprocedures.save_copy_for_offline_install(offline_copy_folder)
+            self._save_copy_for_offline_install(offline_copy_folder)
 
         # 8) clean up temporary files
         # TODO: Change the hard coded /tmp
@@ -768,6 +768,15 @@ class MainLogic(object):
         configuration.logging.debug("WIP. This function sends fake data.")
 
         configuration.logging.debug("Rebuilding menu entries...")
+        time.sleep(1)
+        configuration.logging.debug("...done.")
+
+    def _save_copy_for_offline_install(self, target_folder):
+        # TODO: This function should put all files needed for offline
+        #       installation in a structured way into the target_folder
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug("Saving files for offline install...")
         time.sleep(1)
         configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic

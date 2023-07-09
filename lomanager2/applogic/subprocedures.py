@@ -198,16 +198,6 @@ def uinstall_Clipart():
     pass
 
 
-def save_copy_for_offline_install(target_folder):
-    # TODO: This function should put all files needed for offline
-    #       installation in a structured way into the target_folder
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug("Saving files for offline install...")
-    time.sleep(1)
-    configuration.logging.debug("...done.")
-
-
 def clean_tmp_folder(tmp_directory):
     # TODO: This function should remove all files from tmp_directory.
     configuration.logging.debug("WIP. This function sends fake data.")
