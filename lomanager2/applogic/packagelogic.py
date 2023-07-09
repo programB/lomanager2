@@ -635,7 +635,7 @@ class MainLogic(object):
                 self._add_templates_to_etcskel()
         for package in packages_to_remove:
             if package.kind == "core-packages" and package.family == "LibreOffice":
-                subprocedures.clean_dot_desktop_files()
+                self._clean_dot_desktop_files()
 
         # 7) Should downloaded packages be removed ?
         configuration.logging.debug(f"keep_packages = {keep_packages}")
@@ -758,6 +758,16 @@ class MainLogic(object):
         configuration.logging.debug("WIP. This function sends fake data.")
 
         configuration.logging.debug("Adding files to /etc/skel ...")
+        time.sleep(1)
+        configuration.logging.debug("...done.")
+
+    def _clean_dot_desktop_files(self):
+        # TODO: This function should remove association between LibreOffice
+        #       and Open Document file formats (odt, odf, etc.) from the
+        #       global .desktop file (and user files too?)
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        configuration.logging.debug("Rebuilding menu entries...")
         time.sleep(1)
         configuration.logging.debug("...done.")
         # -- end Private methods of MainLogic

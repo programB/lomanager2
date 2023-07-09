@@ -198,17 +198,6 @@ def uinstall_Clipart():
     pass
 
 
-def clean_dot_desktop_files():
-    # TODO: This function should remove association between LibreOffice
-    #       and Open Document file formats (odt, odf, etc.) from the
-    #       global .desktop file (and user files too?)
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    configuration.logging.debug("Rebuilding menu entries...")
-    time.sleep(1)
-    configuration.logging.debug("...done.")
-
-
 def save_copy_for_offline_install(target_folder):
     # TODO: This function should put all files needed for offline
     #       installation in a structured way into the target_folder
