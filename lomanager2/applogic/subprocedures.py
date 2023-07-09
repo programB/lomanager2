@@ -10,22 +10,6 @@ from . import PCLOS
 #       just proposals - can/will change
 
 
-def collect_packages(
-    packages_to_download: list, tmp_directory, callback_function
-) -> bool:
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    is_every_package_collected = False
-
-    configuration.logging.debug(f"Packages to download: {packages_to_download}")
-    configuration.logging.debug("Collecting packages...")
-    time.sleep(2)
-    configuration.logging.debug("...done collecting packages.")
-
-    is_every_package_collected = True
-    return is_every_package_collected
-
-
 def get_Java(to_directory):
     is_java_collected = False
     return is_java_collected

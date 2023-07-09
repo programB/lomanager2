@@ -1,3 +1,4 @@
+import time  # TODO: just for the tests
 import configuration
 from typing import Any, Tuple
 from . import PCLOS
@@ -542,7 +543,7 @@ class MainLogic(object):
             #       with information what progress is being reported:
             #       download, install, a what file etc..
             download_progress_callback = callback_function
-            collect_status = subprocedures.collect_packages(
+            collect_status = self._collect_packages(
                 packages_to_download,
                 tmp_directory,
                 download_progress_callback,
@@ -652,6 +653,21 @@ class MainLogic(object):
         install_status["explanation"] = message
         configuration.logging.info(message)
         return install_status
+
+    def _collect_packages(self,
+        packages_to_download: list, tmp_directory, callback_function
+    ) -> bool:
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        is_every_package_collected = False
+
+        configuration.logging.debug(f"Packages to download: {packages_to_download}")
+        configuration.logging.debug("Collecting packages...")
+        time.sleep(2)
+        configuration.logging.debug("...done collecting packages.")
+
+        is_every_package_collected = True
+        return is_every_package_collected
         # -- end Private methods of MainLogic
 
 
