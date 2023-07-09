@@ -182,34 +182,6 @@ def local_copy_install_procedure(
     return install_status
 
 
-def install_LibreOffice(packages_to_install: list, callback_function) -> bool:
-    configuration.logging.debug("WIP. This function sends fake data.")
-    # TODO: naming
-    current_progress_is = callback_function
-
-    is_every_package_successfully_installed = False
-    configuration.logging.debug(f"Packages to install: {packages_to_install}")
-    configuration.logging.info("Installing packages...")
-
-    total_time_sek = 5
-    steps = 30
-    for i in range(steps):
-        progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-        time.sleep(total_time_sek / steps)
-
-        # report progress
-        # # directly to log
-        configuration.logging.info(f"install progress: {progress}%")
-        # # using callback if available (emitting Qt signal)
-        if callback_function is not None:
-            current_progress_is(progress)
-
-    is_every_package_successfully_installed = True
-    configuration.logging.info("...done installing packages.")
-
-    return is_every_package_successfully_installed
-
-
 def uinstall_LibreOffice():
     pass
 
