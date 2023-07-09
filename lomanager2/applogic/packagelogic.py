@@ -170,7 +170,7 @@ class MainLogic(object):
             # Block any other calls of this function and proceed with subprocedure
             self._flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
-            status = subprocedures.install(
+            status = self._install(
                 self._virtual_packages,
                 tmp_directory,
                 keep_packages=self._flags.keep_packages,
@@ -503,7 +503,156 @@ class MainLogic(object):
         ]
         pass
 
-    # -- end Private methods of MainLogic
+    def _install(
+        self,
+        virtual_packages,
+        tmp_directory,
+        keep_packages,
+        install_mode,
+        source,
+        callback_function=None,
+    ) -> dict:
+        # TODO: This is dummy implementation for testing
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        # Preparations
+        current_progress_is = callback_function
+        install_status = {
+            "is_install_successful": False,
+            "explanation": "Install procedure not executed.",
+        }
+        # 0) Check mode
+        if install_mode == "local_copy_install":
+            # 1 - local_copy_install) Check if files provided by the user can installed
+            is_local_copy_usable = subprocedures.verify_local_copy(source)
+            if is_local_copy_usable is False:
+                message = "Provided packages cannot be installed."
+                install_status["explanation"] = message
+                configuration.logging.error(message)
+                return install_status
+
+        elif install_mode == "network_install":
+            # 1 - network_install) Run collect_packages subprocedure
+            packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+            configuration.logging.debug(f"packages_to_download: {packages_to_download}")
+
+            # TODO: Should it be a different function or perhaps
+            #       callback_function should take some parameters other then
+            #       integer representing percentage progress eg. a dictionary
+            #       with information what progress is being reported:
+            #       download, install, a what file etc..
+            download_progress_callback = callback_function
+            collect_status = subprocedures.collect_packages(
+                packages_to_download,
+                tmp_directory,
+                download_progress_callback,
+            )
+
+            if collect_status is False:
+                message = "Failed to download all requested packages."
+                install_status["explanation"] = message
+                configuration.logging.error(message)
+                return install_status
+        else:
+            message = "Unknown mode."
+            install_status["explanation"] = message
+            configuration.logging.error(message)
+            return install_status
+
+        # At this point network_install and local_copy_install
+        # procedures converge
+        # 2) detect and terminate (kill -9) LibreOffice quickstarter
+        subprocedures.terminate_LO_quickstarter()
+
+        # 3) Run Java install procedure if needed
+        for package in virtual_packages:
+            if package.family == "Java":
+                if package.is_marked_for_install:
+                    java_install_status = subprocedures.install_Java()
+
+                    if java_install_status is False:
+                        message = "Failed to install Java."
+                        install_status["explanation"] = message
+                        configuration.logging.error(message)
+                        return install_status
+                    else:  # All good, Java installed
+                        break  # There can only ever be 1 Java virtual package
+
+        # At this point everything needed is downloaded and verified
+        # and Java is installed in the system.
+        # We can remove old Office components
+        # in preparation for the install step.
+        # 4) Run Office uninstall procedure if needed
+        packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
+        configuration.logging.debug(f"packages_to_remove: {packages_to_remove}")
+        if packages_to_remove:  # Non empty list
+            office_removal_status = subprocedures.office_uninstall(
+                packages_to_remove,
+                callback_function,
+            )
+
+            # If the procedure failed completely (no packages got uninstalled)
+            # there is no problem - system state has not changed.
+            # If however it succeeded but only partially this is a problem because
+            # Office might have gotten corrupted and is no longer working and new
+            # Office will not be installed. Recovery from such a condition is
+            # likely to require manual user intervention - not good.
+            # TODO: Can office_uninstall procedure be made to have dry-run option
+            #       to make sure that uninstall is atomic (all or none)?
+            if office_removal_status is False:
+                message = "Failed to remove Office components."
+                install_status["explanation"] = message
+                configuration.logging.error(message)
+                return install_status
+
+        # 5) Run Office install procedure if needed
+        packages_to_install = [
+            p
+            for p in virtual_packages
+            if (p.is_marked_for_install or p.is_marked_for_upgrade)
+        ]
+        configuration.logging.debug(f"packages_to_install: {packages_to_install}")
+        if packages_to_install:  # Non empty list
+            office_install_status = subprocedures.install_LibreOffice(
+                packages_to_install,
+                callback_function,
+            )
+
+            if office_install_status is False:
+                message = "Failed to install Office components."
+                install_status["explanation"] = message
+                configuration.logging.error(message)
+                return install_status
+
+        # 6) Any Office base package was affected ?
+        # TODO: Can this be done better ?
+        for package in packages_to_install:
+            if package.kind == "core-packages" and package.family == "LibreOffice":
+               subprocedures.disable_LO_update_checks()
+               subprocedures.add_templates_to_etcskel()
+        for package in packages_to_remove:
+            if package.kind == "core-packages" and package.family == "LibreOffice":
+               subprocedures.clean_dot_desktop_files()
+
+        # 7) Should downloaded packages be removed ?
+        configuration.logging.debug(f"keep_packages = {keep_packages}")
+        if keep_packages is True:
+            configuration.logging.debug(
+                f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
+            )
+            offline_copy_folder = "/tmp/LO_saved_packages"
+            subprocedures.save_copy_for_offline_install(offline_copy_folder)
+
+        # 8) clean up temporary files
+        # TODO: Change the hard coded /tmp
+        subprocedures.clean_tmp_folder("/tmp")
+
+        message = "All packages successfully installed"
+        install_status["is_install_successful"] = True
+        install_status["explanation"] = message
+        configuration.logging.info(message)
+        return install_status
+        # -- end Private methods of MainLogic
 
 
 class PackageMenu(object):
