@@ -210,20 +210,6 @@ def install_LibreOffice(packages_to_install: list, callback_function) -> bool:
     return is_every_package_successfully_installed
 
 
-def install_Java() -> bool:
-    configuration.logging.debug("WIP. This function sends fake data.")
-
-    is_java_successfully_installed = False
-    configuration.logging.info("Starting Java install procedure...")
-
-    time.sleep(2)
-
-    is_java_successfully_installed = True
-    configuration.logging.info("Java successfully installed.")
-
-    return is_java_successfully_installed
-
-
 def uinstall_LibreOffice():
     pass
 

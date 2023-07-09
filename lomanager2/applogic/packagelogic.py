@@ -571,7 +571,7 @@ class MainLogic(object):
         for package in virtual_packages:
             if package.family == "Java":
                 if package.is_marked_for_install:
-                    java_install_status = subprocedures.install_Java()
+                    java_install_status = self._install_Java()
 
                     if java_install_status is False:
                         message = "Failed to install Java."
@@ -679,6 +679,19 @@ class MainLogic(object):
         configuration.logging.debug("Terminating LibreOffice quickstarter...")
         time.sleep(2)
         configuration.logging.debug("...done.")
+
+    def _install_Java(self) -> bool:
+        configuration.logging.debug("WIP. This function sends fake data.")
+
+        is_java_successfully_installed = False
+        configuration.logging.info("Starting Java install procedure...")
+
+        time.sleep(2)
+
+        is_java_successfully_installed = True
+        configuration.logging.info("Java successfully installed.")
+
+        return is_java_successfully_installed
         # -- end Private methods of MainLogic
 
 
