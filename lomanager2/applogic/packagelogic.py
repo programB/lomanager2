@@ -280,26 +280,16 @@ class MainLogic(object):
         """
 
         configuration.logging.debug("WIP !" "Sending dummy data !!!")
-        system_information = dict()
+        system_info = dict()
 
         # TODO: Implement
         # system_information["current locale"] = get_current_locale()
-        system_information["live session"] = PCLOS.is_live_session_active()
+        system_info["live session"] = PCLOS.is_live_session_active()
         # TODO: Implement
         # system_information["free HDD space"] = free_HDD_space(install_folder_root)
         # TODO: Implement
-        # system_information["installed software"] =self._detect_installed_software()
-        system_information["installed software"] = [
-            ["OpenOffice", "2.0"],
-            ["OpenOffice", "2.4", "pl", "gr"],
-            ["LibreOffice", "3.0.0", "fr", "de"],
-            ["LibreOffice", "7.5", "jp", "pl"],
-            ["Clipart", "5.3"],
-        ]
-        configuration.logging.debug(
-            f'found software: {system_information["installed software"]}'
-        )
-        system_information["is Java installed"] = PCLOS.is_java_installed()
+        system_info["installed software"] = self._detect_installed_software()
+        system_info["is Java installed"] = PCLOS.is_java_installed()
 
         # fmt: off
         # global _
@@ -312,7 +302,20 @@ class MainLogic(object):
         # fmt: on
 
         # logging.debug(message)
-        return system_information
+        return system_info
+
+    def _detect_installed_software(self):
+        # TODO: implement
+        configuration.logging.debug("WIP !" "Sending dummy data !!!")
+        found_software = [
+            ["OpenOffice", "2.0"],
+            ["OpenOffice", "2.4", "pl", "gr"],
+            ["LibreOffice", "3.0.0", "fr", "de"],
+            ["LibreOffice", "7.5", "jp", "pl"],
+            ["Clipart", "5.3"],
+        ]
+        configuration.logging.debug(f"found_software: {found_software}")
+        return found_software
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
         """'Rises' flags indicating some operations will not be available

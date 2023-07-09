@@ -10,19 +10,6 @@ from . import PCLOS
 #       just proposals - can/will change
 
 
-def detect_installed_software():
-    # TODO: implement
-    found_software = [
-        ["OpenOffice", "2.0"],
-        ["OpenOffice", "2.4", "pl", "gr"],
-        ["LibreOffice", "3.0.0", "fr", "de"],
-        ["LibreOffice", "7.5", "jp", "pl"],
-        ["Clipart", "5.3"],
-    ]
-    configuration.logging.debug(f"found_software: {found_software}")
-    return found_software
-
-
 def collect_packages(
     packages_to_download: list, tmp_directory, callback_function
 ) -> bool:
