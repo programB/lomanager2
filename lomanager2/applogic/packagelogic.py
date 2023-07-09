@@ -5,7 +5,6 @@ import configuration
 from typing import Any, Tuple
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
-from . import subprocedures
 
 
 class MainLogic(object):
