@@ -277,7 +277,48 @@ class MainLogic(object):
 
     # -- Private methods of MainLogic
     def _gather_system_info(self) -> dict:
-        return subprocedures.get_system_information()
+        """Queries the OS for information relevant to LibreOffice installation.
+
+        Returns
+        -------
+        information : dict
+            Useful information
+        """
+
+        configuration.logging.debug("WIP !" "Sending dummy data !!!")
+        system_information = dict()
+
+        # TODO: Implement
+        # system_information["current locale"] = get_current_locale()
+        system_information["live session"] = PCLOS.is_live_session_active()
+        # TODO: Implement
+        # system_information["free HDD space"] = free_HDD_space(install_folder_root)
+        # TODO: Implement
+        # system_information["installed software"] =self._detect_installed_software()
+        system_information["installed software"] = [
+            ["OpenOffice", "2.0"],
+            ["OpenOffice", "2.4", "pl", "gr"],
+            ["LibreOffice", "3.0.0", "fr", "de"],
+            ["LibreOffice", "7.5", "jp", "pl"],
+            ["Clipart", "5.3"],
+        ]
+        configuration.logging.debug(
+            f'found software: {system_information["installed software"]}'
+        )
+        system_information["is Java installed"] = PCLOS.is_java_installed()
+
+        # fmt: off
+        # global _
+        # if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
+        # message = _(
+        #     "WIP!\n"
+        #     "Value returned: {} (type: {})"
+        # ).format(system_information, type(system_information))
+        # if keep_logging_messages_in_english: del _  # reset lang
+        # fmt: on
+
+        # logging.debug(message)
+        return system_information
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
         """'Rises' flags indicating some operations will not be available

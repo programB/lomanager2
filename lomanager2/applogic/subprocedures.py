@@ -10,38 +10,6 @@ from . import PCLOS
 #       just proposals - can/will change
 
 
-def get_system_information() -> dict:
-    """Gets information about the OS relevant to LibreOffice installation.
-
-    Returns
-    -------
-    information : dict
-        Useful information
-    """
-
-    system_information = dict()
-
-    # system_information["current locale"] = get_current_locale()
-    system_information["live session"] = PCLOS.is_live_session_active()
-    # system_information["free HDD space"] = free_HDD_space(install_folder_root)
-    system_information["installed software"] = detect_installed_software()
-    system_information["is Java installed"] = PCLOS.is_java_installed()
-
-    # fmt: off
-    # global _
-    # if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
-    # message = _(
-    #     "WIP!\n"
-    #     "Value returned: {} (type: {})"
-    # ).format(system_information, type(system_information))
-    # if keep_logging_messages_in_english: del _  # reset lang
-    # fmt: on
-
-    # logging.debug(message)
-    configuration.logging.debug("WIP !" "Sending dummy data !!!")
-    return system_information
-
-
 def detect_installed_software():
     # TODO: implement
     found_software = [
@@ -347,33 +315,31 @@ def local_copy_install_procedure(
         )
         for package in virtual_packages:
             if package.family == "OpenOffice" or package.family == "LibreOffice":
-                    package.is_marked_for_removal = True
-                    package.is_marked_for_upgrade = False
-                    package.is_marked_for_install = False
-                    package.is_to_be_downloaded = False
+                package.is_marked_for_removal = True
+                package.is_marked_for_upgrade = False
+                package.is_marked_for_install = False
+                package.is_to_be_downloaded = False
 
-        configuration.logging.debug(
-            "Marking LibreOffice core for install."
-        )
+        configuration.logging.debug("Marking LibreOffice core for install.")
         # FIXME: Which package to mark? virtual_packages only contains
-        #        list of installed packages (which by itself should be changes 
+        #        list of installed packages (which by itself should be changes
         #        for different reason) and the version number of the
         #        LO core in the local_copy_directory is unknown.
         #        Parse the filename? add "0.0.0.0" as indicating local copy
         #        install?
         for package in virtual_packages:
             if package.family == "OpenOffice" and package.kind == "core-packages":
-                    package.is_marked_for_removal = False
-                    package.is_marked_for_upgrade = False
-                    package.is_marked_for_install = True
-                    package.is_to_be_downloaded = False
+                package.is_marked_for_removal = False
+                package.is_marked_for_upgrade = False
+                package.is_marked_for_install = True
+                package.is_to_be_downloaded = False
 
         configuration.logging.debug("DO SOMETHING HERE")
         if is_LibreOffice_lang_present:
             # User has also saved some language packs. Install them all.
             # TODO: mark them for install but not for download
             # FIXME: Again which packages to mark? virtual_packages only contains
-            #        list of installed packages (which by itself should be changes 
+            #        list of installed packages (which by itself should be changes
             #        for different reason) and the version number of the
             #        LO core in the local_copy_directory is unknown.
             #        Parse the filename? add "0.0.0.0" as indicating local copy
@@ -383,7 +349,7 @@ def local_copy_install_procedure(
             # User has also saved clipart package. Install it.
             # TODO: mark clipart for installation/upgrade accordingly
             # FIXME: Again which package to mark? virtual_packages only contains
-            #        list of installed packages (which by itself should be changes 
+            #        list of installed packages (which by itself should be changes
             #        for different reason) and the version number of the
             #        LO core in the local_copy_directory is unknown.
             #        Parse the filename? add "0.0.0.0" as indicating local copy
