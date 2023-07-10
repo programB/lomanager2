@@ -1,5 +1,6 @@
 import argparse
 from adapters import qt_adapter, cli_adapter
+import configuration
 
 parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")
@@ -15,13 +16,14 @@ args = parser.parse_args()
 is_running_as_root = True  # TODO: Implement checking
 
 is_GUI_wanted = args.gui
+# TODO: affect logging level directly
 is_DEBUG_mode_on = args.debug
 keep_logging_messages_in_english = args.force_english_logs
 
 # TODO: prints for test purposes, remove when not needed
-print(f"is_GUI_wanted: {is_GUI_wanted}")
-print(f"is_DEBUG_mode_on {is_DEBUG_mode_on}")
-print(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
+configuration.logging.debug(f"is_GUI_wanted: {is_GUI_wanted}")
+configuration.logging.debug(f"is_DEBUG_mode_on {is_DEBUG_mode_on}")
+configuration.logging.debug(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
 
 if is_running_as_root:
     if is_GUI_wanted is True:

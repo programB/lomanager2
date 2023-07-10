@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QHeaderView,
 )
+import configuration
 
 
 class AppMainWindow(QMainWindow):
@@ -34,6 +35,10 @@ class AppMainWindow(QMainWindow):
         # -- define Languages View
         self.extra_langs_view = LangsModalWindow(parent=self)
         # -- end define Languages View
+
+        # -- define Progress dialog
+        self.progress_view = ProgressDialog(parent=self)
+        # -- end define Progress dialog
 
         # -- define Apply changes confirmation dialog
         self.confirm_apply_view = ConfirmApplyDialog(parent=self)
@@ -62,11 +67,8 @@ class AppMainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         self.setMinimumSize(900, 550)
 
-    def open_langs_selection_modal_window(self, s):
+    def open_langs_selection_modal_window(self):
         self.extra_langs_view.exec()
-
-    def open_local_copy_confirmation_modal_window(self):
-        self.confirm_local_copy_view.show()
 
     def open_information_modal_window(self):
         self.info_dialog.exec()
@@ -232,7 +234,7 @@ class LocalCopyInstallDialog(QDialog):
         selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()
-        print(
+        configuration.logging.debug(
             f"Dialog_returned: {is_selection_made }, selectedFiles: "
             f"{selection_dialog.selectedFiles()} selectedNameFilter: "
             f"{selection_dialog.selectedNameFilter()}"
