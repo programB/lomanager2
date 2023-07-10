@@ -183,6 +183,11 @@ class Adapter(QObject):
         self._main_view.info_dialog.setText(info)
         self._main_view.open_information_modal_window()
 
+    def change_GUI_locks(self):
+        # TODO: Query MainLogic for allowed/disallowed operations
+        #       and set controls in GUI accordingly
+        self._main_view.button_add_langs.setEnabled(False)
+
 
 def main():
     lomanager2App = QApplication([])
@@ -195,6 +200,7 @@ def main():
 
     # Adapter
     adapter = Adapter(app_main_model=app_logic, app_main_view=main_window)
+    adapter.change_GUI_locks()
 
     main_window.show()
     sys.exit(lomanager2App.exec())
