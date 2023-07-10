@@ -50,7 +50,8 @@ class Adapter(QObject):
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 
         # Extra variables that can be set by the user in GUI
-        self._keep_packages = False
+        # self._keep_packages = False
+        self._main_model.global_flags.keep_packages = False
         self._local_copy_folder = None
 
         self._bind_views_to_viewmodels()
@@ -123,7 +124,6 @@ class Adapter(QObject):
             # along with values (collected from GUI) it would need.
             self.apply_changes_thread = InstallProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
-                keep_packages=self._keep_packages,
                 local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
             )
@@ -172,9 +172,11 @@ class Adapter(QObject):
         configuration.logging.debug(f"in GUI keep_packages checkbox is set to: {state}")
         # Qt.PartiallyChecked doesn't make sense in this application
         if state == Qt.CheckState.Checked:
-            self._keep_packages = True
+            # self._keep_packages = True
+            self._main_model.global_flags.keep_packages = True
         if state == Qt.CheckState.Unchecked:
-            self._keep_packages = False
+            # self._keep_packages = False
+            self._main_model.global_flags.keep_packages = False
 
     def _display_status_information(self, status):
         info = ""

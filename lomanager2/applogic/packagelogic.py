@@ -23,7 +23,7 @@ class MainLogic(object):
 
         # 2) Create state objects
         self._warnings = [{"explanation": "", "data": ""}]
-        self._flags = SignalFlags()
+        self.global_flags = SignalFlags()
         self._latest_available_LO_version = ""
         self._latest_available_clipart_version = ""
         self._virtual_packages = []
@@ -77,7 +77,7 @@ class MainLogic(object):
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
         if total_space_needed < space_available:
-            self._flags.ready_to_apply_changes = False
+            self.global_flags.ready_to_apply_changes = False
             self._warnings = [
                 {
                     "explanation": "Insufficient disk space for operation.",
@@ -88,28 +88,27 @@ class MainLogic(object):
                 }
             ]
         else:
-            self._flags.ready_to_apply_changes = True
+            self.global_flags.ready_to_apply_changes = True
         return pms
 
     def get_warnings(self):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        # TODO: This is draft implementation for testing
         configuration.logging.warning("WIP. This function sends fake data.")
 
         configuration.logging.debug(
-            f"Flag <<ready_to_apply_changes>> is: <<{self._flags.ready_to_apply_changes}>>"
+            f"Flag <<ready_to_apply_changes>> is: <<{self.global_flags.ready_to_apply_changes}>>"
         )
 
         # TODO: bypassing for tests
         configuration.logging.warning(
             f"Setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
         )
-        self._flags.ready_to_apply_changes = True
+        self.global_flags.ready_to_apply_changes = True
 
         # 1) Check if we can proceed with applying changes
-        if self._flags.ready_to_apply_changes is False:
+        if self.global_flags.ready_to_apply_changes is False:
             configuration.logging.warning("Cannot apply requested changes.")
             return
 
@@ -145,7 +144,7 @@ class MainLogic(object):
                 java_package.is_to_be_downloaded = True
                 java_package.is_marked_for_install = True
 
-            if self._flags.force_download_java is True:
+            if self.global_flags.force_download_java is True:
                 java_package.is_to_be_downloaded = True
 
             #    Add Java VirtualPackage to the list
@@ -157,7 +156,7 @@ class MainLogic(object):
                     f'keep_packages = {kwargs["keep_packages"]}'
                 )
                 # This flag is False by defualt and gets set again only here
-                self._flags.keep_packages = kwargs["keep_packages"]
+                self.global_flags.keep_packages = kwargs["keep_packages"]
 
             # changes_to_make = self._package_menu.package_delta
 
@@ -170,12 +169,12 @@ class MainLogic(object):
             tmp_directory = "/tmp"
 
             # Block any other calls of this function and proceed with subprocedure
-            self._flags.ready_to_apply_changes = False
+            self.global_flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
             status = self._install(
                 self._virtual_packages,
                 tmp_directory,
-                keep_packages=self._flags.keep_packages,
+                keep_packages=self.global_flags.keep_packages,
                 source=None,
                 callback_function=callback_function,
             )
@@ -338,10 +337,10 @@ class MainLogic(object):
 
         running_managers = PCLOS.get_running_package_managers()
         if running_managers:  # at least 1 package manager is running
-            self._flags.block_removal = True
-            self._flags.block_network_install = True
-            self._flags.block_local_copy_install = True
-            self._flags.block_checking_4_updates = True
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
             any_limitations = True
             info_list.append(
                 {
@@ -356,9 +355,9 @@ class MainLogic(object):
 
         running_office_suits = PCLOS.get_running_Office_processes()
         if running_office_suits:  # an office app is running
-            self._flags.block_removal = True
-            self._flags.block_network_install = True
-            self._flags.block_local_copy_install = True
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
             any_limitations = True
             info_list.append(
                 {
@@ -373,10 +372,10 @@ class MainLogic(object):
             )
 
         # no running manager prevents access to system rpm database
-        if self._flags.block_checking_4_updates is False:
+        if self.global_flags.block_checking_4_updates is False:
             check_successfull, is_updated = PCLOS.get_system_update_status()
             if is_updated is False:
-                self._flags.block_network_install = True
+                self.global_flags.block_network_install = True
                 any_limitations = True
                 if check_successfull:
                     info_list.append(
@@ -402,7 +401,7 @@ class MainLogic(object):
                     )
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self._flags.block_network_install = True
+            self.global_flags.block_network_install = True
             any_limitations = True
             info_list.append(
                 {
