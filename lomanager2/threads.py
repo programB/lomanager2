@@ -8,7 +8,7 @@ import configuration
 class InstallProcedureWorker(QThread):
     """Worker thread intended to run install procedure"""
 
-    # Define some custom signals
+    # Define custom signals
     result = Signal(str)
 
     def __init__(self, function_to_run, *args, **kwargs):
@@ -23,10 +23,9 @@ class InstallProcedureWorker(QThread):
     def run(self):
         """Run code inside in a separate thread"""
 
-        # TODO: remove when not needed
-        configuration.logging.warning("WIP, experimental code !")
-
-        configuration.logging.info("Install procedure started in a new thread.")
+        configuration.logging.debug(
+            f"{self.function_to_run.__name__} function started in a new thread."
+        )
         self.is_running = True
 
         # TODO: Remove the while loop?
