@@ -22,6 +22,7 @@ class Adapter(QObject):
     progress = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
+    GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()
@@ -55,6 +56,10 @@ class Adapter(QObject):
         # Initialize local _keep_packages variable from configuration
         self._keep_packages = configuration.keep_packages
         self._local_copy_folder = None
+
+        # Flags blocking parts of the interface during certain operations
+        self._is_packages_selecting_allowed = True
+        self._is_starting_procedures_allowed = True
 
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
@@ -96,6 +101,9 @@ class Adapter(QObject):
         # Internal Signal: Shows dialog with information returned by procedures
         self.status_signal.connect(self._display_status_information)
 
+        # Internal Signal: Locks/Unlocks GUI elements
+        self.GUI_locks_signal.connect(self.change_GUI_locks)
+
     def _refresh_package_menu_state(self):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
@@ -126,6 +134,12 @@ class Adapter(QObject):
         # Ask the user for confirmation
         if self._main_view.confirm_apply_view.exec():
             configuration.logging.debug("Applying changes...")
+            # Block changes to the packages selection
+            # and to starting any other procedures
+            self._is_packages_selecting_allowed = False
+            self._is_starting_procedures_allowed = False
+            self.GUI_locks_signal.emit()
+
             # Get variables that might have be altered by the user
             # in the dialog
             self._keep_packages = (
@@ -180,6 +194,9 @@ class Adapter(QObject):
         )
         configuration.logging.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
+        self._is_packages_selecting_allowed = True
+        self._is_starting_procedures_allowed = True
+        self.GUI_locks_signal.emit()
 
     def _display_status_information(self, status: dict):
         if "explanation" in status.keys() and "is_OK" in status.keys():
@@ -198,7 +215,20 @@ class Adapter(QObject):
     def change_GUI_locks(self):
         # TODO: Query MainLogic for allowed/disallowed operations
         #       and set controls in GUI accordingly
-        self._main_view.button_add_langs.setEnabled(False)
+        if self._is_packages_selecting_allowed is True:
+            self._main_view.package_menu_view.setEnabled(True)
+        else:
+            self._main_view.package_menu_view.setEnabled(False)
+
+        if self._is_starting_procedures_allowed is True:
+            self._main_view.button_apply_changes.setEnabled(True)
+            self._main_view.button_install_from_local_copy.setEnabled(True)
+            self._main_view.button_add_langs.setEnabled(True)
+        else:
+            self._main_view.button_apply_changes.setEnabled(False)
+            self._main_view.button_install_from_local_copy.setEnabled(False)
+            self._main_view.button_add_langs.setEnabled(False)
+
 
 
 def main():
