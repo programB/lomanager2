@@ -113,27 +113,23 @@ class Adapter(QObject):
         self._main_model.refresh_state()
 
     def _choose_dir_and_install_from_local_copy(self):
-        # Ask the user to point to a directory with saved packages
-        # intended for installation (opens a dialog).
-        if self._main_view.confirm_local_copy_view.exec():
-            configuration.logging.debug("Installing from local copy...")
-            # Block changes to the packages selection
-            # and to starting any other procedures
+        # Ask the user for directory with saved packages
+        if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
+            configuration.logging.debug("Ok clicked: Installing from local copy...")
+
+            # Block some GUI elements while the procedure is running
             self._is_packages_selecting_allowed = False
             self._is_starting_procedures_allowed = False
             self.GUI_locks_signal.emit()
 
-            # Get variables that might have be altered by the user
-            # in the dialog
-            local_copy_folder = self._main_view.confirm_local_copy_view.selected_dir
-            configuration.logging.debug(f"Returned folder path is {local_copy_folder}")
+            # Get the directory path set by the user
+            selected_dir = self._main_view.confirm_local_copy_view.selected_dir
 
-            # Create separate thread worker
-            # and pass the MainLogic's method to execute
-            # along with values (collected from GUI) it would need.
+            # Create separate thread worker passing
+            # MainLogic's method to execute along with needed variables
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.install_from_local_copy,
-                local_copy_folder=local_copy_folder,
+                local_copy_folder=selected_dir,
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
@@ -155,23 +151,22 @@ class Adapter(QObject):
             self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Unchecked
             )
-        # Ask the user for confirmation
-        if self._main_view.confirm_apply_view.exec():
-            configuration.logging.debug("Applying changes...")
-            # Block changes to the packages selection
-            # and to starting any other procedures
+        # Ask the user wheter to delete downloaded packages after installation
+        if self._main_view.confirm_apply_view.exec():  # open a dialog
+            configuration.logging.debug("Ok clicked. Applying changes...")
+
+            # Block some GUI elements while the procedure is running
             self._is_packages_selecting_allowed = False
             self._is_starting_procedures_allowed = False
             self.GUI_locks_signal.emit()
 
-            # Get variables that might have be altered by the user
-            # in the dialog
+            # Get user decision
             self._keep_packages = (
                 self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
             )
-            # Create separate thread worker
-            # and pass the MainLogic's method to execute
-            # along with values (collected from GUI) it would need.
+
+            # Create separate thread worker passing
+            # MainLogic's method to execute along with needed variables
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
