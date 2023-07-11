@@ -182,7 +182,6 @@ class MainLogic(object):
                 #       changes to tree rather then simple list?
                 self._virtual_packages,
                 keep_packages=keep_packages,
-                source=None,
                 callback_function=progress_callback,
             )
             return status
@@ -560,7 +559,6 @@ class MainLogic(object):
         self,
         virtual_packages,
         keep_packages,
-        source,
         callback_function=None,
     ) -> dict:
         # TODO: This is dummy implementation for testing
