@@ -22,7 +22,7 @@ class Adapter(QObject):
     progress = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
-    thread_start_signal = Signal()
+    worker_ready_signal = Signal()
     GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
@@ -106,7 +106,7 @@ class Adapter(QObject):
         self.GUI_locks_signal.connect(self.change_GUI_locks)
 
         # Internal Signal: starts already prepared thread
-        self.thread_start_signal.connect(self._start_procedure_thread)
+        self.worker_ready_signal.connect(self._start_procedure_thread)
 
     def _refresh_package_menu_state(self):
         configuration.logging.debug("Refreshing!")
@@ -128,8 +128,8 @@ class Adapter(QObject):
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
-            # Start thread
-            self.thread_start_signal.emit()
+            # Lock GUI elements, open progress window and start thread
+            self.worker_ready_signal.emit()
         else:
             configuration.logging.debug(
                 "Cancel clicked: User gave up installing from local copy"
@@ -164,8 +164,8 @@ class Adapter(QObject):
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
-            # Start thread
-            self.thread_start_signal.emit()
+            # Lock GUI elements, open progress window and start thread
+            self.worker_ready_signal.emit()
         else:
             configuration.logging.debug(
                 "Cancel clicked: User decided not to apply changes."
