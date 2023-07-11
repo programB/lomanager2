@@ -126,7 +126,10 @@ class MainLogic(object):
             else:
                 progress_callback = None
             # XXX) Should downloaded packages be kept
-            keep_packages = self.global_flags.keep_packages
+            if "keep_packages" in kwargs.keys():
+                keep_packages = kwargs["keep_packages"]
+            else:
+                keep_packages = False
 
             # TODO: Java virtual package should already be in the list
             #       of virtual and no decision making should be done
