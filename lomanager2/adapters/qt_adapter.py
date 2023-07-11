@@ -22,6 +22,7 @@ class Adapter(QObject):
     progress = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
+    thread_start_signal = Signal()
     GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
@@ -104,6 +105,9 @@ class Adapter(QObject):
         # Internal Signal: Locks/Unlocks GUI elements
         self.GUI_locks_signal.connect(self.change_GUI_locks)
 
+        # Internal Signal: starts already prepared thread
+        self.thread_start_signal.connect(self._start_procedure_thread)
+
     def _refresh_package_menu_state(self):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
@@ -127,25 +131,14 @@ class Adapter(QObject):
             # Create separate thread worker
             # and pass the MainLogic's method to execute
             # along with values (collected from GUI) it would need.
-            self.local_copy_install_thread = ProcedureWorker(
+            self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=local_copy_folder,
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
-            # Connect thread signals
-            self.progress.connect(self._progress_was_made)
-            self.local_copy_install_thread.finished.connect(
-                self._thread_stopped_or_terminated
-            )
-            # TODO: Just for test. This MUST not be available to user.
-            self._progress_view.button_terminate.clicked.connect(
-                self.local_copy_install_thread.terminate
-            )
-
-            self._progress_view.show()
-            self.local_copy_install_thread.start()  # start the prepared thread
-
+            # Start thread
+            self.thread_start_signal.emit()
         else:
             configuration.logging.debug(
                 "Cancel clicked: User gave up installing from local copy"
@@ -179,34 +172,35 @@ class Adapter(QObject):
             # Create separate thread worker
             # and pass the MainLogic's method to execute
             # along with values (collected from GUI) it would need.
-            self.apply_changes_thread = ProcedureWorker(
+            self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
                 local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
-            # Connect thread signals
-            self.progress.connect(self._progress_was_made)
-            self.apply_changes_thread.finished.connect(
-                self._thread_stopped_or_terminated
-            )
-            # TODO: Just for test. This MUST not be available to user.
-            self._progress_view.button_terminate.clicked.connect(
-                self.apply_changes_thread.terminate
-            )
-
-            self._progress_view.show()
-            # TODO: Block certain buttons in the main interface here to
-            #       prevent from another thread being started. But not
-            #       all of them (eg. log output (aka console)
-            #       should be operational)
-
-            self.apply_changes_thread.start()  # start the prepared thread
+            # Start thread
+            self.thread_start_signal.emit()
         else:
             configuration.logging.debug(
                 "Cancel clicked: User decided not to apply changes."
             )
+
+    def _start_procedure_thread(self):
+        # Connect thread signals
+        self.progress.connect(self._progress_was_made)
+        # TODO: Just for test. This MUST not be available to user.
+        self._progress_view.button_terminate.clicked.connect(
+            self.procedure_thread.terminate
+        )
+        self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
+
+        # Open progress view
+        self._progress_view.show()
+        # Start self._procedure_thread created in either
+        # _confirm_and_start_applying_changes
+        # or _choose_dir_and_install_from_local_copy
+        self.procedure_thread.start()
 
     def _progress_was_made(self, progress):
         configuration.logging.debug(
