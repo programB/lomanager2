@@ -13,7 +13,7 @@ from PySide6.QtCore import (
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
 from viewmodels import PackageMenuViewModel
-from threads import InstallProcedureWorker
+from threads import ProcedureWorker
 import configuration
 
 
@@ -127,7 +127,7 @@ class Adapter(QObject):
             # Create separate thread worker
             # and pass the MainLogic's method to execute
             # along with values (collected from GUI) it would need.
-            self.local_copy_install_thread = InstallProcedureWorker(
+            self.local_copy_install_thread = ProcedureWorker(
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=local_copy_folder,
                 report_status=self.status_signal.emit,
@@ -179,7 +179,7 @@ class Adapter(QObject):
             # Create separate thread worker
             # and pass the MainLogic's method to execute
             # along with values (collected from GUI) it would need.
-            self.apply_changes_thread = InstallProcedureWorker(
+            self.apply_changes_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
                 local_copy_folder=self._local_copy_folder,

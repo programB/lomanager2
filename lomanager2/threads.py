@@ -5,7 +5,7 @@ from PySide6.QtCore import QThread, Signal, Slot
 import configuration
 
 
-class InstallProcedureWorker(QThread):
+class ProcedureWorker(QThread):
     """Worker thread intended to run install procedure"""
 
     # Define custom signals
