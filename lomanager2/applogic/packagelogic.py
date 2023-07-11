@@ -95,34 +95,44 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        configuration.logging.warning("WIP. This function sends fake data.")
-
+        configuration.logging.warning("WIP !!!")
         configuration.logging.debug(
             f"Flag <<ready_to_apply_changes>> is: <<{self.global_flags.ready_to_apply_changes}>>"
         )
-
         # TODO: bypassing for tests
         configuration.logging.warning(
-            f"Setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
+            f"Manually setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
         )
         self.global_flags.ready_to_apply_changes = True
 
-        # 1) Check if we can proceed with applying changes
+        # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
             configuration.logging.warning("Cannot apply requested changes.")
             return
 
         else:  # We are good to go
-            # callback_function will most likely be the progress.emit Qt signal
-            # and will be passed here (in the kwargs dict) by the thread worker
-            # created in the adapter.
-            # TODO: can this be leveraged (and how) in CLI app (not using Qt GUI)?
-            if "inform_about_progress" in kwargs.keys():
-                callback_function = kwargs["inform_about_progress"]
+            # Set some variables here explicitly
+            # to make the logic clearer
+            # TODO: can this be leveraged (and how) in CLI app?
+            #    (For Qt GUI callback functions are emit methods signals)
+            # a) callback function for raporting failures of steps in procedure
+            if "report_status" in kwargs.keys():
+                status_callback = kwargs["report_status"]
             else:
-                callback_function = None
+                status_callback = None
+            # b) callback function for raporting overall procedure progress
+            if "inform_about_progress" in kwargs.keys():
+                progress_callback = kwargs["inform_about_progress"]
+            else:
+                progress_callback = None
+            # XXX) Should downloaded packages be kept
+            keep_packages = self.global_flags.keep_packages
 
-            # 2) Decide what to do with Java
+            # TODO: Java virtual package should already be in the list
+            #       of virtual and no decision making should be done
+            #       here other then marking java to be downloaded
+            #       if this was requested by the user in the UI.
+            # Decide what to do with Java
             #
             #    Create Java VirtualPackage for the install subprocedure
             #    to know what to do (here all java_package flags are False)
@@ -150,28 +160,26 @@ class MainLogic(object):
             #    Add Java VirtualPackage to the list
             self._virtual_packages.append(java_package)
 
-            # 3) Decide whether to keep downloaded packages
-            if "keep_packages" in kwargs:
-                configuration.logging.debug(
-                    f'keep_packages = {kwargs["keep_packages"]}'
-                )
-                # This flag is False by defualt and gets set again only here
-                self.global_flags.keep_packages = kwargs["keep_packages"]
-
-            # changes_to_make = self._package_menu.package_delta
-
-            # Block any other calls of this function and proceed with subprocedure
+            # Block any other calls of this function...
             self.global_flags.ready_to_apply_changes = False
+            # ...and proceed with procedure
             configuration.logging.info("Applying changes...")
             status = self._install(
+                # TODO: passing property to method within class doesn't make sense
+                #       Do I want for any reason pass a deepcopy here?
+                #       or perhaps it will be different when _virtual_packages
+                #       changes to tree rather then simple list?
                 self._virtual_packages,
-                keep_packages=self.global_flags.keep_packages,
+                keep_packages=keep_packages,
                 source=None,
-                callback_function=callback_function,
+                callback_function=progress_callback,
             )
-            if status["is_install_successful"] is True:
-                kwargs["report_status"]({"explanation": "Changes successfully applied"})
-            # TODO: do something with status variable
+            if status_callback is not None:
+                # TODO: Modify Adapter to know how to handle both
+                #       True and False paths
+                if status["is_install_successful"] is True:
+                    status_callback({"explanation": "Changes successfully applied"})
+            return status
 
     def install_from_local_copy(self, *args, **kwargs):
         # TODO: This is a draft implementation for testing
@@ -620,9 +628,7 @@ class MainLogic(object):
         configuration.logging.info(message)
         return install_status
 
-    def _collect_packages(
-        self, packages_to_download: list, callback_function
-    ) -> bool:
+    def _collect_packages(self, packages_to_download: list, callback_function) -> bool:
         configuration.logging.debug("WIP. This function sends fake data.")
         # Preparations
         tmp_directory = configuration.tmp_directory
