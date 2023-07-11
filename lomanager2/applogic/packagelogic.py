@@ -256,7 +256,6 @@ class MainLogic(object):
             configuration.logging.info("Applying changes...")
             status = self._local_copy_install_procedure(
                 self._virtual_packages,
-                keep_packages=True,  # never delete local copy provided by the user
                 local_copy_directory=local_copy_directory,
                 callback_function=progress_callback,
             )
@@ -826,7 +825,6 @@ class MainLogic(object):
     def _local_copy_install_procedure(
         self,
         virtual_packages,
-        keep_packages,
         local_copy_directory,
         callback_function=None,
     ) -> dict:
