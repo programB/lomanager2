@@ -177,6 +177,8 @@ class LocalCopyInstallDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
+        self.selected_dir = None
+
         self.setWindowTitle("Install from local copy")
         main_layout = QVBoxLayout()
 
@@ -238,6 +240,7 @@ class LocalCopyInstallDialog(QDialog):
         )
         if is_selection_made == 1:
             self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])
+            self.selected_dir = selection_dialog.selectedFiles()[0]
 
 
 if __name__ == "__main__":

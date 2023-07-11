@@ -113,8 +113,39 @@ class Adapter(QObject):
         # intended for installation (opens a dialog).
         if self._main_view.confirm_local_copy_view.exec():
             configuration.logging.debug("Installing from local copy...")
-            # TODO: Implement getting the folder path,
-            #       creating worker thread and starting it
+            # Block changes to the packages selection
+            # and to starting any other procedures
+            self._is_packages_selecting_allowed = False
+            self._is_starting_procedures_allowed = False
+            self.GUI_locks_signal.emit()
+
+            # Get variables that might have be altered by the user
+            # in the dialog
+            local_copy_folder = self._main_view.confirm_local_copy_view.selected_dir
+            configuration.logging.debug(f"Returned folder path is {local_copy_folder}")
+
+            # Create separate thread worker
+            # and pass the MainLogic's method to execute
+            # along with values (collected from GUI) it would need.
+            self.local_copy_install_thread = InstallProcedureWorker(
+                function_to_run=self._main_model.install_from_local_copy,
+                local_copy_folder=local_copy_folder,
+                report_status=self.status_signal.emit,
+                inform_about_progress=self.progress.emit,
+            )
+            # Connect thread signals
+            self.progress.connect(self._progress_was_made)
+            self.local_copy_install_thread.finished.connect(
+                self._thread_stopped_or_terminated
+            )
+            # TODO: Just for test. This MUST not be available to user.
+            self._progress_view.button_terminate.clicked.connect(
+                self.local_copy_install_thread.terminate
+            )
+
+            self._progress_view.show()
+            self.local_copy_install_thread.start()  # start the prepared thread
+
         else:
             configuration.logging.debug(
                 "Cancel clicked: User gave up installing from local copy"
@@ -184,16 +215,12 @@ class Adapter(QObject):
         self._progress_view.progress_bar.setValue(progress)
 
     def _thread_stopped_or_terminated(self):
+        configuration.logging.debug("Thread finished signal received.")
         self._progress_view.hide()
         self._progress_view.progress_bar.setValue(0)
-        configuration.logging.debug("Thread finished signal received.")
-        configuration.logging.debug(
-            f"thread: {self.apply_changes_thread}\n"
-            f"is running?: {self.apply_changes_thread.isRunning()}\n"
-            f"is finished?: {self.apply_changes_thread.isFinished()}"
-        )
         configuration.logging.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
+        configuration.logging.debug("Emiting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
         self.GUI_locks_signal.emit()
@@ -228,7 +255,6 @@ class Adapter(QObject):
             self._main_view.button_apply_changes.setEnabled(False)
             self._main_view.button_install_from_local_copy.setEnabled(False)
             self._main_view.button_add_langs.setEnabled(False)
-
 
 
 def main():
