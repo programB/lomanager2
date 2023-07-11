@@ -15,6 +15,7 @@ from gui import AppMainWindow
 from viewmodels import PackageMenuViewModel
 from threads import ProcedureWorker
 import configuration
+from configuration import logging as log
 
 
 class Adapter(QObject):
@@ -109,13 +110,13 @@ class Adapter(QObject):
         self.worker_ready_signal.connect(self._start_procedure_thread)
 
     def _refresh_package_menu_state(self):
-        configuration.logging.debug("Refreshing!")
+        log.debug("Refreshing!")
         self._main_model.refresh_state()
 
     def _choose_dir_and_install_from_local_copy(self):
         # Ask the user for directory with saved packages
         if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
-            configuration.logging.debug("Ok clicked: Installing from local copy...")
+            log.debug("Ok clicked: Installing from local copy...")
 
             # Get the directory path set by the user
             selected_dir = self._main_view.confirm_local_copy_view.selected_dir
@@ -131,9 +132,7 @@ class Adapter(QObject):
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()
         else:
-            configuration.logging.debug(
-                "Cancel clicked: User gave up installing from local copy"
-            )
+            log.debug("Cancel clicked: User gave up installing from local copy")
 
     def _confirm_and_start_applying_changes(self):
         # Set initial state of keep_packages checkbox
@@ -148,7 +147,7 @@ class Adapter(QObject):
             )
         # Ask the user wheter to delete downloaded packages after installation
         if self._main_view.confirm_apply_view.exec():  # open a dialog
-            configuration.logging.debug("Ok clicked. Applying changes...")
+            log.debug("Ok clicked. Applying changes...")
 
             # Get user decision
             self._keep_packages = (
@@ -166,9 +165,7 @@ class Adapter(QObject):
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()
         else:
-            configuration.logging.debug(
-                "Cancel clicked: User decided not to apply changes."
-            )
+            log.debug("Cancel clicked: User decided not to apply changes.")
 
     def _start_procedure_thread(self):
         # Block some GUI elements while the procedure is running
@@ -192,18 +189,16 @@ class Adapter(QObject):
         self.procedure_thread.start()
 
     def _progress_was_made(self, progress):
-        configuration.logging.debug(
-            f"Current progress (received in adapter's slot): {progress}"
-        )
+        log.debug(f"Current progress (received in adapter's slot): {progress}")
         self._progress_view.progress_bar.setValue(progress)
 
     def _thread_stopped_or_terminated(self):
-        configuration.logging.debug("Thread finished signal received.")
+        log.debug("Thread finished signal received.")
         self._progress_view.hide()
         self._progress_view.progress_bar.setValue(0)
-        configuration.logging.debug("Emiting refresh signal to rebuild packages state")
+        log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
-        configuration.logging.debug("Emiting GUI locks signal to unlock GUI elements")
+        log.debug("Emiting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
         self.GUI_locks_signal.emit()

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QHeaderView,
 )
-import configuration
+from configuration import logging as log 
 
 
 class AppMainWindow(QMainWindow):
@@ -233,7 +233,7 @@ class LocalCopyInstallDialog(QDialog):
         selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()
-        configuration.logging.debug(
+        log.debug(
             f"Dialog_returned: {is_selection_made }, selectedFiles: "
             f"{selection_dialog.selectedFiles()} selectedNameFilter: "
             f"{selection_dialog.selectedNameFilter()}"

@@ -2,7 +2,7 @@ import time
 
 from PySide6.QtCore import QThread, Signal, Slot
 
-import configuration
+from configuration import logging as log
 
 
 class ProcedureWorker(QThread):
@@ -23,9 +23,7 @@ class ProcedureWorker(QThread):
     def run(self):
         """Run code inside in a separate thread"""
 
-        configuration.logging.debug(
-            f"{self.function_to_run.__name__} function started in a new thread."
-        )
+        log.debug(f"{self.function_to_run.__name__} function started in a new thread.")
         self.is_running = True
 
         # TODO: Remove the while loop?

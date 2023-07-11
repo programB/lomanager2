@@ -1,5 +1,6 @@
-import configuration
+from configuration import logging as log
+
 
 def main():
     # TODO: Implement
-    configuration.logging.debug("CLI not yet implemented.")
+    log.debug("CLI not yet implemented.")

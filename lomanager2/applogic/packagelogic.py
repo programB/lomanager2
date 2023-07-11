@@ -2,6 +2,7 @@ import time  # TODO: just for the tests
 import re
 import pathlib
 import configuration
+from configuration import logging as log
 from typing import Any, Tuple
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
@@ -95,14 +96,13 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        configuration.logging.warning("WIP !!!")
-        configuration.logging.debug(
-            f"Flag <<ready_to_apply_changes>> is: <<{self.global_flags.ready_to_apply_changes}>>"
+        log.warning("WIP !!!")
+        log.debug(
+            f"Flag <<ready_to_apply_changes>> is: "
+            f"<<{self.global_flags.ready_to_apply_changes}>>"
         )
         # TODO: bypassing for tests
-        configuration.logging.warning(
-            f"Manually setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
-        )
+        log.warning(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
         self.global_flags.ready_to_apply_changes = True
 
         # Callback function for raporting the status of the procedure
@@ -114,7 +114,7 @@ class MainLogic(object):
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
             explanation = "Not ready to apply requested changes."
-            configuration.logging.error(explanation)
+            log.error(explanation)
             status = {"is_OK": False, "explanation": explanation}
             if status_callback is not None:
                 status_callback(status)
@@ -174,7 +174,7 @@ class MainLogic(object):
             # Block any other calls of this function...
             self.global_flags.ready_to_apply_changes = False
             # ...and proceed with procedure
-            configuration.logging.info("Applying changes...")
+            log.info("Applying changes...")
             status = self._install(
                 # TODO: passing property to method within class doesn't make sense
                 #       Do I want for any reason pass a deepcopy here?
@@ -187,23 +187,21 @@ class MainLogic(object):
             return status
 
     def install_from_local_copy(self, *args, **kwargs):
-        configuration.logging.debug("WIP !!!")
+        log.debug("WIP !!!")
 
-        configuration.logging.debug(
-            f"Flag <<ready_to_apply_changes>> is: <<{self.global_flags.ready_to_apply_changes}>>"
+        log.debug(
+            f"Flag <<ready_to_apply_changes>> is: "
+            f"<<{self.global_flags.ready_to_apply_changes}>>"
         )
         # TODO: bypassing for tests
-        configuration.logging.debug(
-            f"Manually setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
-        )
+        log.debug(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
         self.global_flags.ready_to_apply_changes = True
 
-        configuration.logging.debug(
-            f"Flag <<block_local_copy_install>> is: <<{self.global_flags.block_local_copy_install}>>"
+        log.debug(
+            f"Flag <<block_local_copy_install>> is: "
+            f"<<{self.global_flags.block_local_copy_install}>>"
         )
-        configuration.logging.debug(
-            f"Manually setting flag <<block_local_copy_install>> <<False>> for the tests !"
-        )
+        log.debug(f"TEST: Manually SETTING <<block_local_copy_install>> <<False>>")
         self.global_flags.block_local_copy_install = False
 
         # Callback function for raporting the status of the procedure
@@ -215,7 +213,7 @@ class MainLogic(object):
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
             explanation = "Not ready to apply requested changes."
-            configuration.logging.error(explanation)
+            log.error(explanation)
             status = {"is_OK": False, "explanation": explanation}
             if status_callback is not None:
                 status_callback(status)
@@ -224,7 +222,7 @@ class MainLogic(object):
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
             explanation = "Local copy installation is not allowed."
-            configuration.logging.error(explanation)
+            log.error(explanation)
             status = {"is_OK": False, "explanation": explanation}
             if status_callback is not None:
                 status_callback(status)
@@ -252,7 +250,7 @@ class MainLogic(object):
             # Block any other calls of this function...
             self.global_flags.ready_to_apply_changes = False
             # ...and proceed with procedure
-            configuration.logging.info("Applying changes...")
+            log.info("Applying changes...")
             status = self._local_copy_install_procedure(
                 self._virtual_packages,
                 local_copy_directory=local_copy_directory,
@@ -331,7 +329,7 @@ class MainLogic(object):
             Useful information
         """
 
-        configuration.logging.debug("WIP !" "Sending dummy data !!!")
+        log.debug("WIP !" "Sending dummy data !!!")
         system_info = dict()
 
         # TODO: Implement
@@ -358,7 +356,7 @@ class MainLogic(object):
 
     def _detect_installed_software(self):
         # TODO: implement
-        configuration.logging.debug("WIP !" "Sending dummy data !!!")
+        log.debug("WIP !" "Sending dummy data !!!")
         found_software = [
             ["OpenOffice", "2.0"],
             ["OpenOffice", "2.4", "pl", "gr"],
@@ -366,7 +364,7 @@ class MainLogic(object):
             ["LibreOffice", "7.5", "jp", "pl"],
             ["Clipart", "5.3"],
         ]
-        configuration.logging.debug(f"found_software: {found_software}")
+        log.debug(f"found_software: {found_software}")
         return found_software
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
@@ -503,9 +501,7 @@ class MainLogic(object):
         #       on hard coded latest available versions, a fixed list of
         #       supported languages and file naming convention
         #       or read in from a pre generated configuration file.
-        configuration.logging.warning(
-            "Function not yet implemented. Sending fake data !!!"
-        )
+        log.warning("Function not yet implemented. Sending fake data !!!")
         self._latest_available_packages = [
             VirtualPackage(
                 "core-packages",
@@ -562,7 +558,7 @@ class MainLogic(object):
         callback_function=None,
     ) -> dict:
         # TODO: This is dummy implementation for testing
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
         # Preparations
         current_progress_is = callback_function
@@ -573,7 +569,7 @@ class MainLogic(object):
 
         # 1 - Run collect_packages subprocedure
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
-        configuration.logging.debug(f"packages_to_download: {packages_to_download}")
+        log.debug(f"packages_to_download: {packages_to_download}")
 
         # TODO: Should it be a different function or perhaps
         #       callback_function should take some parameters other then
@@ -589,7 +585,7 @@ class MainLogic(object):
         if collect_status is False:
             message = "Failed to download all requested packages."
             install_status["explanation"] = message
-            configuration.logging.error(message)
+            log.error(message)
             return install_status
 
         # At this point network_install and local_copy_install
@@ -606,7 +602,7 @@ class MainLogic(object):
                     if java_install_status is False:
                         message = "Failed to install Java."
                         install_status["explanation"] = message
-                        configuration.logging.error(message)
+                        log.error(message)
                         return install_status
                     else:  # All good, Java installed
                         break  # There can only ever be 1 Java virtual package
@@ -617,7 +613,7 @@ class MainLogic(object):
         # in preparation for the install step.
         # 4) Run Office uninstall procedure if needed
         packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
-        configuration.logging.debug(f"packages_to_remove: {packages_to_remove}")
+        log.debug(f"packages_to_remove: {packages_to_remove}")
         if packages_to_remove:  # Non empty list
             office_removal_status = self._office_uninstall(
                 packages_to_remove,
@@ -635,7 +631,7 @@ class MainLogic(object):
             if office_removal_status is False:
                 message = "Failed to remove Office components."
                 install_status["explanation"] = message
-                configuration.logging.error(message)
+                log.error(message)
                 return install_status
 
         # 5) Run Office install procedure if needed
@@ -644,7 +640,7 @@ class MainLogic(object):
             for p in virtual_packages
             if (p.is_marked_for_install or p.is_marked_for_upgrade)
         ]
-        configuration.logging.debug(f"packages_to_install: {packages_to_install}")
+        log.debug(f"packages_to_install: {packages_to_install}")
         if packages_to_install:  # Non empty list
             office_install_status = self._install_LibreOffice(
                 packages_to_install,
@@ -654,7 +650,7 @@ class MainLogic(object):
             if office_install_status is False:
                 message = "Failed to install Office components."
                 install_status["explanation"] = message
-                configuration.logging.error(message)
+                log.error(message)
                 return install_status
 
         # 6) Any Office base package was affected ?
@@ -668,9 +664,9 @@ class MainLogic(object):
                 self._clean_dot_desktop_files()
 
         # 7) Should downloaded packages be removed ?
-        configuration.logging.debug(f"keep_packages = {keep_packages}")
+        log.debug(f"keep_packages = {keep_packages}")
         if keep_packages is True:
-            configuration.logging.debug(
+            log.debug(
                 f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
             )
             offline_copy_folder = "/tmp/LO_saved_packages"
@@ -682,43 +678,43 @@ class MainLogic(object):
         message = "All packages successfully installed"
         install_status["is_install_successful"] = True
         install_status["explanation"] = message
-        configuration.logging.info(message)
+        log.info(message)
         return install_status
 
     def _collect_packages(self, packages_to_download: list, callback_function) -> bool:
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
         # Preparations
         tmp_directory = configuration.tmp_directory
 
         is_every_package_collected = False
 
-        configuration.logging.debug(f"Packages to download: {packages_to_download}")
-        configuration.logging.debug("Collecting packages...")
+        log.debug(f"Packages to download: {packages_to_download}")
+        log.debug("Collecting packages...")
         time.sleep(2)
-        configuration.logging.debug("...done collecting packages.")
+        log.debug("...done collecting packages.")
 
         is_every_package_collected = True
         return is_every_package_collected
 
     def _terminate_LO_quickstarter(self):
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
-        configuration.logging.debug("Checking for LibreOffice quickstarter process...")
-        configuration.logging.debug("LibreOffice quickstarter is running (PID: ABCD)")
-        configuration.logging.debug("Terminating LibreOffice quickstarter...")
+        log.debug("Checking for LibreOffice quickstarter process...")
+        log.debug("LibreOffice quickstarter is running (PID: ABCD)")
+        log.debug("Terminating LibreOffice quickstarter...")
         time.sleep(2)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _install_Java(self) -> bool:
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
         is_java_successfully_installed = False
-        configuration.logging.info("Starting Java install procedure...")
+        log.info("Starting Java install procedure...")
 
         time.sleep(2)
 
         is_java_successfully_installed = True
-        configuration.logging.info("Java successfully installed.")
+        log.info("Java successfully installed.")
 
         return is_java_successfully_installed
 
@@ -727,16 +723,16 @@ class MainLogic(object):
         packages_to_remove: list,
         callback_function,
     ) -> bool:
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
         is_every_package_successfully_removed = False
-        configuration.logging.debug(f"Packages to remove: {packages_to_remove}")
-        configuration.logging.info("Removing packages...")
+        log.debug(f"Packages to remove: {packages_to_remove}")
+        log.info("Removing packages...")
 
         time.sleep(2)
 
         is_every_package_successfully_removed = True
-        configuration.logging.info("...done removing packages.")
+        log.info("...done removing packages.")
 
         return is_every_package_successfully_removed
 
@@ -745,13 +741,13 @@ class MainLogic(object):
         packages_to_install: list,
         callback_function,
     ) -> bool:
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
         # TODO: naming
         current_progress_is = callback_function
 
         is_every_package_successfully_installed = False
-        configuration.logging.debug(f"Packages to install: {packages_to_install}")
-        configuration.logging.info("Installing packages...")
+        log.debug(f"Packages to install: {packages_to_install}")
+        log.info("Installing packages...")
 
         total_time_sek = 5
         steps = 30
@@ -761,64 +757,62 @@ class MainLogic(object):
 
             # report progress
             # # directly to log
-            configuration.logging.info(f"install progress: {progress}%")
+            log.info(f"install progress: {progress}%")
             # # using callback if available (emitting Qt signal)
             if callback_function is not None:
                 current_progress_is(progress)
 
         is_every_package_successfully_installed = True
-        configuration.logging.info("...done installing packages.")
+        log.info("...done installing packages.")
 
         return is_every_package_successfully_installed
 
     def _disable_LO_update_checks(self):
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
-        configuration.logging.debug(
-            "Preventing LibreOffice from looking for updates on its own..."
-        )
+        log.debug("Preventing LibreOffice from looking for updates on its own...")
         time.sleep(1)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _add_templates_to_etcskel(self):
         # TODO: This function should put a file (smth.xcu) to /etc/skel
         #       in order to have LO properly set up for any new user
         #       accounts created in the OS
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
-        configuration.logging.debug("Adding files to /etc/skel ...")
+        log.debug("Adding files to /etc/skel ...")
         time.sleep(1)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _clean_dot_desktop_files(self):
         # TODO: This function should remove association between LibreOffice
         #       and Open Document file formats (odt, odf, etc.) from the
         #       global .desktop file (and user files too?)
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
-        configuration.logging.debug("Rebuilding menu entries...")
+        log.debug("Rebuilding menu entries...")
         time.sleep(1)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _save_copy_for_offline_install(self, target_folder):
         # TODO: This function should put all files needed for offline
         #       installation in a structured way into the target_folder
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
-        configuration.logging.debug("Saving files for offline install...")
+        log.debug("Saving files for offline install...")
         time.sleep(1)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _clean_tmp_folder(self):
         # TODO: This function should remove all files from tmp_directory.
-        configuration.logging.debug("WIP. This function sends fake data.")
+        log.debug("WIP. This function sends fake data.")
 
         # Preparations
         tmp_directory = configuration.tmp_directory
 
-        configuration.logging.debug("Cleaning temporary files...")
+        log.debug("Cleaning temporary files...")
         time.sleep(1)
-        configuration.logging.debug("...done.")
+        log.debug("...done.")
 
     def _local_copy_install_procedure(
         self,
@@ -827,7 +821,7 @@ class MainLogic(object):
         callback_function=None,
     ) -> dict:
         # TODO: This is dummy implementation for testing
-        configuration.logging.debug("WIP !")
+        log.debug("WIP !")
 
         # Preparations
 
@@ -853,7 +847,7 @@ class MainLogic(object):
         else:
             message = "Could not find directory with saved packages."
             install_status["explanation"] = message
-            configuration.logging.error(message)
+            log.error(message)
             return install_status
 
         # Mark virtual packages accordingly to the
@@ -867,16 +861,14 @@ class MainLogic(object):
                     "in the folder provided."
                 )
                 install_status["explanation"] = message
-                configuration.logging.error(message)
+                log.error(message)
                 return install_status
             else:  # Clipart packages found in local_copy_directory
                 # FIXME: Currently there is no guarantee clipart virtual package
                 #       will be in virtual_packages.
                 #       This is a problem and must be fixed in PackageMenu
                 #       And what if it exists? Should it be upgraded ?
-                configuration.logging.debug(
-                    "Openclipart rpms found and marked for installation."
-                )
+                log.debug("Openclipart rpms found and marked for installation.")
                 for package in virtual_packages:
                     if package.family == "Clipart":
                         package.is_marked_for_removal = False
@@ -894,15 +886,13 @@ class MainLogic(object):
                     "the directory provided."
                 )
                 install_status["explanation"] = message
-                configuration.logging.error(message)
+                log.error(message)
                 return install_status
             elif PCLOS.is_java_installed() is False and is_Java_present is True:
                 # Java not installed but can be installed from local_copy_directory
                 # FIXME: Java virtual package in not guaranteed to exist in
                 #        virtual_packages. FIX this.
-                configuration.logging.debug(
-                    "Java rpms found and marked for installation."
-                )
+                log.debug("Java rpms found and marked for installation.")
                 for package in virtual_packages:
                     if package.family == "Java":
                         package.is_marked_for_removal = False
@@ -911,7 +901,7 @@ class MainLogic(object):
                         package.is_to_be_downloaded = False
 
             elif PCLOS.is_java_installed() is True and is_Java_present is False:
-                configuration.logging.debug("Java already installed.")
+                log.debug("Java already installed.")
                 for package in virtual_packages:
                     if package.family == "Java":
                         package.is_marked_for_removal = False
@@ -925,7 +915,7 @@ class MainLogic(object):
                 #      Skipping for now.
                 pass
 
-            configuration.logging.debug(
+            log.debug(
                 "Marking all existing OpenOffice and LibreOffice packages for removal."
             )
             for package in virtual_packages:
@@ -935,7 +925,7 @@ class MainLogic(object):
                     package.is_marked_for_install = False
                     package.is_to_be_downloaded = False
 
-            configuration.logging.debug("Marking LibreOffice core for install.")
+            log.debug("Marking LibreOffice core for install.")
             # FIXME: Which package to mark? virtual_packages only contains
             #        list of installed packages (which by itself should be changes
             #        for different reason) and the version number of the
@@ -949,7 +939,7 @@ class MainLogic(object):
                     package.is_marked_for_install = True
                     package.is_to_be_downloaded = False
 
-            configuration.logging.debug("DO SOMETHING HERE")
+            log.debug("DO SOMETHING HERE")
             if is_LibreOffice_lang_present:
                 # User has also saved some language packs. Install them all.
                 # TODO: mark them for install but not for download
@@ -959,7 +949,7 @@ class MainLogic(object):
                 #        LO core in the local_copy_directory is unknown.
                 #        Parse the filename? add "0.0.0.0" as indicating local copy
                 #        install?
-                configuration.logging.debug("DO SOMETHING HERE")
+                log.debug("DO SOMETHING HERE")
             if is_Clipart_present:
                 # User has also saved clipart package. Install it.
                 # TODO: mark clipart for installation/upgrade accordingly
@@ -969,7 +959,7 @@ class MainLogic(object):
                 #        LO core in the local_copy_directory is unknown.
                 #        Parse the filename? add "0.0.0.0" as indicating local copy
                 #        install?
-                configuration.logging.debug("DO SOMETHING HERE")
+                log.debug("DO SOMETHING HERE")
 
         # TODO: should it now converge with the network_install procedure ?
 
@@ -1002,18 +992,18 @@ class MainLogic(object):
           suitable for install from local_copy_directory (F) otherwise
         """
 
-        configuration.logging.debug("WIP")
+        log.debug("WIP")
 
         is_Java_present = False
         is_LibreOffice_core_present = False
         is_LibreOffice_lang_present = False
         is_Clipart_present = False
 
-        configuration.logging.debug("Verifying local copy ...")
+        log.debug("Verifying local copy ...")
         # 1) Directory for Java rpms exist inside?
         # (Java_RPMS as directory name is set here as a standard)
         Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_RPMS")
-        configuration.logging.debug(f"Java RPMS dir: {Java_dir}")
+        log.debug(f"Java RPMS dir: {Java_dir}")
         if Java_dir.is_dir():
             # Files: task-java-<something>.rpm ,  java-sun-<something>.rpm
             # are inside? (no specific version numbers are assumed or checked)
@@ -1065,14 +1055,10 @@ class MainLogic(object):
             # from the local copy directory.
             is_Clipart_present = all([is_lo_clipart_present, is_openclipart_present])
 
-        configuration.logging.debug(f"Java is present: {is_Java_present}")
-        configuration.logging.debug(
-            f"LO core is present: {is_LibreOffice_core_present}"
-        )
-        configuration.logging.debug(
-            f"LO langs is present: {is_LibreOffice_lang_present}"
-        )
-        configuration.logging.debug(f"Clipart lib is present: {is_Clipart_present}")
+        log.debug(f"Java is present: {is_Java_present}")
+        log.debug(f"LO core is present: {is_LibreOffice_core_present}")
+        log.debug(f"LO langs is present: {is_LibreOffice_lang_present}")
+        log.debug(f"Clipart lib is present: {is_Clipart_present}")
         return (
             is_Java_present,
             is_LibreOffice_core_present,
@@ -1801,14 +1787,10 @@ class PackageMenu(object):
         self.newest_installed_LO_version = self._get_newest_installed_LO_version()
 
         if self.newest_installed_LO_version:  # a LibreOffice is installed
-            configuration.logging.debug(
-                f"Newest installed LO: {self.newest_installed_LO_version}"
-            )
+            log.debug(f"Newest installed LO: {self.newest_installed_LO_version}")
             # b) latest version already installed
             if self.newest_installed_LO_version == self.latest_available_LO_version:
-                configuration.logging.debug(
-                    "Your LO is already at latest available version"
-                )
+                log.debug("Your LO is already at latest available version")
                 # Allow for additional lang packs INSTALL coming...
                 # ...FROM THE LIST of LATEST AVAILABLE PACKAGES
                 # (LibreOffice only !!! OpenOffice office is not supported.)
