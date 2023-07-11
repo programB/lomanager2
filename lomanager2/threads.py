@@ -10,7 +10,6 @@ class InstallProcedureWorker(QThread):
 
     # Define some custom signals
     result = Signal(str)
-    progress = Signal(int)
 
     def __init__(self, function_to_run, *args, **kwargs):
         super().__init__()
@@ -19,15 +18,6 @@ class InstallProcedureWorker(QThread):
         self.function_to_run = function_to_run
         self.args = args
         self.kwargs = kwargs
-
-        # Add the reference to the emit method of the progress signal
-        # to the kwargs dictionary
-        # (but name in such a way it is immediately obvious what it does)
-        # In the function_to_run this can be then used like so:
-        # kwargs["inform_about_progress"](integer_value_here)
-        # Note that function_to_run doesn't need to know
-        # anything about Qt at all.
-        self.kwargs["inform_about_progress"] = self.progress.emit
 
     @Slot()
     def run(self):

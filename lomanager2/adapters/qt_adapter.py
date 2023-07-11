@@ -19,6 +19,7 @@ import configuration
 
 class Adapter(QObject):
     # Register custom signals
+    progress = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
 
@@ -138,9 +139,10 @@ class Adapter(QObject):
                 keep_packages=self._keep_packages,
                 local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
+                inform_about_progress=self.progress.emit,
             )
             # Connect thread signals
-            self.apply_changes_thread.progress.connect(self._progress_was_made)
+            self.progress.connect(self._progress_was_made)
             self.apply_changes_thread.finished.connect(
                 self._thread_stopped_or_terminated
             )
