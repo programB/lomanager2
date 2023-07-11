@@ -160,20 +160,11 @@ class MainLogic(object):
 
             # changes_to_make = self._package_menu.package_delta
 
-            # A directory for storing and unziping the downloaded files
-            # TODO: Hardcoded for now. Change to something along the lines:
-            #       configuration.path_to_working_folder
-            configuration.logging.warning(
-                f"Setting <<tmp_directory>> to <</tmp>> for the tests !"
-            )
-            tmp_directory = "/tmp"
-
             # Block any other calls of this function and proceed with subprocedure
             self.global_flags.ready_to_apply_changes = False
             configuration.logging.info("Applying changes...")
             status = self._install(
                 self._virtual_packages,
-                tmp_directory,
                 keep_packages=self.global_flags.keep_packages,
                 source=None,
                 callback_function=callback_function,
@@ -191,9 +182,6 @@ class MainLogic(object):
         else:
             callback_function = None
 
-        configuration.logging.debug(f"MANUALLY SETTING <<tmp_directory>> TO <</tmp>>")
-        tmp_directory = "/tmp"
-
         configuration.logging.warning(
             f"Setting <<source>> to <</tmp/saved_packages>> for the tests !"
         )
@@ -201,7 +189,6 @@ class MainLogic(object):
 
         status = self._local_copy_install_procedure(
             self._virtual_packages,
-            tmp_directory,
             keep_packages=True,  # never delete local copy provided by the user
             local_copy_directory=local_copy_directory,
             callback_function=callback_function,
@@ -505,7 +492,6 @@ class MainLogic(object):
     def _install(
         self,
         virtual_packages,
-        tmp_directory,
         keep_packages,
         source,
         callback_function=None,
@@ -532,7 +518,6 @@ class MainLogic(object):
         download_progress_callback = callback_function
         collect_status = self._collect_packages(
             packages_to_download,
-            tmp_directory,
             download_progress_callback,
         )
 
@@ -627,8 +612,7 @@ class MainLogic(object):
             self._save_copy_for_offline_install(offline_copy_folder)
 
         # 8) clean up temporary files
-        # TODO: Change the hard coded /tmp
-        self._clean_tmp_folder("/tmp")
+        self._clean_tmp_folder()
 
         message = "All packages successfully installed"
         install_status["is_install_successful"] = True
@@ -637,9 +621,11 @@ class MainLogic(object):
         return install_status
 
     def _collect_packages(
-        self, packages_to_download: list, tmp_directory, callback_function
+        self, packages_to_download: list, callback_function
     ) -> bool:
         configuration.logging.debug("WIP. This function sends fake data.")
+        # Preparations
+        tmp_directory = configuration.tmp_directory
 
         is_every_package_collected = False
 
@@ -760,9 +746,12 @@ class MainLogic(object):
         time.sleep(1)
         configuration.logging.debug("...done.")
 
-    def _clean_tmp_folder(self, tmp_directory):
+    def _clean_tmp_folder(self):
         # TODO: This function should remove all files from tmp_directory.
         configuration.logging.debug("WIP. This function sends fake data.")
+
+        # Preparations
+        tmp_directory = configuration.tmp_directory
 
         configuration.logging.debug("Cleaning temporary files...")
         time.sleep(1)
@@ -771,7 +760,6 @@ class MainLogic(object):
     def _local_copy_install_procedure(
         self,
         virtual_packages,
-        tmp_directory,
         keep_packages,
         local_copy_directory,
         callback_function=None,
