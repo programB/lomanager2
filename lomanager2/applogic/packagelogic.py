@@ -188,25 +188,79 @@ class MainLogic(object):
             return status
 
     def install_from_local_copy(self, *args, **kwargs):
-        # TODO: This is a draft implementation for testing
-        configuration.logging.debug("WIP")
+        configuration.logging.debug("WIP !!!")
 
-        if "inform_about_progress" in kwargs.keys():
-            callback_function = kwargs["inform_about_progress"]
+        configuration.logging.debug(
+            f"Flag <<ready_to_apply_changes>> is: <<{self.global_flags.ready_to_apply_changes}>>"
+        )
+        # TODO: bypassing for tests
+        configuration.logging.debug(
+            f"Manually setting flag <<ready_to_apply_changes>> <<True>> for the tests !"
+        )
+        self.global_flags.ready_to_apply_changes = True
+
+        configuration.logging.debug(
+            f"Flag <<block_local_copy_install>> is: <<{self.global_flags.block_local_copy_install}>>"
+        )
+        configuration.logging.debug(
+            f"Manually setting flag <<block_local_copy_install>> <<False>> for the tests !"
+        )
+        self.global_flags.block_local_copy_install = False
+
+        # Callback function for raporting the status of the procedure
+        if "report_status" in kwargs.keys():
+            status_callback = kwargs["report_status"]
         else:
-            callback_function = None
+            status_callback = None
 
-        configuration.logging.warning(
-            f"Setting <<source>> to <</tmp/saved_packages>> for the tests !"
-        )
-        local_copy_directory = "/tmp/saved_packages"
+        # Check if we can proceed with applying changes
+        if self.global_flags.ready_to_apply_changes is False:
+            explanation = "Not ready to apply requested changes."
+            configuration.logging.error(explanation)
+            status = {"is_OK": False, "explanation": explanation}
+            if status_callback is not None:
+                status_callback(status)
+            return status
 
-        status = self._local_copy_install_procedure(
-            self._virtual_packages,
-            keep_packages=True,  # never delete local copy provided by the user
-            local_copy_directory=local_copy_directory,
-            callback_function=callback_function,
-        )
+        # Check if local copy installation was not blocked
+        if self.global_flags.block_local_copy_install is True:
+            explanation = "Local copy installation is not allowed."
+            configuration.logging.error(explanation)
+            status = {"is_OK": False, "explanation": explanation}
+            if status_callback is not None:
+                status_callback(status)
+            return status
+
+        else:  # We are good to go
+            # Set some variables here explicitly
+            # Callback function for raporting overall procedure progress
+            if "inform_about_progress" in kwargs.keys():
+                progress_callback = kwargs["inform_about_progress"]
+            else:
+                progress_callback = None
+            # Set local copy directory
+            if "local_copy_folder" in kwargs.keys():
+                local_copy_directory = kwargs["local_copy_folder"]
+            else:
+                status = {
+                    "is_OK": False,
+                    "explanation": "local_copy_folder argument is obligatory",
+                }
+                if status_callback is not None:
+                    status_callback(status)
+                return status
+
+            # Block any other calls of this function...
+            self.global_flags.ready_to_apply_changes = False
+            # ...and proceed with procedure
+            configuration.logging.info("Applying changes...")
+            status = self._local_copy_install_procedure(
+                self._virtual_packages,
+                keep_packages=True,  # never delete local copy provided by the user
+                local_copy_directory=local_copy_directory,
+                callback_function=progress_callback,
+            )
+            return status
 
     def refresh_state(self):
         # Reset packages list
