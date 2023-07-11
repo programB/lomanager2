@@ -117,11 +117,6 @@ class Adapter(QObject):
         if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
             configuration.logging.debug("Ok clicked: Installing from local copy...")
 
-            # Block some GUI elements while the procedure is running
-            self._is_packages_selecting_allowed = False
-            self._is_starting_procedures_allowed = False
-            self.GUI_locks_signal.emit()
-
             # Get the directory path set by the user
             selected_dir = self._main_view.confirm_local_copy_view.selected_dir
 
@@ -155,11 +150,6 @@ class Adapter(QObject):
         if self._main_view.confirm_apply_view.exec():  # open a dialog
             configuration.logging.debug("Ok clicked. Applying changes...")
 
-            # Block some GUI elements while the procedure is running
-            self._is_packages_selecting_allowed = False
-            self._is_starting_procedures_allowed = False
-            self.GUI_locks_signal.emit()
-
             # Get user decision
             self._keep_packages = (
                 self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
@@ -182,6 +172,11 @@ class Adapter(QObject):
             )
 
     def _start_procedure_thread(self):
+        # Block some GUI elements while the procedure is running
+        self._is_packages_selecting_allowed = False
+        self._is_starting_procedures_allowed = False
+        self.GUI_locks_signal.emit()
+
         # Connect thread signals
         self.progress.connect(self._progress_was_made)
         # TODO: Just for test. This MUST not be available to user.
