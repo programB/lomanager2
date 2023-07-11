@@ -131,7 +131,13 @@ class MainLogic(object):
             if "keep_packages" in kwargs.keys():
                 keep_packages = kwargs["keep_packages"]
             else:
-                keep_packages = False
+                status = {
+                    "is_OK": False,
+                    "explanation": "keep_packages argument is obligatory",
+                }
+                if status_callback is not None:
+                    status_callback(status)
+                return status
 
             # TODO: Java virtual package should already be in the list
             #       of virtual and no decision making should be done
