@@ -2,6 +2,7 @@ import sys
 
 from PySide6.QtWidgets import (
     QApplication,
+    QMessageBox,
 )
 from PySide6.QtCore import (
     QObject,
@@ -178,12 +179,19 @@ class Adapter(QObject):
         configuration.logging.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
 
-    def _display_status_information(self, status):
-        info = ""
-        if "explanation" in status.keys():
+    def _display_status_information(self, status: dict):
+        if "explanation" in status.keys() and "is_OK" in status.keys():
             info = status["explanation"]
-        self._main_view.info_dialog.setText(info)
-        self._main_view.open_information_modal_window()
+            if status["is_OK"] is True:
+                self._main_view.info_dialog.setWindowTitle("Success")
+                self._main_view.info_dialog.setText(info)
+                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Information)
+                self._main_view.info_dialog.exec()
+            if status["is_OK"] is False:
+                self._main_view.info_dialog.setWindowTitle("Problem")
+                self._main_view.info_dialog.setText(info)
+                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
+                self._main_view.info_dialog.exec()
 
     def change_GUI_locks(self):
         # TODO: Query MainLogic for allowed/disallowed operations

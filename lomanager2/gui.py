@@ -70,9 +70,6 @@ class AppMainWindow(QMainWindow):
     def open_langs_selection_modal_window(self):
         self.extra_langs_view.exec()
 
-    def open_information_modal_window(self):
-        self.info_dialog.exec()
-
 
 class LangsModalWindow(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
