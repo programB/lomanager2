@@ -105,27 +105,29 @@ class MainLogic(object):
         )
         self.global_flags.ready_to_apply_changes = True
 
+        # Callback function for raporting the status of the procedure
+        if "report_status" in kwargs.keys():
+            status_callback = kwargs["report_status"]
+        else:
+            status_callback = None
+
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            configuration.logging.warning("Cannot apply requested changes.")
-            return
+            explanation = "Not ready to apply requested changes."
+            configuration.logging.error(explanation)
+            status = {"is_OK": False, "explanation": explanation}
+            if status_callback is not None:
+                status_callback(status)
+            return status
 
         else:  # We are good to go
             # Set some variables here explicitly
-            # to make the logic clearer
-            # TODO: can this be leveraged (and how) in CLI app?
-            #    (For Qt GUI callback functions are emit methods signals)
-            # a) callback function for raporting failures of steps in procedure
-            if "report_status" in kwargs.keys():
-                status_callback = kwargs["report_status"]
-            else:
-                status_callback = None
-            # b) callback function for raporting overall procedure progress
+            # Callback function for raporting overall procedure progress
             if "inform_about_progress" in kwargs.keys():
                 progress_callback = kwargs["inform_about_progress"]
             else:
                 progress_callback = None
-            # XXX) Should downloaded packages be kept
+            # Should downloaded packages be kept
             if "keep_packages" in kwargs.keys():
                 keep_packages = kwargs["keep_packages"]
             else:
@@ -177,11 +179,6 @@ class MainLogic(object):
                 source=None,
                 callback_function=progress_callback,
             )
-            if status_callback is not None:
-                # TODO: Modify Adapter to know how to handle both
-                #       True and False paths
-                if status["is_install_successful"] is True:
-                    status_callback({"explanation": "Changes successfully applied"})
             return status
 
     def install_from_local_copy(self, *args, **kwargs):
