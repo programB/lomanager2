@@ -160,7 +160,6 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
-                local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
                 inform_about_progress=self.progress.emit,
             )
