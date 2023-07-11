@@ -12,3 +12,6 @@ logging.basicConfig(
 
 # Only every set tmp_directory in this module
 tmp_directory = pathlib.Path("/tmp/lomanager2-tmp")
+
+# Read only
+keep_packages = False

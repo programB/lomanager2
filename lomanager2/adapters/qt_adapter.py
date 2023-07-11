@@ -50,8 +50,8 @@ class Adapter(QObject):
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 
         # Extra variables that can be set by the user in GUI
-        # self._keep_packages = False
-        self._main_model.global_flags.keep_packages = False
+        # Initialize local _keep_packages variable from configuration
+        self._keep_packages = configuration.keep_packages
         self._local_copy_folder = None
 
         self._bind_views_to_viewmodels()
@@ -94,11 +94,6 @@ class Adapter(QObject):
         # Internal Signal: Shows dialog with information returned by procedures
         self.status_signal.connect(self._display_status_information)
 
-        # Internal Signal: Keep packages checkbox
-        self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(
-            self._set_keep_packages_state
-        )
-
     def _refresh_package_menu_state(self):
         configuration.logging.debug("Refreshing!")
         self._main_model.refresh_state()
@@ -116,14 +111,30 @@ class Adapter(QObject):
             )
 
     def _confirm_and_start_applying_changes(self):
+        # Set initial state of keep_packages checkbox
+        # (can be set in configuration)
+        if self._keep_packages is True:
+            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+                Qt.CheckState.Checked
+            )
+        else:
+            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+                Qt.CheckState.Unchecked
+            )
         # Ask the user for confirmation
         if self._main_view.confirm_apply_view.exec():
             configuration.logging.debug("Applying changes...")
+            # Get variables that might have be altered by the user
+            # in the dialog
+            self._keep_packages = (
+                self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
+            )
             # Create separate thread worker
             # and pass the MainLogic's method to execute
             # along with values (collected from GUI) it would need.
             self.apply_changes_thread = InstallProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
+                keep_packages=self._keep_packages,
                 local_copy_folder=self._local_copy_folder,
                 report_status=self.status_signal.emit,
             )
@@ -166,17 +177,6 @@ class Adapter(QObject):
         )
         configuration.logging.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
-
-    def _set_keep_packages_state(self):
-        state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
-        configuration.logging.debug(f"in GUI keep_packages checkbox is set to: {state}")
-        # Qt.PartiallyChecked doesn't make sense in this application
-        if state == Qt.CheckState.Checked:
-            # self._keep_packages = True
-            self._main_model.global_flags.keep_packages = True
-        if state == Qt.CheckState.Unchecked:
-            # self._keep_packages = False
-            self._main_model.global_flags.keep_packages = False
 
     def _display_status_information(self, status):
         info = ""
