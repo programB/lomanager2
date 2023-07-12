@@ -14,6 +14,7 @@ directly from the system on each call.
 
 import os
 import pathlib
+from configuration import logging as log
 
 
 def has_root_privileges() -> bool:
@@ -66,6 +67,12 @@ def is_lomanager2_latest(lomanger2_version: str) -> bool:
 
 def get_disk_space() -> int:
     # TODO: Implement
+    return 0
+
+
+def get_free_space_in_dir(dir) -> int:
+    # TODO: Implement
+    log.debug("Not implemented yet. Returning dummy data.")
     return 0
 
 

@@ -596,6 +596,21 @@ class MainLogic(object):
     ) -> dict:
         log.debug("WIP")
 
+        # 0 - Compare available disk space with
+        #     disk space needed to download packages
+        packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+        log.debug(f"packages_to_download: {packages_to_download}")
+        total_dowload_size = sum([p.dowload_size for p in packages_to_download])
+        log.debug(f"total_dowload_size: {total_dowload_size}")
+        free_space_in_download_dir = PCLOS.get_free_space_in_dir(
+            configuration.tmp_directory
+        )
+        log.debug(f"free_space_in_download_dir: {free_space_in_download_dir}")
+        if free_space_in_download_dir < total_dowload_size:
+            return statusfunc(
+                isOK=False, msg="Insufficient disk space to download packages"
+            )
+
         # 1 - Run collect_packages subprocedure
         if (
             overall_progress_description is not None

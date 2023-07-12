@@ -80,6 +80,7 @@ class VirtualPackage(object):
         self.family = family
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
+        self.download_size = 0  # size in kilobytes
         self.is_installed = False
         # Remove flags
         self.is_removable = False
