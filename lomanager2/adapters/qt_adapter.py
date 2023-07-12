@@ -20,7 +20,10 @@ from configuration import logging as log
 
 class Adapter(QObject):
     # Register custom signals
-    progress = Signal(int)
+    step_description_signal = Signal(str)
+    step_progress_signal = Signal(int)
+    overall_progress_description_signal = Signal(str)
+    overall_progress_signal = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
     worker_ready_signal = Signal()
@@ -127,7 +130,7 @@ class Adapter(QObject):
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=selected_dir,
                 report_status=self.status_signal.emit,
-                inform_about_progress=self.progress.emit,
+                inform_about_progress=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()
@@ -160,7 +163,7 @@ class Adapter(QObject):
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
                 report_status=self.status_signal.emit,
-                inform_about_progress=self.progress.emit,
+                inform_about_progress=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()
@@ -174,7 +177,12 @@ class Adapter(QObject):
         self.GUI_locks_signal.emit()
 
         # Connect thread signals
-        self.progress.connect(self._progress_was_made)
+        self.step_description_signal.connect(self._update_step_description)
+        self.step_progress_signal.connect(self._update_step_progress)
+        self.overall_progress_description_signal.connect(
+            self._update_overall_progress_description
+        )
+        self.overall_progress_signal.connect(self._update_overall_progress)
         # TODO: Just for test. This MUST not be available to user.
         self._progress_view.button_terminate.clicked.connect(
             self.procedure_thread.terminate
@@ -182,20 +190,31 @@ class Adapter(QObject):
         self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
 
         # Open progress view
+        self._progress_view.step_description.setText("")
+        self._progress_view.step_progress_bar.setValue(0)
+        self._progress_view.overall_progress_description.setText("")
+        self._progress_view.overall_progress_bar.setValue(0)
         self._progress_view.show()
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
         # or _choose_dir_and_install_from_local_copy
         self.procedure_thread.start()
 
-    def _progress_was_made(self, progress):
-        log.debug(f"Current progress (received in adapter's slot): {progress}")
-        self._progress_view.progress_bar.setValue(progress)
+    def _update_step_description(self, text: str):
+        self._progress_view.step_description.setText(text)
+
+    def _update_step_progress(self, percentage: int):
+        self._progress_view.step_progress_bar.setValue(percentage)
+
+    def _update_overall_progress_description(self, text: str):
+        self._progress_view.overall_progress_description.setText(text)
+
+    def _update_overall_progress(self, percentage: int):
+        self._progress_view.overall_progress_bar.setValue(percentage)
 
     def _thread_stopped_or_terminated(self):
         log.debug("Thread finished signal received.")
         self._progress_view.hide()
-        self._progress_view.progress_bar.setValue(0)
         log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
         log.debug("Emiting GUI locks signal to unlock GUI elements")

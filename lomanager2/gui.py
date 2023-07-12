@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -16,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QHeaderView,
 )
-from configuration import logging as log 
+from configuration import logging as log
 
 
 class AppMainWindow(QMainWindow):
@@ -126,10 +127,17 @@ class ProgressDialog(QDialog):
         self.setWindowTitle("installation progress")
         main_layout = QVBoxLayout()
 
-        self.progress_bar = QProgressBar()
+        self.step_description = QLabel()
+        self.step_progress_bar = QProgressBar()
+        self.overall_progress_description = QLabel()
+        self.overall_progress_bar = QProgressBar()
         self.button_terminate = QPushButton("Terminate install (dangerous)!")
 
-        main_layout.addWidget(self.progress_bar)
+        main_layout.addWidget(self.step_description)
+        main_layout.addWidget(self.step_progress_bar)
+        main_layout.addWidget(self.overall_progress_description)
+        main_layout.addWidget(self.overall_progress_bar)
+        # main_layout.addWidget(self.step_progress_bar)
         main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
