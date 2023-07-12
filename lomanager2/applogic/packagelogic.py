@@ -105,24 +105,28 @@ class MainLogic(object):
         log.warning(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
         self.global_flags.ready_to_apply_changes = True
 
-        # Callback function for raporting the status of the procedure
-        if "report_status" in kwargs.keys():
-            status_callback = kwargs["report_status"]
-        else:
-            status_callback = None
+        # Callback function for reporting the status of the procedure
+        def statusfunc(isOK: bool, msg: str):
+            if isOK:
+                log.info(msg)
+            else:
+                log.error(msg)
+            status = {"is_OK": isOK, "explanation": msg}
+            if "report_status" in kwargs.keys():
+                # This emits Qt signal if passed here in "report_status"
+                kwargs["report_status"](status)
+            return status
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            explanation = "Not ready to apply requested changes."
-            log.error(explanation)
-            status = {"is_OK": False, "explanation": explanation}
-            if status_callback is not None:
-                status_callback(status)
-            return status
+            return statusfunc(
+                isOK=False,
+                msg="Not ready to apply requested changes.",
+            )
 
         else:  # We are good to go
             # Set some variables here explicitly
-            # Callback function for raporting overall procedure progress
+            # Callback function for reporting overall procedure progress
             if "step_description" in kwargs.keys():
                 step_description = kwargs["step_description"]
             else:
@@ -147,13 +151,10 @@ class MainLogic(object):
             if "keep_packages" in kwargs.keys():
                 keep_packages = kwargs["keep_packages"]
             else:
-                status = {
-                    "is_OK": False,
-                    "explanation": "keep_packages argument is obligatory",
-                }
-                if status_callback is not None:
-                    status_callback(status)
-                return status
+                return statusfunc(
+                    isOK=False,
+                    msg="Not ready to apply requested changes.",
+                )
 
             # TODO: Java virtual package should already be in the list
             #       of virtual and no decision making should be done
@@ -198,12 +199,13 @@ class MainLogic(object):
                 #       changes to tree rather then simple list?
                 self._virtual_packages,
                 keep_packages=keep_packages,
+                statusfunc=statusfunc,
                 step_description=step_description,
                 step_progress_percentage=step_progress_percentage,
                 overall_progress_description=overall_progress_description,
                 overall_progress_percentage=overall_progress_percentage,
             )
-            return status
+            return True if status["is_OK"] else False
 
     def install_from_local_copy(self, *args, **kwargs):
         log.debug("WIP !!!")
@@ -223,33 +225,29 @@ class MainLogic(object):
         log.debug(f"TEST: Manually SETTING <<block_local_copy_install>> <<False>>")
         self.global_flags.block_local_copy_install = False
 
-        # Callback function for raporting the status of the procedure
-        if "report_status" in kwargs.keys():
-            status_callback = kwargs["report_status"]
-        else:
-            status_callback = None
+        # Callback function for reporting the status of the procedure
+        def statusfunc(isOK: bool, msg: str):
+            if isOK:
+                log.info(msg)
+            else:
+                log.error(msg)
+            status = {"is_OK": isOK, "explanation": msg}
+            if "report_status" in kwargs.keys():
+                # This emits Qt signal if passed here in "report_status"
+                kwargs["report_status"](status)
+            return status
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            explanation = "Not ready to apply requested changes."
-            log.error(explanation)
-            status = {"is_OK": False, "explanation": explanation}
-            if status_callback is not None:
-                status_callback(status)
-            return status
+            return statusfunc(isOK=False, msg="Not ready to apply requested changes.")
 
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
-            explanation = "Local copy installation is not allowed."
-            log.error(explanation)
-            status = {"is_OK": False, "explanation": explanation}
-            if status_callback is not None:
-                status_callback(status)
-            return status
+            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
 
         else:  # We are good to go
             # Set some variables here explicitly
-            # Callback function for raporting overall procedure progress
+            # Callback function for reporting overall procedure progress
             if "step_description" in kwargs.keys():
                 step_description = kwargs["step_description"]
             else:
@@ -274,13 +272,9 @@ class MainLogic(object):
             if "local_copy_folder" in kwargs.keys():
                 local_copy_directory = kwargs["local_copy_folder"]
             else:
-                status = {
-                    "is_OK": False,
-                    "explanation": "local_copy_folder argument is obligatory",
-                }
-                if status_callback is not None:
-                    status_callback(status)
-                return status
+                return statusfunc(
+                    isOK=False, msg="local_copy_folder argument is obligatory"
+                )
 
             # Block any other calls of this function...
             self.global_flags.ready_to_apply_changes = False
@@ -289,12 +283,13 @@ class MainLogic(object):
             status = self._local_copy_install_procedure(
                 self._virtual_packages,
                 local_copy_directory=local_copy_directory,
+                statusfunc=statusfunc,
                 step_description=step_description,
                 step_progress_percentage=step_progress_percentage,
                 overall_progress_description=overall_progress_description,
                 overall_progress_percentage=overall_progress_percentage,
             )
-            return status
+            return True if status["is_OK"] else False
 
     def refresh_state(self):
         # Reset packages list
@@ -593,18 +588,13 @@ class MainLogic(object):
         self,
         virtual_packages,
         keep_packages,
+        statusfunc,
         step_description,
         step_progress_percentage,
         overall_progress_description,
         overall_progress_percentage,
     ) -> dict:
         log.debug("WIP")
-
-        # Preparations
-        install_status = {
-            "is_install_successful": False,
-            "explanation": "Install procedure not executed.",
-        }
 
         # 1 - Run collect_packages subprocedure
         if (
@@ -629,10 +619,9 @@ class MainLogic(object):
         )
 
         if collect_status is False:
-            message = "Failed to download all requested packages."
-            install_status["explanation"] = message
-            log.error(message)
-            return install_status
+            return statusfunc(
+                isOK=False, msg="Failed to download all requested packages."
+            )
 
         # At this point network_install and local_copy_install
         # procedures converge
@@ -646,10 +635,7 @@ class MainLogic(object):
                     java_install_status = self._install_Java()
 
                     if java_install_status is False:
-                        message = "Failed to install Java."
-                        install_status["explanation"] = message
-                        log.error(message)
-                        return install_status
+                        return statusfunc(isOK=False, msg="Failed to install Java.")
                     else:  # All good, Java installed
                         break  # There can only ever be 1 Java virtual package
 
@@ -675,10 +661,10 @@ class MainLogic(object):
             # TODO: Can office_uninstall procedure be made to have dry-run option
             #       to make sure that uninstall is atomic (all or none)?
             if office_removal_status is False:
-                message = "Failed to remove Office components."
-                install_status["explanation"] = message
-                log.error(message)
-                return install_status
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to remove Office components.",
+                )
 
         # 5) Run Office install procedure if needed
         packages_to_install = [
@@ -694,10 +680,10 @@ class MainLogic(object):
             )
 
             if office_install_status is False:
-                message = "Failed to install Office components."
-                install_status["explanation"] = message
-                log.error(message)
-                return install_status
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to install Office components.",
+                )
 
         # 6) Any Office base package was affected ?
         # TODO: Can this be done better ?
@@ -721,11 +707,7 @@ class MainLogic(object):
         # 8) clean up temporary files
         self._clean_tmp_folder()
 
-        message = "All packages successfully installed"
-        install_status["is_install_successful"] = True
-        install_status["explanation"] = message
-        log.info(message)
-        return install_status
+        return statusfunc(isOK=True, msg="All changes successfully applied")
 
     def _collect_packages(self, packages_to_download: list, callback_function) -> bool:
         log.debug("WIP. This function sends fake data.")
@@ -864,18 +846,13 @@ class MainLogic(object):
         self,
         virtual_packages,
         local_copy_directory,
+        statusfunc,
         step_description,
         step_progress_percentage,
         overall_progress_description,
         overall_progress_percentage,
     ) -> dict:
         log.debug("WIP !")
-
-        # Preparations
-        install_status = {
-            "is_install_successful": False,
-            "explanation": "Install procedure not executed.",
-        }
 
         # Perform rough verification of local copy directory
         is_Java_present = False
@@ -891,10 +868,10 @@ class MainLogic(object):
                 is_Clipart_present,
             ) = self._verify_local_copy(local_copy_directory)
         else:
-            message = "Could not find directory with saved packages."
-            install_status["explanation"] = message
-            log.error(message)
-            return install_status
+            return statusfunc(
+                isOK=False,
+                msg="Could not find directory with saved packages.",
+            )
 
         # Mark virtual packages accordingly to the
         # content of local_copy_directory and system state
@@ -902,13 +879,11 @@ class MainLogic(object):
             # There are no LibreOffice core packages in local_copy_directory but
             # perhaps the user meant to install Openclipart library?
             if is_Clipart_present is False:
-                message = (
-                    "Neither LibreOffice nor Openclipart library were found "
-                    "in the folder provided."
+                return statusfunc(
+                    isOK=False,
+                    msg="Neither LibreOffice nor Openclipart library were "
+                    "found in the folder provided.",
                 )
-                install_status["explanation"] = message
-                log.error(message)
-                return install_status
             else:  # Clipart packages found in local_copy_directory
                 # FIXME: Currently there is no guarantee clipart virtual package
                 #       will be in virtual_packages.
@@ -927,13 +902,11 @@ class MainLogic(object):
             # This is possible only if Java is present in the OS or
             # can be installed from local_copy_directory
             if PCLOS.is_java_installed() is False and is_Java_present is False:
-                message = (
-                    "Java is not installed in the system and was not be found in "
-                    "the directory provided."
+                return statusfunc(
+                    isOK=False,
+                    msg="Java is not installed in the system and was not be "
+                    "found in the directory provided.",
                 )
-                install_status["explanation"] = message
-                log.error(message)
-                return install_status
             elif PCLOS.is_java_installed() is False and is_Java_present is True:
                 # Java not installed but can be installed from local_copy_directory
                 # FIXME: Java virtual package in not guaranteed to exist in
@@ -1009,7 +982,7 @@ class MainLogic(object):
 
         # TODO: should it now converge with the network_install procedure ?
 
-        return install_status
+        return statusfunc(isOK=True, msg="All changes successfully applied")
 
     def _verify_local_copy(
         self,
