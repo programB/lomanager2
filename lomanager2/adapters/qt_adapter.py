@@ -130,7 +130,10 @@ class Adapter(QObject):
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=selected_dir,
                 report_status=self.status_signal.emit,
-                inform_about_progress=self.overall_progress_signal.emit,
+                step_description=self.step_description_signal.emit,
+                step_progress_percentage=self.step_progress_signal.emit,
+                overall_progress_description=self.overall_progress_description_signal.emit,
+                overall_progress_percentage=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()
@@ -163,7 +166,10 @@ class Adapter(QObject):
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
                 report_status=self.status_signal.emit,
-                inform_about_progress=self.overall_progress_signal.emit,
+                step_description=self.step_description_signal.emit,
+                step_progress_percentage=self.step_progress_signal.emit,
+                overall_progress_description=self.overall_progress_description_signal.emit,
+                overall_progress_percentage=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
             self.worker_ready_signal.emit()

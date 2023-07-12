@@ -123,10 +123,26 @@ class MainLogic(object):
         else:  # We are good to go
             # Set some variables here explicitly
             # Callback function for raporting overall procedure progress
-            if "inform_about_progress" in kwargs.keys():
-                progress_callback = kwargs["inform_about_progress"]
+            if "step_description" in kwargs.keys():
+                step_description = kwargs["step_description"]
             else:
-                progress_callback = None
+                step_description = None
+
+            if "step_progress_percentage" in kwargs.keys():
+                step_progress_percentage = kwargs["step_progress_percentage"]
+            else:
+                step_progress_percentage = None
+
+            if "overall_progress_description" in kwargs.keys():
+                overall_progress_description = kwargs["overall_progress_description"]
+            else:
+                overall_progress_description = None
+
+            if "overall_progress_percentage" in kwargs.keys():
+                overall_progress_percentage = kwargs["overall_progress_percentage"]
+            else:
+                overall_progress_percentage = None
+
             # Should downloaded packages be kept
             if "keep_packages" in kwargs.keys():
                 keep_packages = kwargs["keep_packages"]
@@ -182,7 +198,10 @@ class MainLogic(object):
                 #       changes to tree rather then simple list?
                 self._virtual_packages,
                 keep_packages=keep_packages,
-                callback_function=progress_callback,
+                step_description=step_description,
+                step_progress_percentage=step_progress_percentage,
+                overall_progress_description=overall_progress_description,
+                overall_progress_percentage=overall_progress_percentage,
             )
             return status
 
@@ -231,10 +250,26 @@ class MainLogic(object):
         else:  # We are good to go
             # Set some variables here explicitly
             # Callback function for raporting overall procedure progress
-            if "inform_about_progress" in kwargs.keys():
-                progress_callback = kwargs["inform_about_progress"]
+            if "step_description" in kwargs.keys():
+                step_description = kwargs["step_description"]
             else:
-                progress_callback = None
+                step_description = None
+
+            if "step_progress_percentage" in kwargs.keys():
+                step_progress_percentage = kwargs["step_progress_percentage"]
+            else:
+                step_progress_percentage = None
+
+            if "overall_progress_description" in kwargs.keys():
+                overall_progress_description = kwargs["overall_progress_description"]
+            else:
+                overall_progress_description = None
+
+            if "overall_progress_percentage" in kwargs.keys():
+                overall_progress_percentage = kwargs["overall_progress_percentage"]
+            else:
+                overall_progress_percentage = None
+
             # Set local copy directory
             if "local_copy_folder" in kwargs.keys():
                 local_copy_directory = kwargs["local_copy_folder"]
@@ -254,7 +289,10 @@ class MainLogic(object):
             status = self._local_copy_install_procedure(
                 self._virtual_packages,
                 local_copy_directory=local_copy_directory,
-                callback_function=progress_callback,
+                step_description=step_description,
+                step_progress_percentage=step_progress_percentage,
+                overall_progress_description=overall_progress_description,
+                overall_progress_percentage=overall_progress_percentage,
             )
             return status
 
@@ -555,19 +593,27 @@ class MainLogic(object):
         self,
         virtual_packages,
         keep_packages,
-        callback_function=None,
+        step_description,
+        step_progress_percentage,
+        overall_progress_description,
+        overall_progress_percentage,
     ) -> dict:
-        # TODO: This is dummy implementation for testing
-        log.debug("WIP. This function sends fake data.")
+        log.debug("WIP")
 
         # Preparations
-        current_progress_is = callback_function
         install_status = {
             "is_install_successful": False,
             "explanation": "Install procedure not executed.",
         }
 
         # 1 - Run collect_packages subprocedure
+        if (
+            overall_progress_description is not None
+            and overall_progress_percentage is not None
+        ):
+            overall_progress_description("Collecting packages...")
+            overall_progress_percentage(10)
+
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
         log.debug(f"packages_to_download: {packages_to_download}")
 
@@ -576,7 +622,7 @@ class MainLogic(object):
         #       integer representing percentage progress eg. a dictionary
         #       with information what progress is being reported:
         #       download, install, a what file etc..
-        download_progress_callback = callback_function
+        download_progress_callback = step_progress_percentage
         collect_status = self._collect_packages(
             packages_to_download,
             download_progress_callback,
@@ -617,7 +663,7 @@ class MainLogic(object):
         if packages_to_remove:  # Non empty list
             office_removal_status = self._office_uninstall(
                 packages_to_remove,
-                callback_function,
+                step_progress_percentage,
             )
 
             # If the procedure failed completely (no packages got uninstalled)
@@ -644,7 +690,7 @@ class MainLogic(object):
         if packages_to_install:  # Non empty list
             office_install_status = self._install_LibreOffice(
                 packages_to_install,
-                callback_function,
+                step_progress_percentage,
             )
 
             if office_install_status is False:
@@ -818,14 +864,14 @@ class MainLogic(object):
         self,
         virtual_packages,
         local_copy_directory,
-        callback_function=None,
+        step_description,
+        step_progress_percentage,
+        overall_progress_description,
+        overall_progress_percentage,
     ) -> dict:
-        # TODO: This is dummy implementation for testing
         log.debug("WIP !")
 
         # Preparations
-
-        current_progress_is = callback_function
         install_status = {
             "is_install_successful": False,
             "explanation": "Install procedure not executed.",
