@@ -3,7 +3,7 @@ import re
 import pathlib
 import configuration
 from configuration import logging as log
-from typing import Any, Tuple
+from typing import Any, Tuple, Callable
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
 
@@ -192,7 +192,7 @@ class MainLogic(object):
             self.global_flags.ready_to_apply_changes = False
             # ...and proceed with procedure
             log.info("Applying changes...")
-            status = self._install(
+            is_successful = self._install(
                 # TODO: passing property to method within class doesn't make sense
                 #       Do I want for any reason pass a deepcopy here?
                 #       or perhaps it will be different when _virtual_packages
@@ -205,7 +205,10 @@ class MainLogic(object):
                 overall_progress_description=overall_progress_description,
                 overall_progress_percentage=overall_progress_percentage,
             )
-            return True if status["is_OK"] else False
+            if is_successful:
+                return statusfunc(isOK=True, msg="All changes successfully applied")
+            else:
+                return statusfunc(isOK=False, msg="Failed to apply changes")
 
     def install_from_local_copy(self, *args, **kwargs):
         log.debug("WIP !!!")
@@ -596,140 +599,366 @@ class MainLogic(object):
     ) -> dict:
         log.debug("WIP")
 
-        # 0 - Compare available disk space with
-        #     disk space needed to download packages
+        class opr:
+            def __init__(self):
+                self.counter = 0
+                self.N = 11
+
+            def start(self, txt: str = ""):
+                if txt:
+                    overall_progress_description(txt)
+
+            def skip(self, txt: str = ""):
+                if txt:
+                    overall_progress_description(txt)
+                self.end()
+
+            def end(self, txt: str = ""):
+                if txt:
+                    overall_progress_description(txt)
+                self.counter += 1
+                overall_progress_percentage(int(100 * (self.counter / self.N)))
+
+        step = opr()
+
+        # STEP
+        # Any files need to be downloaded?
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
         log.debug(f"packages_to_download: {packages_to_download}")
-        total_dowload_size = sum([p.dowload_size for p in packages_to_download])
-        log.debug(f"total_dowload_size: {total_dowload_size}")
-        free_space_in_download_dir = PCLOS.get_free_space_in_dir(
-            configuration.tmp_directory
-        )
-        log.debug(f"free_space_in_download_dir: {free_space_in_download_dir}")
-        if free_space_in_download_dir < total_dowload_size:
-            return statusfunc(
-                isOK=False, msg="Insufficient disk space to download packages"
+        downloaded_files = {}
+
+        # Some packages need to be downloaded
+        if packages_to_download:
+            step.start("Collecting packages...")
+
+            # Check if there is enough disk space to download them
+            # TODO: Change configuration.tmp_directory to
+            #       configuration.download_directory
+            free_space = PCLOS.get_free_space_in_dir(configuration.tmp_directory)
+            total_dowload_size = sum([p.dowload_size for p in packages_to_download])
+
+            if free_space < total_dowload_size:
+                return statusfunc(
+                    isOK=False,
+                    msg="Insufficient disk space to download packages",
+                )
+
+            # Run collect_packages procedure
+            is_every_pkg_collected, msg, paths_dict = self._collect_packages(
+                packages_to_download,
+                step_description=step_description,
+                step_progress_percentage=step_progress_percentage,
             )
 
-        # 1 - Run collect_packages subprocedure
-        if (
-            overall_progress_description is not None
-            and overall_progress_percentage is not None
-        ):
-            overall_progress_description("Collecting packages...")
-            overall_progress_percentage(10)
+            if is_every_pkg_collected is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to download all requested packages.\n" + msg,
+                )
+            else:
+                downloaded_files = paths_dict
+                step.end("...done")
+        # No need to download anything - just uninstalling
+        else:
+            step.skip()
 
-        packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
-        log.debug(f"packages_to_download: {packages_to_download}")
-
-        # TODO: Should it be a different function or perhaps
-        #       callback_function should take some parameters other then
-        #       integer representing percentage progress eg. a dictionary
-        #       with information what progress is being reported:
-        #       download, install, a what file etc..
-        download_progress_callback = step_progress_percentage
-        collect_status = self._collect_packages(
-            packages_to_download,
-            download_progress_callback,
+        # Uninstall/Upgrade/Install packages
+        output = self._make_changes(
+            virtual_packages,
+            downloaded_files,
+            keep_packages,
+            statusfunc,
+            step_description,
+            step_progress_percentage,
+            overall_progress_description,
+            overall_progress_percentage,
+            step=step,
         )
+        return output
 
-        if collect_status is False:
-            return statusfunc(
-                isOK=False, msg="Failed to download all requested packages."
-            )
-
+    def _make_changes(
+        self,
+        virtual_packages,
+        downloaded_files,
+        keep_packages,
+        statusfunc,
+        step_description,
+        step_progress_percentage,
+        overall_progress_description,
+        overall_progress_percentage,
+        step,
+    ):
         # At this point network_install and local_copy_install
-        # procedures converge
-        # 2) detect and terminate (kill -9) LibreOffice quickstarter
-        self._terminate_LO_quickstarter()
+        # procedures converge and thus use the same function
 
-        # 3) Run Java install procedure if needed
+        # STEP
+        # Check if there is enough disk space unpack and install
+        # requested packages
+        step.start("Checking free disk space...")
+        # TODO: Implement
+        # if not something(keep_packages, virtual_packages, downloaded_files)
+        # then error
+        step.end()
+
+        # STEP
+        step.start("Trying to stop LibreOffice quickstarter...")
+        self._terminate_LO_quickstarter()
+        step.end()
+
+        # STEP
+        # Java needs to be upgraded or installed?
         for package in virtual_packages:
             if package.family == "Java":
-                if package.is_marked_for_install:
-                    java_install_status = self._install_Java()
+                if package.is_marked_for_upgrade:
+                    step.start("Upgrading Java...")
 
-                    if java_install_status is False:
-                        return statusfunc(isOK=False, msg="Failed to install Java.")
-                    else:  # All good, Java installed
-                        break  # There can only ever be 1 Java virtual package
+                    is_upgraded, msg = self._upgrade_Java(
+                        downloaded_files,
+                        step_description,
+                        step_progress_percentage,
+                    )
+                    if is_upgraded is False:
+                        return statusfunc(
+                            isOK=False,
+                            msg="Failed to upgrade Java.\n" + msg,
+                        )
+                    step.end("Done upgrading Java")
+                    break
 
-        # At this point everything needed is downloaded and verified
-        # and Java is installed in the system.
-        # We can remove old Office components
+                elif package.is_marked_for_install:
+                    step.start("Installing Java...")
+
+                    is_installed, msg = self._install_Java(
+                        downloaded_files,
+                        step_description,
+                        step_progress_percentage,
+                    )
+                    if is_installed is False:
+                        return statusfunc(
+                            isOK=False,
+                            msg="Failed to install Java.\n" + msg,
+                        )
+                    step.end("Done installing Java")
+                    break
+                # No Java upgrade or install requested
+                else:
+                    step.skip()
+                    # There can only ever be 1 Java virtual package
+                    break
+
+        # At this point everything that is needed is downloaded and verified,
+        # also Java is installed (except in unlikely case in which the user
+        # installs only the Openclipart).
+        # We can remove old Office components (if there are any to remove)
         # in preparation for the install step.
-        # 4) Run Office uninstall procedure if needed
-        packages_to_remove = [p for p in virtual_packages if p.is_marked_for_removal]
-        log.debug(f"packages_to_remove: {packages_to_remove}")
-        if packages_to_remove:  # Non empty list
-            office_removal_status = self._office_uninstall(
-                packages_to_remove,
+
+        # STEP
+        # Any Office components need to be removed?
+        office_packages_to_remove = [
+            p
+            for p in virtual_packages
+            if p.is_marked_for_removal
+            and p.family == "OpenOffice"
+            or p.family == "LibreOffice"
+        ]
+        log.debug(f"office_packages_to_remove: {office_packages_to_remove}")
+
+        # Some packages need to be removed
+        if office_packages_to_remove:
+            step.start("Removing selected Office components...")
+
+            is_removed, msg = self._uninstall_office_components(
+                office_packages_to_remove,
+                step_description,
                 step_progress_percentage,
             )
 
             # If the procedure failed completely (no packages got uninstalled)
             # there is no problem - system state has not changed.
-            # If however it succeeded but only partially this is a problem because
-            # Office might have gotten corrupted and is no longer working and new
-            # Office will not be installed. Recovery from such a condition is
+            # If however it succeeded but only partially this is a problem
+            # because current Office might have gotten corrupted and a new
+            # one will not be installed. Recovery from such a condition is
             # likely to require manual user intervention - not good.
             # TODO: Can office_uninstall procedure be made to have dry-run option
             #       to make sure that uninstall is atomic (all or none)?
-            if office_removal_status is False:
+            if is_removed is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to remove Office components.",
+                    msg="Failed to remove Office components.\n" + msg,
                 )
+            step.end("Done removing")
+        # No Office packages marked for removal
+        else:
+            step.skip()
 
-        # 5) Run Office install procedure if needed
+        # STEP
+        # Any Office components need to be installed?
         packages_to_install = [
             p
             for p in virtual_packages
             if (p.is_marked_for_install or p.is_marked_for_upgrade)
+            and (p.family == "OpenOffice" or p.family == "LibreOffice")
         ]
         log.debug(f"packages_to_install: {packages_to_install}")
-        if packages_to_install:  # Non empty list
-            office_install_status = self._install_LibreOffice(
-                packages_to_install,
+
+        # Some packages need to be installed
+        if packages_to_install:
+            step.start("Installing selected Office components...")
+
+            office_install_status, msg = self._install_LibreOffice_components(
+                downloaded_files,
+                step_description,
                 step_progress_percentage,
             )
 
             if office_install_status is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to install Office components.",
+                    msg="Failed to install Office components.\n" + msg,
                 )
+            step.end("Done removing")
+        # No Office packages marked for install
+        else:
+            step.skip()
 
-        # 6) Any Office base package was affected ?
+        # Any Office base package was affected ?
         # TODO: Can this be done better ?
+
+        # STEP
         for package in packages_to_install:
-            if package.kind == "core-packages" and package.family == "LibreOffice":
+            if (
+                package.kind == "core-packages"
+                and package.family == "LibreOffice"
+                and (package.is_marked_for_install or package.is_marked_for_upgrade)
+            ):
+                step.start("Running postintall procedures...")
+
                 self._disable_LO_update_checks()
                 self._add_templates_to_etcskel()
-        for package in packages_to_remove:
-            if package.kind == "core-packages" and package.family == "LibreOffice":
+
+                step.end("...done")
+            else:
+                step.skip()
+
+        # STEP
+        for package in office_packages_to_remove:
+            if (
+                package.kind == "core-packages"
+                and package.family == "LibreOffice"
+                and (package.is_marked_for_install or package.is_marked_for_upgrade)
+            ):
+                step.start("Changing file association...")
+
                 self._clean_dot_desktop_files()
 
-        # 7) Should downloaded packages be removed ?
+                step.end("...done")
+            else:
+                step.skip()
+
+        # STEP
+        # Clipart library is to be removed?
+        clipart_packages_to_remove = [
+            p
+            for p in virtual_packages
+            if p.is_marked_for_removal and p.family == "Clipart"
+        ]
+        log.debug(f"clipart_packages_to_remove : {clipart_packages_to_remove}")
+
+        # Clipart package needs to be removed
+        if clipart_packages_to_remove:
+            step.start("Removing Clipart library...")
+
+            is_removed, msg = self._uninstall_clipart(
+                office_packages_to_remove,
+                step_description,
+                step_progress_percentage,
+            )
+
+            if is_removed is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to remove Clipart library.\n" + msg,
+                )
+            step.end("Done removing")
+        # Clipart was not marked for removal
+        else:
+            step.skip()
+
+        # STEP
+        # Clipart library is to be installed?
+        clipart_packages_to_install = [
+            p
+            for p in virtual_packages
+            if p.is_marked_for_install and p.family == "Clipart"
+        ]
+        log.debug(f"clipart_packages_to_install: {clipart_packages_to_install}")
+
+        # Clipart package needs to be installed
+        if clipart_packages_to_install:
+            step.start("Installing Clipart library...")
+
+            is_installed, msg = self._install_clipart(
+                downloaded_files,
+                step_description,
+                step_progress_percentage,
+            )
+
+            if is_installed is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to install Clipart library.\n" + msg,
+                )
+            step.end("Done installing")
+        # Clipart was not marked for install
+        else:
+            step.skip()
+
+        # STEP
+        # Should downloaded packages be kept ?
         log.debug(f"keep_packages = {keep_packages}")
         if keep_packages is True:
-            log.debug(
-                f"Manually setting <<offline_copy_folder>> to <</tmp/LO_saved_packages>>!"
+            step.start("Saving packages...")
+
+            is_saved, msg = self._save_copy_for_offline_install()
+            if is_saved is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed save packages.\n" + msg,
+                )
+
+            step.end("Done saving")
+        else:
+            step.skip()
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Removing temporary files and folders...")
+        is_cleaned, msg = self._clean_directories()
+        if is_cleaned is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to cleanup folders.\n" + msg,
             )
-            offline_copy_folder = "/tmp/LO_saved_packages"
-            self._save_copy_for_offline_install(offline_copy_folder)
+        step.end("Done removing temporary files and folders")
 
-        # 8) clean up temporary files
-        self._clean_tmp_folder()
+        return True
 
-        return statusfunc(isOK=True, msg="All changes successfully applied")
-
-    def _collect_packages(self, packages_to_download: list, callback_function) -> bool:
+    def _collect_packages(
+        self,
+        packages_to_download: list,
+        step_description,
+        step_progress_percentage,
+    ) -> tuple[bool, str, dict]:
         log.debug("WIP. This function sends fake data.")
         # Preparations
         tmp_directory = configuration.tmp_directory
 
         is_every_package_collected = False
+        # Get [(file_to_download, url)] from packages_to_download
+        # for file, url in [] check if file @ url -> error if False
+        # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
+        # -> add path to {}
+        # return {}
 
         log.debug(f"Packages to download: {packages_to_download}")
         log.debug("Collecting packages...")
@@ -737,7 +966,22 @@ class MainLogic(object):
         log.debug("...done collecting packages.")
 
         is_every_package_collected = True
-        return is_every_package_collected
+        # TODO: This function should return a folowing dict
+        # {
+        #     "files_to_install": {
+        #         "Java": [rpms_abs_paths],
+        #         "LibreOffice-core": [tgz_abs_path],
+        #         "LibreOffice-langs": [tgzs_abs_paths],
+        #         "Clipart": [rpms_abs_paths],
+        #     },
+        #     "files_to_upgrade": {
+        #         "Java": [rpms_abs_paths],
+        #         "LibreOffice-core": [tgz_abs_path],
+        #         "LibreOffice-langs": [tgzs_abs_paths],
+        #         "Clipart": [rpms_abs_paths],
+        #     },
+        # }
+        return (is_every_package_collected, "", {})
 
     def _terminate_LO_quickstarter(self):
         log.debug("WIP. This function sends fake data.")
@@ -748,67 +992,126 @@ class MainLogic(object):
         time.sleep(2)
         log.debug("...done.")
 
-    def _install_Java(self) -> bool:
-        log.debug("WIP. This function sends fake data.")
+    def _install_Java(
+        self,
+        downloaded_files: dict,
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_install_successful = False
+        install_msg = ""
 
-        is_java_successfully_installed = False
         log.info("Starting Java install procedure...")
+        if "files_to_install" in downloaded_files.keys():
+            if rpms := downloaded_files["files_to_install"]["Java"]:
+                log.debug(f"Java rpms to install {rpms}")
+                step_description("Pretending to be installing java rpms ....")
+                total_time_sek = 5
+                steps = 30
+                for i in range(steps):
+                    progress = int((i / (steps - 1)) * 100)
+                    step_progress_percentage(progress)
+                    time.sleep(total_time_sek / steps)
+                step_description("...done installing java rpms")
+                log.debug("...done")
+                is_install_successful = True
+                install_msg = ""
+            else:
+                is_install_successful = False
+                install_msg = "Java install requested but list of files is empty."
+                log.error(install_msg)
+        else:
+            is_install_successful = False
+            install_msg = "Java install requested but files_to_instal dict passed."
+            log.error(install_msg)
 
-        time.sleep(2)
-
-        is_java_successfully_installed = True
+        is_install_successful = True
         log.info("Java successfully installed.")
+        return (is_install_successful, install_msg)
 
-        return is_java_successfully_installed
+    def _upgrade_Java(
+        self,
+        downloaded_files: dict,
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_upgrade_successful = False
+        upgrade_msg = ""
 
-    def _office_uninstall(
+        if "files_to_upgrade" in downloaded_files.keys():
+            if rpms := downloaded_files["files_to_upgrade"]["Java"]:
+                log.debug(f"Java rpms to upgrade {rpms}")
+                step_description("Pretending to be upgrading java rpms ....")
+                total_time_sek = 5
+                steps = 30
+                for i in range(steps):
+                    progress = int((i / (steps - 1)) * 100)
+                    step_progress_percentage(progress)
+                    time.sleep(total_time_sek / steps)
+                step_description("...done upgrading java rpms")
+                log.debug("...done")
+                is_upgrade_successful = True
+                upgrade_msg = ""
+            else:
+                is_upgrade_successful = False
+                upgrade_msg = "Java upgrade requested but list of files is empty."
+                log.error(upgrade_msg)
+        else:
+            is_upgrade_successful = False
+            upgrade_msg = "Java upgrade requested but files_to_upgrade dict passed."
+            log.error(upgrade_msg)
+
+        is_upgrade_successful = True
+        log.info("Java successfully upgraded.")
+        return (is_upgrade_successful, upgrade_msg)
+
+    def _uninstall_office_components(
         self,
         packages_to_remove: list,
-        callback_function,
-    ) -> bool:
-        log.debug("WIP. This function sends fake data.")
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_uninstall_successful = False
+        uninstall_msg = ""
 
-        is_every_package_successfully_removed = False
         log.debug(f"Packages to remove: {packages_to_remove}")
-        log.info("Removing packages...")
+        log.info("Pretending to be removing packages...")
 
         time.sleep(2)
 
-        is_every_package_successfully_removed = True
+        is_uninstall_successful = True
         log.info("...done removing packages.")
 
-        return is_every_package_successfully_removed
+        return (is_uninstall_successful, uninstall_msg)
 
-    def _install_LibreOffice(
+    def _install_LibreOffice_components(
         self,
-        packages_to_install: list,
-        callback_function,
-    ) -> bool:
-        log.debug("WIP. This function sends fake data.")
-        # TODO: naming
-        current_progress_is = callback_function
+        downloaded_files: dict,
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_install_successful = False
+        install_msg = ""
 
-        is_every_package_successfully_installed = False
-        log.debug(f"Packages to install: {packages_to_install}")
-        log.info("Installing packages...")
+        # TODO: There should be a .tar.gz file(s) in downloaded_files
+        #       Unziping it takes place in this function
+        log.info("Pretending to be installing files...")
 
         total_time_sek = 5
         steps = 30
         for i in range(steps):
             progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
+            step_progress_percentage(progress)
             time.sleep(total_time_sek / steps)
 
-            # report progress
-            # # directly to log
-            log.info(f"install progress: {progress}%")
-            # # using callback if available (emitting Qt signal)
-            if callback_function is not None:
-                current_progress_is(progress)
-
-        is_every_package_successfully_installed = True
+        is_install_successful = True
         log.info("...done installing packages.")
 
-        return is_every_package_successfully_installed
+        return (is_install_successful, install_msg)
 
     def _disable_LO_update_checks(self):
         log.debug("WIP. This function sends fake data.")
@@ -837,25 +1140,75 @@ class MainLogic(object):
         time.sleep(1)
         log.debug("...done.")
 
-    def _save_copy_for_offline_install(self, target_folder):
-        # TODO: This function should put all files needed for offline
-        #       installation in a structured way into the target_folder
-        log.debug("WIP. This function sends fake data.")
+    def _uninstall_clipart(
+        self,
+        packages_to_remove: list,
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_uninstall_successful = False
+        uninstall_msg = ""
 
-        log.debug("Saving files for offline install...")
+        log.debug(f"Packages to remove: {packages_to_remove}")
+        log.info("Pretending to be removing packages...")
+
+        time.sleep(2)
+
+        is_uninstall_successful = True
+        log.info("...done removing packages.")
+
+        return (is_uninstall_successful, uninstall_msg)
+
+    def _install_clipart(
+        self,
+        downloaded_files: dict,
+        step_description: Callable,
+        step_progress_percentage: Callable,
+    ) -> tuple[bool, str]:
+        log.debug("WIP. This function sends dummy data.")
+        is_install_successful = False
+        install_msg = ""
+
+        log.info("Pretending to be installing files...")
+
+        total_time_sek = 5
+        steps = 30
+        for i in range(steps):
+            progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
+            step_progress_percentage(progress)
+            time.sleep(total_time_sek / steps)
+
+        is_install_successful = True
+        log.info("...done installing packages.")
+
+        return (is_install_successful, install_msg)
+
+    def _save_copy_for_offline_install(self) -> tuple[bool, str]:
+        # TODO: This function should mv verified_copies folder
+        #       to lomanager2_saved_packages
+        #       Path for both of those should be defined in the configuration
+        log.debug("WIP. This function sends dummy data.")
+        is_save_successful = False
+        save_msg = ""
+
+        log.debug("Pretending to be saving files for offline install...")
         time.sleep(1)
         log.debug("...done.")
+        return (is_save_successful, save_msg)
 
-    def _clean_tmp_folder(self):
-        # TODO: This function should remove all files from tmp_directory.
-        log.debug("WIP. This function sends fake data.")
-
-        # Preparations
-        tmp_directory = configuration.tmp_directory
+    def _clean_directories(self):
+        # TODO: This function should remove the contetns of working dir
+        #       and verified copies dir.
+        log.debug("WIP. This function sends dummy data.")
+        is_cleanup_successful = False
+        cleanup_msg = ""
 
         log.debug("Cleaning temporary files...")
         time.sleep(1)
         log.debug("...done.")
+
+        return (is_cleanup_successful, cleanup_msg)
 
     def _local_copy_install_procedure(
         self,
