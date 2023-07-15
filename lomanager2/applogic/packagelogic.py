@@ -124,91 +124,74 @@ class MainLogic(object):
                 msg="Not ready to apply requested changes.",
             )
 
-        else:  # We are good to go
-            # Set some variables here explicitly
-            # Callback function for reporting overall procedure progress
-            if "step_description" in kwargs.keys():
-                step_description = kwargs["step_description"]
-            else:
-                step_description = None
+        # Check if local copy installation was not blocked
+        if self.global_flags.block_local_copy_install is True:
+            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
 
-            if "step_progress_percentage" in kwargs.keys():
-                step_progress_percentage = kwargs["step_progress_percentage"]
-            else:
-                step_progress_percentage = None
+        # Check if keep_package option was passed
+        if "keep_packages" in kwargs.keys():
+            keep_packages = kwargs["keep_packages"]
+        else:
+            return statusfunc(isOK=False, msg="keep_packages argument is obligatory")
 
-            if "overall_progress_description" in kwargs.keys():
-                overall_progress_description = kwargs["overall_progress_description"]
-            else:
-                overall_progress_description = None
+        # We are good to go
+        # Create helper objects for progress reporting
+        progress = progress_closure(callbacks=kwargs)
+        progress_description = progress_description_closure(callbacks=kwargs)
+        step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
-            if "overall_progress_percentage" in kwargs.keys():
-                overall_progress_percentage = kwargs["overall_progress_percentage"]
-            else:
-                overall_progress_percentage = None
+        # TODO: Java virtual package should already be in the list
+        #       of virtual and no decision making should be done
+        #       here other then marking java to be downloaded
+        #       if this was requested by the user in the UI.
+        # Decide what to do with Java
+        #
+        #    Create Java VirtualPackage for the install subprocedure
+        #    to know what to do (here all java_package flags are False)
+        java_package = VirtualPackage("core-packages", "Java", "")
 
-            # Should downloaded packages be kept
-            if "keep_packages" in kwargs.keys():
-                keep_packages = kwargs["keep_packages"]
-            else:
-                return statusfunc(
-                    isOK=False,
-                    msg="Not ready to apply requested changes.",
-                )
+        is_java_installed = self._gather_system_info()["is Java installed"]
 
-            # TODO: Java virtual package should already be in the list
-            #       of virtual and no decision making should be done
-            #       here other then marking java to be downloaded
-            #       if this was requested by the user in the UI.
-            # Decide what to do with Java
-            #
-            #    Create Java VirtualPackage for the install subprocedure
-            #    to know what to do (here all java_package flags are False)
-            java_package = VirtualPackage("core-packages", "Java", "")
+        is_LO_core_requested_for_install = False
+        for package in self._virtual_packages:
+            if (
+                package.family == "LibreOffice"
+                and package.kind == "core-packages"
+                and package.is_marked_for_install
+            ):
+                is_LO_core_requested_for_install = True
+                break
 
-            is_java_installed = self._gather_system_info()["is Java installed"]
+        if is_java_installed is False and is_LO_core_requested_for_install is True:
+            java_package.is_to_be_downloaded = True
+            java_package.is_marked_for_install = True
 
-            is_LO_core_requested_for_install = False
-            for package in self._virtual_packages:
-                if (
-                    package.family == "LibreOffice"
-                    and package.kind == "core-packages"
-                    and package.is_marked_for_install
-                ):
-                    is_LO_core_requested_for_install = True
-                    break
+        if self.global_flags.force_download_java is True:
+            java_package.is_to_be_downloaded = True
 
-            if is_java_installed is False and is_LO_core_requested_for_install is True:
-                java_package.is_to_be_downloaded = True
-                java_package.is_marked_for_install = True
+        #    Add Java VirtualPackage to the list
+        self._virtual_packages.append(java_package)
 
-            if self.global_flags.force_download_java is True:
-                java_package.is_to_be_downloaded = True
-
-            #    Add Java VirtualPackage to the list
-            self._virtual_packages.append(java_package)
-
-            # Block any other calls of this function...
-            self.global_flags.ready_to_apply_changes = False
-            # ...and proceed with procedure
-            log.info("Applying changes...")
-            is_successful = self._install(
-                # TODO: passing property to method within class doesn't make sense
-                #       Do I want for any reason pass a deepcopy here?
-                #       or perhaps it will be different when _virtual_packages
-                #       changes to tree rather then simple list?
-                self._virtual_packages,
-                keep_packages=keep_packages,
-                statusfunc=statusfunc,
-                step_description=step_description,
-                step_progress_percentage=step_progress_percentage,
-                overall_progress_description=overall_progress_description,
-                overall_progress_percentage=overall_progress_percentage,
-            )
-            if is_successful:
-                return statusfunc(isOK=True, msg="All changes successfully applied")
-            else:
-                return statusfunc(isOK=False, msg="Failed to apply changes")
+        # Block any other calls of this function...
+        self.global_flags.ready_to_apply_changes = False
+        # ...and proceed with the procedure
+        log.info("Applying changes...")
+        is_successful = self._install(
+            # TODO: passing property to method within class doesn't make sense
+            #       Do I want for any reason pass a deepcopy here?
+            #       or perhaps it will be different when _virtual_packages
+            #       changes to tree rather then simple list?
+            self._virtual_packages,
+            keep_packages=keep_packages,
+            statusfunc=statusfunc,
+            step_description=progress_description,
+            step_progress_percentage=progress,
+            step=step,
+        )
+        if is_successful:
+            return statusfunc(isOK=True, msg="All changes successfully applied")
+        else:
+            return statusfunc(isOK=False, msg="Failed to apply changes")
 
     def install_from_local_copy(self, *args, **kwargs):
         log.debug("WIP !!!")
@@ -248,51 +231,33 @@ class MainLogic(object):
         if self.global_flags.block_local_copy_install is True:
             return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
 
-        else:  # We are good to go
-            # Set some variables here explicitly
-            # Callback function for reporting overall procedure progress
-            if "step_description" in kwargs.keys():
-                step_description = kwargs["step_description"]
-            else:
-                step_description = None
-
-            if "step_progress_percentage" in kwargs.keys():
-                step_progress_percentage = kwargs["step_progress_percentage"]
-            else:
-                step_progress_percentage = None
-
-            if "overall_progress_description" in kwargs.keys():
-                overall_progress_description = kwargs["overall_progress_description"]
-            else:
-                overall_progress_description = None
-
-            if "overall_progress_percentage" in kwargs.keys():
-                overall_progress_percentage = kwargs["overall_progress_percentage"]
-            else:
-                overall_progress_percentage = None
-
-            # Set local copy directory
-            if "local_copy_folder" in kwargs.keys():
-                local_copy_directory = kwargs["local_copy_folder"]
-            else:
-                return statusfunc(
-                    isOK=False, msg="local_copy_folder argument is obligatory"
-                )
-
-            # Block any other calls of this function...
-            self.global_flags.ready_to_apply_changes = False
-            # ...and proceed with procedure
-            log.info("Applying changes...")
-            status = self._local_copy_install_procedure(
-                self._virtual_packages,
-                local_copy_directory=local_copy_directory,
-                statusfunc=statusfunc,
-                step_description=step_description,
-                step_progress_percentage=step_progress_percentage,
-                overall_progress_description=overall_progress_description,
-                overall_progress_percentage=overall_progress_percentage,
+        # Check if local copy directory was passed
+        if "local_copy_folder" in kwargs.keys():
+            local_copy_directory = kwargs["local_copy_folder"]
+        else:
+            return statusfunc(
+                isOK=False, msg="local_copy_folder argument is obligatory"
             )
-            return True if status["is_OK"] else False
+
+        # We are good to go
+        # Create helper objects for progress reporting
+        progress = progress_closure(callbacks=kwargs)
+        progress_description = progress_description_closure(callbacks=kwargs)
+        step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
+
+        # Block any other calls of this function...
+        self.global_flags.ready_to_apply_changes = False
+        # ...and proceed with the procedure
+        log.info("Applying changes...")
+        status = self._local_copy_install_procedure(
+            self._virtual_packages,
+            local_copy_directory=local_copy_directory,
+            statusfunc=statusfunc,
+            step_description=progress_description,
+            step_progress_percentage=progress,
+            step=step,
+        )
+        return True if status["is_OK"] else False
 
     def refresh_state(self):
         # Reset packages list
@@ -594,32 +559,9 @@ class MainLogic(object):
         statusfunc,
         step_description,
         step_progress_percentage,
-        overall_progress_description,
-        overall_progress_percentage,
+        step,
     ) -> dict:
         log.debug("WIP")
-
-        class opr:
-            def __init__(self):
-                self.counter = 0
-                self.N = 11
-
-            def start(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-
-            def skip(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-                self.end()
-
-            def end(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-                self.counter += 1
-                overall_progress_percentage(int(100 * (self.counter / self.N)))
-
-        step = opr()
 
         # STEP
         # Any files need to be downloaded?
@@ -670,8 +612,6 @@ class MainLogic(object):
             statusfunc,
             step_description,
             step_progress_percentage,
-            overall_progress_description,
-            overall_progress_percentage,
             step=step,
         )
         return output
@@ -684,8 +624,6 @@ class MainLogic(object):
         statusfunc,
         step_description,
         step_progress_percentage,
-        overall_progress_description,
-        overall_progress_percentage,
         step,
     ):
         # At this point network_install and local_copy_install
@@ -829,7 +767,7 @@ class MainLogic(object):
         # TODO: Can this be done better ?
         # FIXME: This is wrong. install should not rely on is_marked_for flags
         #        in virtual_packages so the code below cannot rely on them
-        #        either. Return something from steps above? 
+        #        either. Return something from steps above?
 
         # STEP
         for package in packages_to_install:
@@ -1226,32 +1164,9 @@ class MainLogic(object):
         statusfunc,
         step_description,
         step_progress_percentage,
-        overall_progress_description,
-        overall_progress_percentage,
+        step,
     ) -> dict:
         log.debug("WIP !")
-
-        class opr:
-            def __init__(self):
-                self.counter = 0
-                self.N = 11
-
-            def start(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-
-            def skip(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-                self.end()
-
-            def end(self, txt: str = ""):
-                if txt:
-                    overall_progress_description(txt)
-                self.counter += 1
-                overall_progress_percentage(int(100 * (self.counter / self.N)))
-
-        step = opr()
 
         is_modification_needed = False
         downloaded_files = {
@@ -1423,8 +1338,6 @@ class MainLogic(object):
                 statusfunc,
                 step_description,
                 step_progress_percentage,
-                overall_progress_description,
-                overall_progress_percentage,
                 step=step,
             )
             return output
@@ -2505,3 +2418,66 @@ class PackageMenu(object):
                     #       self.packages list so we can see the result
                     #       of this logic in the View
                     self.packages.append(new_package)
+
+
+class OverallProgressReporter:
+    def __init__(self, total_steps: int, callbacks={}):
+        self.callbacks = callbacks
+        self.counter = 0
+        self.n_steps = total_steps
+
+    def _overall_progress_description(self, txt: str):
+        log.info(txt)
+        if "overall_progress_description" in self.callbacks.keys():
+            self.callbacks["overall_progress_description"](txt)
+
+    def _overall_progress_percentage(self, percentage: int):
+        # TODO: Should progress % be logged ?
+        if "overall_progress_percentage" in self.callbacks.keys():
+            self.callbacks["overall_progress_percentage"](percentage)
+
+    def start(self, txt: str = ""):
+        if txt:
+            self._overall_progress_description(txt)
+
+    def skip(self, txt: str = ""):
+        if txt:
+            self._overall_progress_description(txt)
+        self.end()
+
+    def end(self, txt: str = ""):
+        if txt:
+            self._overall_progress_description(txt)
+        self.counter += 1
+        self._overall_progress_percentage(int(100 * (self.counter / self.n_steps)))
+
+
+def progress_closure(callbacks: dict):
+    if "step_progress_percentage" in callbacks.keys():
+        progressfunc = callbacks["step_progress_percentage"]
+
+        def progress(percentage: int):
+            progressfunc(percentage)
+
+    else:
+
+        def progress(percentage: int):
+            pass
+
+    return progress
+
+
+def progress_description_closure(callbacks: dict):
+    if "step_description" in callbacks.keys():
+        progressdescfunc = callbacks["step_description"]
+
+        def progress_description(txt: str):
+            log.info(txt)
+            progressdescfunc(txt)
+
+    else:
+
+        def progress_description(txt: str):
+            log.info(txt)
+
+    return progress_description
