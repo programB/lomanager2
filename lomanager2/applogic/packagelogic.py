@@ -554,7 +554,6 @@ class MainLogic(object):
         progress_percentage,
         step,
     ) -> dict:
-
         # STEP
         # Any files need to be downloaded?
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
@@ -649,44 +648,38 @@ class MainLogic(object):
 
         # STEP
         # Java needs to be upgraded or installed?
-        for package in virtual_packages:
-            if package.family == "Java":
-                if package.is_marked_for_upgrade:
-                    step.start("Upgrading Java...")
+        if rpms_and_tgzs_to_use["files_to_upgrade"]["Java"]:
+            step.start("Upgrading Java...")
 
-                    is_upgraded, msg = self._upgrade_Java(
-                        rpms_and_tgzs_to_use,
-                        progress_description,
-                        progress_percentage,
-                    )
-                    if is_upgraded is False:
-                        return statusfunc(
-                            isOK=False,
-                            msg="Failed to upgrade Java.\n" + msg,
-                        )
-                    step.end("Done upgrading Java")
-                    break
+            is_upgraded, msg = self._upgrade_Java(
+                rpms_and_tgzs_to_use,
+                progress_description,
+                progress_percentage,
+            )
+            if is_upgraded is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to upgrade Java.\n" + msg,
+                )
+            step.end("...done upgrading Java")
 
-                elif package.is_marked_for_install:
-                    step.start("Installing Java...")
+        elif rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+            step.start("Installing Java...")
 
-                    is_installed, msg = self._install_Java(
-                        rpms_and_tgzs_to_use,
-                        progress_description,
-                        progress_percentage,
-                    )
-                    if is_installed is False:
-                        return statusfunc(
-                            isOK=False,
-                            msg="Failed to install Java.\n" + msg,
-                        )
-                    step.end("Done installing Java")
-                    break
-                # No Java upgrade or install requested
-                else:
-                    step.skip()
-                    # There can only ever be 1 Java virtual package
-                    break
+            is_installed, msg = self._install_Java(
+                rpms_and_tgzs_to_use,
+                progress_description,
+                progress_percentage,
+            )
+            if is_installed is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to install Java.\n" + msg,
+                )
+            step.end("...done installing Java")
+        # No Java upgrade or install requested
+        else:
+            step.skip()
 
         # At this point everything that is needed is downloaded and verified,
         # also Java is installed (except in unlikely case in which the user
@@ -703,9 +696,6 @@ class MainLogic(object):
             and p.family == "OpenOffice"
             or p.family == "LibreOffice"
         ]
-        log.debug(f"office_packages_to_remove: {office_packages_to_remove}")
-
-        # Some packages need to be removed
         if office_packages_to_remove:
             step.start("Removing selected Office components...")
 
@@ -728,27 +718,17 @@ class MainLogic(object):
                     isOK=False,
                     msg="Failed to remove Office components.\n" + msg,
                 )
-            step.end("Done removing")
+            step.end("...done removing selected Office components")
         # No Office packages marked for removal
         else:
             step.skip()
 
         # STEP
         # Any Office components need to be installed?
-        # FIXME: This is wrong. This procedure is given a list of tar.gz(s)
-        #        to install because it was already decided in _install
-        #        (what to download) or in _local_copy_install_procedure
-        #        (what can be found in a directory provided by the user)
-        packages_to_install = [
-            p
-            for p in virtual_packages
-            if (p.is_marked_for_install or p.is_marked_for_upgrade)
-            and (p.family == "OpenOffice" or p.family == "LibreOffice")
-        ]
-        log.debug(f"packages_to_install: {packages_to_install}")
-
-        # Some packages need to be installed
-        if packages_to_install:
+        if (
+            rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]
+            or rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
+        ):
             step.start("Installing selected Office components...")
 
             office_install_status, msg = self._install_LibreOffice_components(
@@ -762,41 +742,31 @@ class MainLogic(object):
                     isOK=False,
                     msg="Failed to install Office components.\n" + msg,
                 )
-            step.end("Done removing")
+            step.end("...done installing selected Office components")
         # No Office packages marked for install
         else:
             step.skip()
 
+        # STEP
         # Any Office base package was affected ?
         # TODO: Can this be done better ?
-        # FIXME: This is wrong. install should not rely on is_marked_for flags
-        #        in virtual_packages so the code below cannot rely on them
-        #        either. Return something from steps above?
+        #       Return something from steps above?
+        if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
+            step.start("Running postintall procedures...")
+
+            self._disable_LO_update_checks()
+            self._add_templates_to_etcskel()
+
+            step.end("...done running postintall procedures")
+        else:
+            step.skip()
 
         # STEP
-        for package in packages_to_install:
-            if (
-                package.kind == "core-packages"
-                and package.family == "LibreOffice"
-                and (package.is_marked_for_install or package.is_marked_for_upgrade)
-            ):
-                step.start("Running postintall procedures...")
-
-                self._disable_LO_update_checks()
-                self._add_templates_to_etcskel()
-
-                step.end("...done")
-            else:
-                step.skip()
-
-        # STEP
-        # FIXME: This is wrong. Nothing should not rely on is_marked_for_install
-        #        or is_marked_for_upgrade flags
         for package in office_packages_to_remove:
             if (
                 package.kind == "core-packages"
                 and package.family == "LibreOffice"
-                and (package.is_marked_for_install or package.is_marked_for_upgrade)
+                and package.is_marked_for_removal
             ):
                 step.start("Changing file association...")
 
@@ -811,16 +781,13 @@ class MainLogic(object):
         clipart_packages_to_remove = [
             p
             for p in virtual_packages
-            if p.is_marked_for_removal and p.family == "Clipart"
+            if p.family == "Clipart" and p.is_marked_for_removal
         ]
-        log.debug(f"clipart_packages_to_remove : {clipart_packages_to_remove}")
-
-        # Clipart package needs to be removed
         if clipart_packages_to_remove:
             step.start("Removing Clipart library...")
 
             is_removed, msg = self._uninstall_clipart(
-                office_packages_to_remove,
+                clipart_packages_to_remove,
                 progress_description,
                 progress_percentage,
             )
@@ -830,22 +797,14 @@ class MainLogic(object):
                     isOK=False,
                     msg="Failed to remove Clipart library.\n" + msg,
                 )
-            step.end("Done removing")
+            step.end("...done removing Clipart library")
         # Clipart was not marked for removal
         else:
             step.skip()
 
         # STEP
         # Clipart library is to be installed?
-        clipart_packages_to_install = [
-            p
-            for p in virtual_packages
-            if p.is_marked_for_install and p.family == "Clipart"
-        ]
-        log.debug(f"clipart_packages_to_install: {clipart_packages_to_install}")
-
-        # Clipart package needs to be installed
-        if clipart_packages_to_install:
+        if rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
             step.start("Installing Clipart library...")
 
             is_installed, msg = self._install_clipart(
@@ -859,14 +818,13 @@ class MainLogic(object):
                     isOK=False,
                     msg="Failed to install Clipart library.\n" + msg,
                 )
-            step.end("Done installing")
+            step.end("...done installing Clipart library")
         # Clipart was not marked for install
         else:
             step.skip()
 
         # STEP
         # Should downloaded packages be kept ?
-        log.debug(f"keep_packages = {keep_packages}")
         if keep_packages is True:
             step.start("Saving packages...")
 
@@ -877,7 +835,7 @@ class MainLogic(object):
                     msg="Failed save packages.\n" + msg,
                 )
 
-            step.end("Done saving")
+            step.end("...done saving packages")
         else:
             step.skip()
 
@@ -890,7 +848,7 @@ class MainLogic(object):
                 isOK=False,
                 msg="Failed to cleanup folders.\n" + msg,
             )
-        step.end("Done removing temporary files and folders")
+        step.end("...done removing temporary files and folders")
 
         return True
 
@@ -950,18 +908,19 @@ class MainLogic(object):
         is_install_successful = False
         install_msg = ""
 
+        log.debug(">>PRETENDING<< to be installing Java...")
         log.info("Starting Java install procedure...")
         if "files_to_install" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_install"]["Java"]:
                 log.debug(f"Java rpms to install {rpms}")
-                progress_description(">>PRETENDING<< Installing java rpms ....")
+                progress_description("Installing java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
                     progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                progress_description(">>PRETENDING<< ...done installing java rpms")
+                progress_description("...done installing java rpms")
                 log.debug("...done")
                 is_install_successful = True
                 install_msg = ""
@@ -987,17 +946,18 @@ class MainLogic(object):
         is_upgrade_successful = False
         upgrade_msg = ""
 
+        log.debug(">>PRETENDING<< to be upgrading Java...")
         if "files_to_upgrade" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_upgrade"]["Java"]:
                 log.debug(f"Java rpms to upgrade {rpms}")
-                progress_description(">>PRETENDING<< Upgrading java rpms ....")
+                progress_description("Upgrading java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
                     progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                progress_description(">>PRETENDING<< ...done upgrading java rpms")
+                progress_description("...done upgrading java rpms")
                 log.debug("...done")
                 is_upgrade_successful = True
                 upgrade_msg = ""
@@ -1059,7 +1019,9 @@ class MainLogic(object):
         return (is_install_successful, install_msg)
 
     def _disable_LO_update_checks(self):
-        log.debug(">>PRETENDING<< Preventing LibreOffice from looking for updates on its own...")
+        log.debug(
+            ">>PRETENDING<< Preventing LibreOffice from looking for updates on its own..."
+        )
         time.sleep(1)
         log.debug(">>PRETENDING<< ...done.")
 
@@ -1154,7 +1116,6 @@ class MainLogic(object):
         progress_percentage,
         step,
     ) -> dict:
-
         is_modification_needed = False
         rpms_and_tgzs_to_use = {
             "files_to_install": {
@@ -1227,16 +1188,6 @@ class MainLogic(object):
                 rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
                     "rpm_abs_paths"
                 ]
-                # FIXME: install and upgrade procedures should not rely
-                #        on virtual_packages flags but on the
-                #        list of abs. files paths alone.
-                # FIXME: Java virtual package in not guaranteed to exist in
-                #        virtual_packages. FIX this.
-                # Mark them for installation.
-                for package in virtual_packages:
-                    if package.family == "Java":
-                        package.is_marked_for_install = True
-
             elif (
                 PCLOS.is_java_installed() is True
                 and Java_local_copy["isPresent"] is False
