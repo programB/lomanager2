@@ -567,7 +567,20 @@ class MainLogic(object):
         # Any files need to be downloaded?
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
         log.debug(f"packages_to_download: {packages_to_download}")
-        downloaded_files = {}
+        collected_files = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+            "files_to_upgrade": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
 
         # Some packages need to be downloaded
         if packages_to_download:
@@ -586,7 +599,7 @@ class MainLogic(object):
                 )
 
             # Run collect_packages procedure
-            is_every_pkg_collected, msg, paths_dict = self._collect_packages(
+            is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
                 step_description=step_description,
                 step_progress_percentage=step_progress_percentage,
@@ -598,8 +611,7 @@ class MainLogic(object):
                     msg="Failed to download all requested packages.\n" + msg,
                 )
             else:
-                downloaded_files = paths_dict
-                step.end("...done")
+                step.end("...done collecting files")
         # No need to download anything - just uninstalling
         else:
             step.skip()
@@ -607,11 +619,11 @@ class MainLogic(object):
         # Uninstall/Upgrade/Install packages
         output = self._make_changes(
             virtual_packages,
-            downloaded_files,
-            keep_packages,
-            statusfunc,
-            step_description,
-            step_progress_percentage,
+            rpms_and_tgzs_to_use=collected_files,
+            keep_packages=keep_packages,
+            statusfunc=statusfunc,
+            step_description=step_description,
+            step_progress_percentage=step_progress_percentage,
             step=step,
         )
         return output
@@ -619,7 +631,7 @@ class MainLogic(object):
     def _make_changes(
         self,
         virtual_packages,
-        downloaded_files,
+        rpms_and_tgzs_to_use,
         keep_packages,
         statusfunc,
         step_description,
@@ -651,7 +663,7 @@ class MainLogic(object):
                     step.start("Upgrading Java...")
 
                     is_upgraded, msg = self._upgrade_Java(
-                        downloaded_files,
+                        rpms_and_tgzs_to_use,
                         step_description,
                         step_progress_percentage,
                     )
@@ -667,7 +679,7 @@ class MainLogic(object):
                     step.start("Installing Java...")
 
                     is_installed, msg = self._install_Java(
-                        downloaded_files,
+                        rpms_and_tgzs_to_use,
                         step_description,
                         step_progress_percentage,
                     )
@@ -748,7 +760,7 @@ class MainLogic(object):
             step.start("Installing selected Office components...")
 
             office_install_status, msg = self._install_LibreOffice_components(
-                downloaded_files,
+                rpms_and_tgzs_to_use,
                 step_description,
                 step_progress_percentage,
             )
@@ -845,7 +857,7 @@ class MainLogic(object):
             step.start("Installing Clipart library...")
 
             is_installed, msg = self._install_clipart(
-                downloaded_files,
+                rpms_and_tgzs_to_use,
                 step_description,
                 step_progress_percentage,
             )
@@ -913,22 +925,24 @@ class MainLogic(object):
         log.debug("...done collecting packages.")
 
         is_every_package_collected = True
-        # TODO: This function should return a folowing dict
-        # {
-        #     "files_to_install": {
-        #         "Java": [rpms_abs_paths],
-        #         "LibreOffice-core": [tgz_abs_path],
-        #         "LibreOffice-langs": [tgzs_abs_paths],
-        #         "Clipart": [rpms_abs_paths],
-        #     },
-        #     "files_to_upgrade": {
-        #         "Java": [rpms_abs_paths],
-        #         "LibreOffice-core": [tgz_abs_path],
-        #         "LibreOffice-langs": [tgzs_abs_paths],
-        #         "Clipart": [rpms_abs_paths],
-        #     },
-        # }
-        return (is_every_package_collected, "", {})
+        # TODO: This function should return a following dict
+        #       and items in lists should be absolute paths to
+        #       collected rpm(s) or tar.gz(s) (best pathlib.Path not string)
+        rpms_and_tgzs_to_use = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+            "files_to_upgrade": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+        return (is_every_package_collected, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
         log.debug("WIP. This function sends fake data.")
@@ -1169,7 +1183,7 @@ class MainLogic(object):
         log.debug("WIP !")
 
         is_modification_needed = False
-        downloaded_files = {
+        rpms_and_tgzs_to_use = {
             "files_to_install": {
                 "Java": [],
                 "LibreOffice-core": [],
@@ -1237,7 +1251,7 @@ class MainLogic(object):
                 and Java_local_copy["isPresent"] is True
             ):
                 log.info("Found Java rpms in local copy directory")
-                downloaded_files["files_to_install"]["Java"] = Java_local_copy[
+                rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
                     "rpm_abs_paths"
                 ]
                 # FIXME: install and upgrade procedures should not rely
@@ -1279,14 +1293,14 @@ class MainLogic(object):
                     package.is_marked_for_removal = True
 
             log.debug("Adding LibreOffice core files to the install list.")
-            downloaded_files["files_to_install"][
+            rpms_and_tgzs_to_use["files_to_install"][
                 "LibreOffice-core"
             ] = LibreOffice_core_local_copy["tgz_abs_paths"]
 
             if LibreOffice_langs_local_copy["isPresent"]:
                 # There are also some language packs that can be installed
                 log.debug("Adding LibreOffice langpack(s) to the install list.")
-                downloaded_files["files_to_install"][
+                rpms_and_tgzs_to_use["files_to_install"][
                     "LibreOffice-langs"
                 ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
 
@@ -1313,7 +1327,7 @@ class MainLogic(object):
                     package.is_marked_for_removal = True
 
             log.debug("Adding Clipart to the install list.")
-            downloaded_files["files_to_install"]["Clipart"] = Clipart_local_copy[
+            rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
                 "rpm_abs_paths"
             ]
             is_modification_needed = is_modification_needed or True
@@ -1326,18 +1340,15 @@ class MainLogic(object):
         step.end()
 
         if is_modification_needed is True:
-            # When installing packages from a copy provided
-            # by the user they should NEVER be removed.
-            keep_packages = True
-
             # Go ahead and make changes
+            # (files provided by the user SHOULD NOT be removed - keep them)
             output = self._make_changes(
                 virtual_packages,
-                downloaded_files,
-                keep_packages,
-                statusfunc,
-                step_description,
-                step_progress_percentage,
+                rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
+                keep_packages=True,
+                statusfunc=statusfunc,
+                step_description=step_description,
+                step_progress_percentage=step_progress_percentage,
                 step=step,
             )
             return output
