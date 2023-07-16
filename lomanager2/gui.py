@@ -127,17 +127,16 @@ class ProgressDialog(QDialog):
         self.setWindowTitle("installation progress")
         main_layout = QVBoxLayout()
 
-        self.step_description = QLabel()
-        self.step_progress_bar = QProgressBar()
+        self.progress_description = QLabel()
+        self.progress_bar = QProgressBar()
         self.overall_progress_description = QLabel()
         self.overall_progress_bar = QProgressBar()
         self.button_terminate = QPushButton("Terminate install (dangerous)!")
 
-        main_layout.addWidget(self.step_description)
-        main_layout.addWidget(self.step_progress_bar)
+        main_layout.addWidget(self.progress_description)
+        main_layout.addWidget(self.progress_bar)
         main_layout.addWidget(self.overall_progress_description)
         main_layout.addWidget(self.overall_progress_bar)
-        # main_layout.addWidget(self.step_progress_bar)
         main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)

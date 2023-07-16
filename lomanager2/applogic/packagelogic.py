@@ -183,8 +183,8 @@ class MainLogic(object):
             self._virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
-            step_description=progress_description,
-            step_progress_percentage=progress,
+            progress_description=progress_description,
+            progress_percentage=progress,
             step=step,
         )
         if is_successful:
@@ -250,8 +250,8 @@ class MainLogic(object):
             self._virtual_packages,
             local_copy_directory=local_copy_directory,
             statusfunc=statusfunc,
-            step_description=progress_description,
-            step_progress_percentage=progress,
+            progress_description=progress_description,
+            progress_percentage=progress,
             step=step,
         )
         return True if status["is_OK"] else False
@@ -550,8 +550,8 @@ class MainLogic(object):
         virtual_packages,
         keep_packages,
         statusfunc,
-        step_description,
-        step_progress_percentage,
+        progress_description,
+        progress_percentage,
         step,
     ) -> dict:
 
@@ -593,8 +593,8 @@ class MainLogic(object):
             # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
-                step_description=step_description,
-                step_progress_percentage=step_progress_percentage,
+                progress_description=progress_description,
+                progress_percentage=progress_percentage,
             )
 
             if is_every_pkg_collected is False:
@@ -614,8 +614,8 @@ class MainLogic(object):
             rpms_and_tgzs_to_use=collected_files,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
-            step_description=step_description,
-            step_progress_percentage=step_progress_percentage,
+            progress_description=progress_description,
+            progress_percentage=progress_percentage,
             step=step,
         )
         return output
@@ -626,8 +626,8 @@ class MainLogic(object):
         rpms_and_tgzs_to_use,
         keep_packages,
         statusfunc,
-        step_description,
-        step_progress_percentage,
+        progress_description,
+        progress_percentage,
         step,
     ):
         # At this point network_install and local_copy_install
@@ -656,8 +656,8 @@ class MainLogic(object):
 
                     is_upgraded, msg = self._upgrade_Java(
                         rpms_and_tgzs_to_use,
-                        step_description,
-                        step_progress_percentage,
+                        progress_description,
+                        progress_percentage,
                     )
                     if is_upgraded is False:
                         return statusfunc(
@@ -672,8 +672,8 @@ class MainLogic(object):
 
                     is_installed, msg = self._install_Java(
                         rpms_and_tgzs_to_use,
-                        step_description,
-                        step_progress_percentage,
+                        progress_description,
+                        progress_percentage,
                     )
                     if is_installed is False:
                         return statusfunc(
@@ -711,8 +711,8 @@ class MainLogic(object):
 
             is_removed, msg = self._uninstall_office_components(
                 office_packages_to_remove,
-                step_description,
-                step_progress_percentage,
+                progress_description,
+                progress_percentage,
             )
 
             # If the procedure failed completely (no packages got uninstalled)
@@ -753,8 +753,8 @@ class MainLogic(object):
 
             office_install_status, msg = self._install_LibreOffice_components(
                 rpms_and_tgzs_to_use,
-                step_description,
-                step_progress_percentage,
+                progress_description,
+                progress_percentage,
             )
 
             if office_install_status is False:
@@ -821,8 +821,8 @@ class MainLogic(object):
 
             is_removed, msg = self._uninstall_clipart(
                 office_packages_to_remove,
-                step_description,
-                step_progress_percentage,
+                progress_description,
+                progress_percentage,
             )
 
             if is_removed is False:
@@ -850,8 +850,8 @@ class MainLogic(object):
 
             is_installed, msg = self._install_clipart(
                 rpms_and_tgzs_to_use,
-                step_description,
-                step_progress_percentage,
+                progress_description,
+                progress_percentage,
             )
 
             if is_installed is False:
@@ -897,8 +897,8 @@ class MainLogic(object):
     def _collect_packages(
         self,
         packages_to_download: list,
-        step_description,
-        step_progress_percentage,
+        progress_description,
+        progress_percentage,
     ) -> tuple[bool, str, dict]:
         # Preparations
         tmp_directory = configuration.tmp_directory
@@ -944,8 +944,8 @@ class MainLogic(object):
     def _install_Java(
         self,
         downloaded_files: dict,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_install_successful = False
         install_msg = ""
@@ -954,14 +954,14 @@ class MainLogic(object):
         if "files_to_install" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_install"]["Java"]:
                 log.debug(f"Java rpms to install {rpms}")
-                step_description(">>PRETENDING<< Installing java rpms ....")
+                progress_description(">>PRETENDING<< Installing java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
-                    step_progress_percentage(progress)
+                    progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                step_description(">>PRETENDING<< ...done installing java rpms")
+                progress_description(">>PRETENDING<< ...done installing java rpms")
                 log.debug("...done")
                 is_install_successful = True
                 install_msg = ""
@@ -981,8 +981,8 @@ class MainLogic(object):
     def _upgrade_Java(
         self,
         downloaded_files: dict,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_upgrade_successful = False
         upgrade_msg = ""
@@ -990,14 +990,14 @@ class MainLogic(object):
         if "files_to_upgrade" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_upgrade"]["Java"]:
                 log.debug(f"Java rpms to upgrade {rpms}")
-                step_description(">>PRETENDING<< Upgrading java rpms ....")
+                progress_description(">>PRETENDING<< Upgrading java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
-                    step_progress_percentage(progress)
+                    progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                step_description(">>PRETENDING<< ...done upgrading java rpms")
+                progress_description(">>PRETENDING<< ...done upgrading java rpms")
                 log.debug("...done")
                 is_upgrade_successful = True
                 upgrade_msg = ""
@@ -1017,8 +1017,8 @@ class MainLogic(object):
     def _uninstall_office_components(
         self,
         packages_to_remove: list,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_uninstall_successful = False
         uninstall_msg = ""
@@ -1036,8 +1036,8 @@ class MainLogic(object):
     def _install_LibreOffice_components(
         self,
         downloaded_files: dict,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_install_successful = False
         install_msg = ""
@@ -1050,7 +1050,7 @@ class MainLogic(object):
         steps = 30
         for i in range(steps):
             progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-            step_progress_percentage(progress)
+            progress_percentage(progress)
             time.sleep(total_time_sek / steps)
 
         is_install_successful = True
@@ -1082,8 +1082,8 @@ class MainLogic(object):
     def _uninstall_clipart(
         self,
         packages_to_remove: list,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_uninstall_successful = False
         uninstall_msg = ""
@@ -1101,8 +1101,8 @@ class MainLogic(object):
     def _install_clipart(
         self,
         downloaded_files: dict,
-        step_description: Callable,
-        step_progress_percentage: Callable,
+        progress_description: Callable,
+        progress_percentage: Callable,
     ) -> tuple[bool, str]:
         is_install_successful = False
         install_msg = ""
@@ -1113,7 +1113,7 @@ class MainLogic(object):
         steps = 30
         for i in range(steps):
             progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-            step_progress_percentage(progress)
+            progress_percentage(progress)
             time.sleep(total_time_sek / steps)
 
         is_install_successful = True
@@ -1150,8 +1150,8 @@ class MainLogic(object):
         virtual_packages,
         local_copy_directory,
         statusfunc,
-        step_description,
-        step_progress_percentage,
+        progress_description,
+        progress_percentage,
         step,
     ) -> dict:
 
@@ -1320,8 +1320,8 @@ class MainLogic(object):
                 rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
                 keep_packages=True,
                 statusfunc=statusfunc,
-                step_description=step_description,
-                step_progress_percentage=step_progress_percentage,
+                progress_description=progress_description,
+                progress_percentage=progress_percentage,
                 step=step,
             )
             return output
@@ -2436,8 +2436,8 @@ class OverallProgressReporter:
 
 
 def progress_closure(callbacks: dict):
-    if "step_progress_percentage" in callbacks.keys():
-        progressfunc = callbacks["step_progress_percentage"]
+    if "progress_percentage" in callbacks.keys():
+        progressfunc = callbacks["progress_percentage"]
 
         def progress(percentage: int):
             progressfunc(percentage)
@@ -2451,8 +2451,8 @@ def progress_closure(callbacks: dict):
 
 
 def progress_description_closure(callbacks: dict):
-    if "step_description" in callbacks.keys():
-        progressdescfunc = callbacks["step_description"]
+    if "progress_description" in callbacks.keys():
+        progressdescfunc = callbacks["progress_description"]
 
         def progress_description(txt: str):
             log.info(txt)

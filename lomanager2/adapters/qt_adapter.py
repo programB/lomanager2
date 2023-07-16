@@ -20,8 +20,8 @@ from configuration import logging as log
 
 class Adapter(QObject):
     # Register custom signals
-    step_description_signal = Signal(str)
-    step_progress_signal = Signal(int)
+    progress_description_signal = Signal(str)
+    progress_signal = Signal(int)
     overall_progress_description_signal = Signal(str)
     overall_progress_signal = Signal(int)
     refresh_signal = Signal()
@@ -130,8 +130,8 @@ class Adapter(QObject):
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=selected_dir,
                 report_status=self.status_signal.emit,
-                step_description=self.step_description_signal.emit,
-                step_progress_percentage=self.step_progress_signal.emit,
+                progress_description=self.progress_description_signal.emit,
+                progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
@@ -166,8 +166,8 @@ class Adapter(QObject):
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
                 report_status=self.status_signal.emit,
-                step_description=self.step_description_signal.emit,
-                step_progress_percentage=self.step_progress_signal.emit,
+                progress_description=self.progress_description_signal.emit,
+                progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
@@ -183,8 +183,8 @@ class Adapter(QObject):
         self.GUI_locks_signal.emit()
 
         # Connect thread signals
-        self.step_description_signal.connect(self._update_step_description)
-        self.step_progress_signal.connect(self._update_step_progress)
+        self.progress_description_signal.connect(self._update_progress_description)
+        self.progress_signal.connect(self._update_progress)
         self.overall_progress_description_signal.connect(
             self._update_overall_progress_description
         )
@@ -196,8 +196,8 @@ class Adapter(QObject):
         self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
 
         # Open progress view
-        self._progress_view.step_description.setText("")
-        self._progress_view.step_progress_bar.setValue(0)
+        self._progress_view.progress_description.setText("")
+        self._progress_view.progress_bar.setValue(0)
         self._progress_view.overall_progress_description.setText("")
         self._progress_view.overall_progress_bar.setValue(0)
         self._progress_view.show()
@@ -206,11 +206,11 @@ class Adapter(QObject):
         # or _choose_dir_and_install_from_local_copy
         self.procedure_thread.start()
 
-    def _update_step_description(self, text: str):
-        self._progress_view.step_description.setText(text)
+    def _update_progress_description(self, text: str):
+        self._progress_view.progress_description.setText(text)
 
-    def _update_step_progress(self, percentage: int):
-        self._progress_view.step_progress_bar.setValue(percentage)
+    def _update_progress(self, percentage: int):
+        self._progress_view.progress_bar.setValue(percentage)
 
     def _update_overall_progress_description(self, text: str):
         self._progress_view.overall_progress_description.setText(text)
