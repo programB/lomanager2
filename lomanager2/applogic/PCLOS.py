@@ -72,10 +72,13 @@ def get_disk_space() -> int:
 
 def get_free_space_in_dir(dir) -> int:
     # TODO: Implement
-    log.debug("Not implemented yet. Returning dummy data.")
-    return 0
+    free_space_kiB = 0
+    log.debug(f">>PRETENDING<< free_space_kiB: {free_space_kiB}")
+    return free_space_kiB
 
 
 def is_java_installed() -> bool:
     # TODO: Implement
-    return False
+    is_java_installed = False
+    log.debug(f">>PRETENDING<< is_java_installed: {is_java_installed}")
+    return is_java_installed

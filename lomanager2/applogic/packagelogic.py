@@ -96,7 +96,6 @@ class MainLogic(object):
         return self._warnings
 
     def apply_changes(self, *args, **kwargs):
-        log.warning("WIP !!!")
         log.debug(
             f"Flag <<ready_to_apply_changes>> is: "
             f"<<{self.global_flags.ready_to_apply_changes}>>"
@@ -194,8 +193,6 @@ class MainLogic(object):
             return statusfunc(isOK=False, msg="Failed to apply changes")
 
     def install_from_local_copy(self, *args, **kwargs):
-        log.debug("WIP !!!")
-
         log.debug(
             f"Flag <<ready_to_apply_changes>> is: "
             f"<<{self.global_flags.ready_to_apply_changes}>>"
@@ -330,7 +327,6 @@ class MainLogic(object):
             Useful information
         """
 
-        log.debug("WIP !" "Sending dummy data !!!")
         system_info = dict()
 
         # TODO: Implement
@@ -346,7 +342,6 @@ class MainLogic(object):
         # global _
         # if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
         # message = _(
-        #     "WIP!\n"
         #     "Value returned: {} (type: {})"
         # ).format(system_information, type(system_information))
         # if keep_logging_messages_in_english: del _  # reset lang
@@ -357,7 +352,6 @@ class MainLogic(object):
 
     def _detect_installed_software(self):
         # TODO: implement
-        log.debug("WIP !" "Sending dummy data !!!")
         found_software = [
             ["OpenOffice", "2.0"],
             ["OpenOffice", "2.4", "pl", "gr"],
@@ -365,7 +359,7 @@ class MainLogic(object):
             ["LibreOffice", "7.5", "jp", "pl"],
             ["Clipart", "5.3"],
         ]
-        log.debug(f"found_software: {found_software}")
+        log.debug(f">>PRETENDING<< found_software: {found_software}")
         return found_software
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
@@ -502,7 +496,6 @@ class MainLogic(object):
         #       on hard coded latest available versions, a fixed list of
         #       supported languages and file naming convention
         #       or read in from a pre generated configuration file.
-        log.warning("Function not yet implemented. Sending fake data !!!")
         self._latest_available_packages = [
             VirtualPackage(
                 "core-packages",
@@ -561,7 +554,6 @@ class MainLogic(object):
         step_progress_percentage,
         step,
     ) -> dict:
-        log.debug("WIP")
 
         # STEP
         # Any files need to be downloaded?
@@ -908,7 +900,6 @@ class MainLogic(object):
         step_description,
         step_progress_percentage,
     ) -> tuple[bool, str, dict]:
-        log.debug("WIP. This function sends fake data.")
         # Preparations
         tmp_directory = configuration.tmp_directory
 
@@ -920,9 +911,9 @@ class MainLogic(object):
         # return {}
 
         log.debug(f"Packages to download: {packages_to_download}")
-        log.debug("Collecting packages...")
+        log.debug(">>PRETENDING<< Collecting packages...")
         time.sleep(2)
-        log.debug("...done collecting packages.")
+        log.debug(">>PRETENDING<< ...done collecting packages.")
 
         is_every_package_collected = True
         # TODO: This function should return a following dict
@@ -945,13 +936,10 @@ class MainLogic(object):
         return (is_every_package_collected, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
-        log.debug("WIP. This function sends fake data.")
-
-        log.debug("Checking for LibreOffice quickstarter process...")
-        log.debug("LibreOffice quickstarter is running (PID: ABCD)")
-        log.debug("Terminating LibreOffice quickstarter...")
+        log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
+        log.debug(">>PRETENDING<< Terminating LibreOffice quickstarter...")
         time.sleep(2)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
 
     def _install_Java(
         self,
@@ -959,7 +947,6 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_install_successful = False
         install_msg = ""
 
@@ -967,14 +954,14 @@ class MainLogic(object):
         if "files_to_install" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_install"]["Java"]:
                 log.debug(f"Java rpms to install {rpms}")
-                step_description("Pretending to be installing java rpms ....")
+                step_description(">>PRETENDING<< Installing java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
                     step_progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                step_description("...done installing java rpms")
+                step_description(">>PRETENDING<< ...done installing java rpms")
                 log.debug("...done")
                 is_install_successful = True
                 install_msg = ""
@@ -997,21 +984,20 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_upgrade_successful = False
         upgrade_msg = ""
 
         if "files_to_upgrade" in downloaded_files.keys():
             if rpms := downloaded_files["files_to_upgrade"]["Java"]:
                 log.debug(f"Java rpms to upgrade {rpms}")
-                step_description("Pretending to be upgrading java rpms ....")
+                step_description(">>PRETENDING<< Upgrading java rpms ....")
                 total_time_sek = 5
                 steps = 30
                 for i in range(steps):
                     progress = int((i / (steps - 1)) * 100)
                     step_progress_percentage(progress)
                     time.sleep(total_time_sek / steps)
-                step_description("...done upgrading java rpms")
+                step_description(">>PRETENDING<< ...done upgrading java rpms")
                 log.debug("...done")
                 is_upgrade_successful = True
                 upgrade_msg = ""
@@ -1034,17 +1020,16 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_uninstall_successful = False
         uninstall_msg = ""
 
         log.debug(f"Packages to remove: {packages_to_remove}")
-        log.info("Pretending to be removing packages...")
+        log.info(">>PRETENDING<< to be removing packages...")
 
         time.sleep(2)
 
         is_uninstall_successful = True
-        log.info("...done removing packages.")
+        log.info(">>PRETENDING<< ...done removing packages.")
 
         return (is_uninstall_successful, uninstall_msg)
 
@@ -1054,13 +1039,12 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_install_successful = False
         install_msg = ""
 
         # TODO: There should be a .tar.gz file(s) in downloaded_files
         #       Unziping it takes place in this function
-        log.info("Pretending to be installing files...")
+        log.info(">>PRETENDING<< to be installing files...")
 
         total_time_sek = 5
         steps = 30
@@ -1070,36 +1054,30 @@ class MainLogic(object):
             time.sleep(total_time_sek / steps)
 
         is_install_successful = True
-        log.info("...done installing packages.")
+        log.info(">>PRETENDING<< ...done installing packages.")
 
         return (is_install_successful, install_msg)
 
     def _disable_LO_update_checks(self):
-        log.debug("WIP. This function sends fake data.")
-
-        log.debug("Preventing LibreOffice from looking for updates on its own...")
+        log.debug(">>PRETENDING<< Preventing LibreOffice from looking for updates on its own...")
         time.sleep(1)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
 
     def _add_templates_to_etcskel(self):
         # TODO: This function should put a file (smth.xcu) to /etc/skel
         #       in order to have LO properly set up for any new user
         #       accounts created in the OS
-        log.debug("WIP. This function sends fake data.")
-
-        log.debug("Adding files to /etc/skel ...")
+        log.debug(">>PRETENDING<< Adding files to /etc/skel ...")
         time.sleep(1)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
 
     def _clean_dot_desktop_files(self):
         # TODO: This function should remove association between LibreOffice
         #       and Open Document file formats (odt, odf, etc.) from the
         #       global .desktop file (and user files too?)
-        log.debug("WIP. This function sends fake data.")
-
-        log.debug("Rebuilding menu entries...")
+        log.debug(">>PRETENDING<< Rebuilding menu entries...")
         time.sleep(1)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
 
     def _uninstall_clipart(
         self,
@@ -1107,17 +1085,16 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_uninstall_successful = False
         uninstall_msg = ""
 
         log.debug(f"Packages to remove: {packages_to_remove}")
-        log.info("Pretending to be removing packages...")
+        log.info(">>PRETENDING<< to be removing packages...")
 
         time.sleep(2)
 
         is_uninstall_successful = True
-        log.info("...done removing packages.")
+        log.info(">>PRETENDING<< ...done removing packages.")
 
         return (is_uninstall_successful, uninstall_msg)
 
@@ -1127,11 +1104,10 @@ class MainLogic(object):
         step_description: Callable,
         step_progress_percentage: Callable,
     ) -> tuple[bool, str]:
-        log.debug("WIP. This function sends dummy data.")
         is_install_successful = False
         install_msg = ""
 
-        log.info("Pretending to be installing files...")
+        log.info(">>PRETENDING<< to be installing files...")
 
         total_time_sek = 5
         steps = 30
@@ -1141,7 +1117,7 @@ class MainLogic(object):
             time.sleep(total_time_sek / steps)
 
         is_install_successful = True
-        log.info("...done installing packages.")
+        log.info(">>PRETENDING<< ...done installing packages.")
 
         return (is_install_successful, install_msg)
 
@@ -1149,25 +1125,23 @@ class MainLogic(object):
         # TODO: This function should mv verified_copies folder
         #       to lomanager2_saved_packages
         #       Path for both of those should be defined in the configuration
-        log.debug("WIP. This function sends dummy data.")
         is_save_successful = False
         save_msg = ""
 
-        log.debug("Pretending to be saving files for offline install...")
+        log.debug(">>PRETENDING<< to be saving files for offline install...")
         time.sleep(1)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
         return (is_save_successful, save_msg)
 
     def _clean_directories(self):
         # TODO: This function should remove the contetns of working dir
         #       and verified copies dir.
-        log.debug("WIP. This function sends dummy data.")
         is_cleanup_successful = False
         cleanup_msg = ""
 
-        log.debug("Cleaning temporary files...")
+        log.debug(">>PRETENDING<< Cleaning temporary files...")
         time.sleep(1)
-        log.debug("...done.")
+        log.debug(">>PRETENDING<< ...done.")
 
         return (is_cleanup_successful, cleanup_msg)
 
@@ -1180,7 +1154,6 @@ class MainLogic(object):
         step_progress_percentage,
         step,
     ) -> dict:
-        log.debug("WIP !")
 
         is_modification_needed = False
         rpms_and_tgzs_to_use = {
@@ -1394,7 +1367,6 @@ class MainLogic(object):
           list - absolute paths to detected files.
         """
 
-        log.debug("WIP")
         detected_core_ver = ""
 
         Java_local_copy = {"isPresent": False, "rpm_abs_paths": []}
