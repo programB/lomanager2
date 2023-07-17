@@ -2,6 +2,7 @@ import sys
 
 from PySide6.QtWidgets import (
     QApplication,
+    QMessageBox,
 )
 from PySide6.QtCore import (
     QObject,
@@ -12,14 +13,24 @@ from PySide6.QtCore import (
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
 from viewmodels import PackageMenuViewModel
-from threads import InstallProcedureWorker
+from threads import ProcedureWorker
 import configuration
+from configuration import logging as log
+
+checked = Qt.CheckState.Checked
+unchecked = Qt.CheckState.Unchecked
 
 
 class Adapter(QObject):
     # Register custom signals
+    progress_description_signal = Signal(str)
+    progress_signal = Signal(int)
+    overall_progress_description_signal = Signal(str)
+    overall_progress_signal = Signal(int)
     refresh_signal = Signal()
     status_signal = Signal(dict)
+    worker_ready_signal = Signal()
+    GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
         super().__init__()
@@ -50,8 +61,14 @@ class Adapter(QObject):
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 
         # Extra variables that can be set by the user in GUI
-        self._keep_packages = False
+        # Initialize local _keep_packages variable from configuration
+        self._keep_packages = configuration.keep_packages
+        self._force_java_download = False
         self._local_copy_folder = None
+
+        # Flags blocking parts of the interface during certain operations
+        self._is_packages_selecting_allowed = True
+        self._is_starting_procedures_allowed = True
 
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
@@ -93,95 +110,171 @@ class Adapter(QObject):
         # Internal Signal: Shows dialog with information returned by procedures
         self.status_signal.connect(self._display_status_information)
 
-        # Internal Signal: Keep packages checkbox
-        self._main_view.confirm_apply_view.checkbox_keep_packages.stateChanged.connect(
-            self._set_keep_packages_state
-        )
+        # Internal Signal: Locks/Unlocks GUI elements
+        self.GUI_locks_signal.connect(self.change_GUI_locks)
+
+        # Internal Signal: starts already prepared thread
+        self.worker_ready_signal.connect(self._start_procedure_thread)
 
     def _refresh_package_menu_state(self):
-        configuration.logging.debug("Refreshing!")
+        log.debug("Refreshing!")
         self._main_model.refresh_state()
 
     def _choose_dir_and_install_from_local_copy(self):
-        # Ask the user to point to a directory with saved packages
-        # intended for installation (opens a dialog).
-        if self._main_view.confirm_local_copy_view.exec():
-            configuration.logging.debug("Installing from local copy...")
-            # TODO: Implement getting the folder path,
-            #       creating worker thread and starting it
-        else:
-            configuration.logging.debug(
-                "Cancel clicked: User gave up installing from local copy"
+        # Ask the user for directory with saved packages
+        if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
+            log.debug("Ok clicked: Installing from local copy...")
+
+            # Get the directory path set by the user
+            selected_dir = self._main_view.confirm_local_copy_view.selected_dir
+
+            # Create separate thread worker passing
+            # MainLogic's method to execute along with needed variables
+            self.procedure_thread = ProcedureWorker(
+                function_to_run=self._main_model.install_from_local_copy,
+                local_copy_folder=selected_dir,
+                report_status=self.status_signal.emit,
+                progress_description=self.progress_description_signal.emit,
+                progress_percentage=self.progress_signal.emit,
+                overall_progress_description=self.overall_progress_description_signal.emit,
+                overall_progress_percentage=self.overall_progress_signal.emit,
             )
+            # Lock GUI elements, open progress window and start thread
+            self.worker_ready_signal.emit()
+        else:
+            log.debug("Cancel clicked: User gave up installing from local copy")
 
     def _confirm_and_start_applying_changes(self):
-        # Ask the user for confirmation
+        # Set initial state of keep_packages checkbox
+        # (can be set in configuration)
+        if self._keep_packages is True:
+            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+                Qt.CheckState.Checked
+            )
+        else:
+            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+                Qt.CheckState.Unchecked
+            )
+
+        # Set the initial state of the force_java_download checkbox
+        # before displaying the dialog window
+        fjd_state = checked if self._force_java_download else unchecked
+        self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
+            fjd_state
+        )
+
+        # Open a dialog and ask the user:
+        # - whether to delete downloaded packages after installation
+        # - if the java should be downloaded (despite it being installed)
         if self._main_view.confirm_apply_view.exec():
-            configuration.logging.debug("Applying changes...")
-            # Create separate thread worker
-            # and pass the MainLogic's method to execute
-            # along with values (collected from GUI) it would need.
-            self.apply_changes_thread = InstallProcedureWorker(
+            log.debug("Ok clicked. Applying changes...")
+
+            self._keep_packages = (
+                self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
+            )
+            self._force_java_download = (
+                self._main_view.confirm_apply_view.checkbox_force_java_download.isChecked()
+            )
+
+            # Create separate thread worker passing
+            # MainLogic's method to execute along with needed variables
+            self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
-                local_copy_folder=self._local_copy_folder,
+                force_java_download = self._force_java_download,
                 report_status=self.status_signal.emit,
+                progress_description=self.progress_description_signal.emit,
+                progress_percentage=self.progress_signal.emit,
+                overall_progress_description=self.overall_progress_description_signal.emit,
+                overall_progress_percentage=self.overall_progress_signal.emit,
             )
-            # Connect thread signals
-            self.apply_changes_thread.progress.connect(self._progress_was_made)
-            self.apply_changes_thread.finished.connect(
-                self._thread_stopped_or_terminated
-            )
-            # TODO: Just for test. This MUST not be available to user.
-            self._progress_view.button_terminate.clicked.connect(
-                self.apply_changes_thread.terminate
-            )
-
-            self._progress_view.show()
-            # TODO: Block certain buttons in the main interface here to
-            #       prevent from another thread being started. But not
-            #       all of them (eg. log output (aka console)
-            #       should be operational)
-
-            self.apply_changes_thread.start()  # start the prepared thread
+            # Lock GUI elements, open progress window and start thread
+            self.worker_ready_signal.emit()
         else:
-            configuration.logging.debug(
-                "Cancel clicked: User decided not to apply changes."
-            )
+            log.debug("Cancel clicked: User decided not to apply changes.")
 
-    def _progress_was_made(self, progress):
-        configuration.logging.debug(
-            f"Current progress (received in adapter's slot): {progress}"
+    def _start_procedure_thread(self):
+        # Block some GUI elements while the procedure is running
+        self._is_packages_selecting_allowed = False
+        self._is_starting_procedures_allowed = False
+        self.GUI_locks_signal.emit()
+
+        # Connect thread signals
+        self.progress_description_signal.connect(self._update_progress_description)
+        self.progress_signal.connect(self._update_progress)
+        self.overall_progress_description_signal.connect(
+            self._update_overall_progress_description
         )
-        self._progress_view.progress_bar.setValue(progress)
+        self.overall_progress_signal.connect(self._update_overall_progress)
+        # TODO: Just for test. This MUST not be available to user.
+        self._progress_view.button_terminate.clicked.connect(
+            self.procedure_thread.terminate
+        )
+        self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
+
+        # Open progress view
+        self._progress_view.progress_description.setText("")
+        self._progress_view.progress_bar.setValue(0)
+        self._progress_view.overall_progress_description.setText("")
+        self._progress_view.overall_progress_bar.setValue(0)
+        self._progress_view.show()
+        # Start self._procedure_thread created in either
+        # _confirm_and_start_applying_changes
+        # or _choose_dir_and_install_from_local_copy
+        self.procedure_thread.start()
+
+    def _update_progress_description(self, text: str):
+        self._progress_view.progress_description.setText(text)
+
+    def _update_progress(self, percentage: int):
+        self._progress_view.progress_bar.setValue(percentage)
+
+    def _update_overall_progress_description(self, text: str):
+        self._progress_view.overall_progress_description.setText(text)
+
+    def _update_overall_progress(self, percentage: int):
+        self._progress_view.overall_progress_bar.setValue(percentage)
 
     def _thread_stopped_or_terminated(self):
+        log.debug("Thread finished signal received.")
         self._progress_view.hide()
-        self._progress_view.progress_bar.setValue(0)
-        configuration.logging.debug("Thread finished signal received.")
-        configuration.logging.debug(
-            f"thread: {self.apply_changes_thread}\n"
-            f"is running?: {self.apply_changes_thread.isRunning()}\n"
-            f"is finished?: {self.apply_changes_thread.isFinished()}"
-        )
-        configuration.logging.debug("Emiting refresh signal to rebuild packages state")
+        log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
+        log.debug("Emiting GUI locks signal to unlock GUI elements")
+        self._is_packages_selecting_allowed = True
+        self._is_starting_procedures_allowed = True
+        self.GUI_locks_signal.emit()
 
-    def _set_keep_packages_state(self):
-        state = self._main_view.confirm_apply_view.checkbox_keep_packages.checkState()
-        configuration.logging.debug(f"in GUI keep_packages checkbox is set to: {state}")
-        # Qt.PartiallyChecked doesn't make sense in this application
-        if state == Qt.CheckState.Checked:
-            self._keep_packages = True
-        if state == Qt.CheckState.Unchecked:
-            self._keep_packages = False
-
-    def _display_status_information(self, status):
-        info = ""
-        if "explanation" in status.keys():
+    def _display_status_information(self, status: dict):
+        if "explanation" in status.keys() and "is_OK" in status.keys():
             info = status["explanation"]
-        self._main_view.info_dialog.setText(info)
-        self._main_view.open_information_modal_window()
+            if status["is_OK"] is True:
+                self._main_view.info_dialog.setWindowTitle("Success")
+                self._main_view.info_dialog.setText(info)
+                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Information)
+                self._main_view.info_dialog.exec()
+            if status["is_OK"] is False:
+                self._main_view.info_dialog.setWindowTitle("Problem")
+                self._main_view.info_dialog.setText(info)
+                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
+                self._main_view.info_dialog.exec()
+
+    def change_GUI_locks(self):
+        # TODO: Query MainLogic for allowed/disallowed operations
+        #       and set controls in GUI accordingly
+        if self._is_packages_selecting_allowed is True:
+            self._main_view.package_menu_view.setEnabled(True)
+        else:
+            self._main_view.package_menu_view.setEnabled(False)
+
+        if self._is_starting_procedures_allowed is True:
+            self._main_view.button_apply_changes.setEnabled(True)
+            self._main_view.button_install_from_local_copy.setEnabled(True)
+            self._main_view.button_add_langs.setEnabled(True)
+        else:
+            self._main_view.button_apply_changes.setEnabled(False)
+            self._main_view.button_install_from_local_copy.setEnabled(False)
+            self._main_view.button_add_langs.setEnabled(False)
 
 
 def main():
@@ -195,6 +288,7 @@ def main():
 
     # Adapter
     adapter = Adapter(app_main_model=app_logic, app_main_view=main_window)
+    adapter.change_GUI_locks()
 
     main_window.show()
     sys.exit(lomanager2App.exec())

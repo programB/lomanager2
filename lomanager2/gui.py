@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -16,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QHeaderView,
 )
-import configuration
+from configuration import logging as log
 
 
 class AppMainWindow(QMainWindow):
@@ -69,9 +70,6 @@ class AppMainWindow(QMainWindow):
 
     def open_langs_selection_modal_window(self):
         self.extra_langs_view.exec()
-
-    def open_information_modal_window(self):
-        self.info_dialog.exec()
 
 
 class LangsModalWindow(QDialog):
@@ -129,10 +127,16 @@ class ProgressDialog(QDialog):
         self.setWindowTitle("installation progress")
         main_layout = QVBoxLayout()
 
+        self.progress_description = QLabel()
         self.progress_bar = QProgressBar()
+        self.overall_progress_description = QLabel()
+        self.overall_progress_bar = QProgressBar()
         self.button_terminate = QPushButton("Terminate install (dangerous)!")
 
+        main_layout.addWidget(self.progress_description)
         main_layout.addWidget(self.progress_bar)
+        main_layout.addWidget(self.overall_progress_description)
+        main_layout.addWidget(self.overall_progress_bar)
         main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
@@ -147,6 +151,7 @@ class ConfirmApplyDialog(QDialog):
 
         self.info_box = QTextEdit()
         self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
+        self.checkbox_force_java_download = QCheckBox("Download Java")
 
         self.buttonBox = QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
@@ -158,6 +163,7 @@ class ConfirmApplyDialog(QDialog):
 
         main_layout.addWidget(self.info_box)
         main_layout.addWidget(self.checkbox_keep_packages)
+        main_layout.addWidget(self.checkbox_force_java_download)
         main_layout.addWidget(self.buttonBox)
 
         self.setLayout(main_layout)
@@ -179,6 +185,8 @@ class ConfirmApplyDialog(QDialog):
 class LocalCopyInstallDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+
+        self.selected_dir = None
 
         self.setWindowTitle("Install from local copy")
         main_layout = QVBoxLayout()
@@ -234,13 +242,14 @@ class LocalCopyInstallDialog(QDialog):
         selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()
-        configuration.logging.debug(
+        log.debug(
             f"Dialog_returned: {is_selection_made }, selectedFiles: "
             f"{selection_dialog.selectedFiles()} selectedNameFilter: "
             f"{selection_dialog.selectedNameFilter()}"
         )
         if is_selection_made == 1:
             self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])
+            self.selected_dir = selection_dialog.selectedFiles()[0]
 
 
 if __name__ == "__main__":

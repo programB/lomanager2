@@ -80,6 +80,7 @@ class VirtualPackage(object):
         self.family = family
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
+        self.download_size = 0  # size in kilobytes
         self.is_installed = False
         # Remove flags
         self.is_removable = False
@@ -109,5 +110,3 @@ class SignalFlags(object):
         self.block_local_copy_install = False
         self.block_checking_4_updates = False
         self.ready_to_apply_changes = False
-        self.keep_packages = False
-        self.force_download_java = False
