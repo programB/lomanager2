@@ -17,6 +17,9 @@ from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
 
+checked = Qt.CheckState.Checked
+unchecked = Qt.CheckState.Unchecked
+
 
 class Adapter(QObject):
     # Register custom signals
@@ -60,6 +63,7 @@ class Adapter(QObject):
         # Extra variables that can be set by the user in GUI
         # Initialize local _keep_packages variable from configuration
         self._keep_packages = configuration.keep_packages
+        self._force_java_download = False
         self._local_copy_folder = None
 
         # Flags blocking parts of the interface during certain operations
@@ -151,13 +155,25 @@ class Adapter(QObject):
             self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Unchecked
             )
-        # Ask the user wheter to delete downloaded packages after installation
-        if self._main_view.confirm_apply_view.exec():  # open a dialog
+
+        # Set the initial state of the force_java_download checkbox
+        # before displaying the dialog window
+        fjd_state = checked if self._force_java_download else unchecked
+        self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
+            fjd_state
+        )
+
+        # Open a dialog and ask the user:
+        # - whether to delete downloaded packages after installation
+        # - if the java should be downloaded (despite it being installed)
+        if self._main_view.confirm_apply_view.exec():
             log.debug("Ok clicked. Applying changes...")
 
-            # Get user decision
             self._keep_packages = (
                 self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
+            )
+            self._force_java_download = (
+                self._main_view.confirm_apply_view.checkbox_force_java_download.isChecked()
             )
 
             # Create separate thread worker passing

@@ -151,6 +151,7 @@ class ConfirmApplyDialog(QDialog):
 
         self.info_box = QTextEdit()
         self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
+        self.checkbox_force_java_download = QCheckBox("Download Java")
 
         self.buttonBox = QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
@@ -162,6 +163,7 @@ class ConfirmApplyDialog(QDialog):
 
         main_layout.addWidget(self.info_box)
         main_layout.addWidget(self.checkbox_keep_packages)
+        main_layout.addWidget(self.checkbox_force_java_download)
         main_layout.addWidget(self.buttonBox)
 
         self.setLayout(main_layout)
