@@ -181,6 +181,7 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
+                force_java_download = self._force_java_download,
                 report_status=self.status_signal.emit,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,

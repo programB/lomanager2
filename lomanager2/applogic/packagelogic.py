@@ -133,6 +133,16 @@ class MainLogic(object):
         else:
             return statusfunc(isOK=False, msg="keep_packages argument is obligatory")
 
+        # Check if force_java_download option was passed
+        if "force_java_download" in kwargs.keys():
+            force_java_download = kwargs["force_java_download"]
+        else:
+            return statusfunc(
+                isOK=False, msg="force_java_download argument is obligatory"
+            )
+
+        log.debug(f"force_java_download: {force_java_download}")
+
         # We are good to go
         # Create helper objects for progress reporting
         progress = progress_closure(callbacks=kwargs)
@@ -165,7 +175,7 @@ class MainLogic(object):
             java_package.is_to_be_downloaded = True
             java_package.is_marked_for_install = True
 
-        if self.global_flags.force_download_java is True:
+        if force_java_download is True:
             java_package.is_to_be_downloaded = True
 
         #    Add Java VirtualPackage to the list
@@ -557,7 +567,8 @@ class MainLogic(object):
         # STEP
         # Any files need to be downloaded?
         packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
-        log.debug(f"packages_to_download: {packages_to_download}")
+        human_readable_p = [(p.family, p.version, p.kind) for p in packages_to_download]
+        log.debug(f"packages_to_download: {human_readable_p}")
         collected_files = {
             "files_to_install": {
                 "Java": [],
@@ -581,7 +592,7 @@ class MainLogic(object):
             # TODO: Change configuration.tmp_directory to
             #       configuration.download_directory
             free_space = PCLOS.get_free_space_in_dir(configuration.tmp_directory)
-            total_dowload_size = sum([p.dowload_size for p in packages_to_download])
+            total_dowload_size = sum([p.download_size for p in packages_to_download])
 
             if free_space < total_dowload_size:
                 return statusfunc(
