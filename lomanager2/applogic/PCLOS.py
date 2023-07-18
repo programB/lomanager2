@@ -82,3 +82,61 @@ def is_java_installed() -> bool:
     is_java_installed = False
     log.debug(f">>PRETENDING<< is_java_installed: {is_java_installed}")
     return is_java_installed
+
+
+def detect_installed_java() -> tuple[bool, str]:
+    if pathlib.Path("/usr/bin/java").exists():
+        java_version = ""
+        found = True
+        try:
+            # get version
+            pass
+        except:
+            # could not determine java version
+            java_version = ""
+            pass
+        else:
+            pass
+        log.debug(f">>PRETENDING<< Found Java version: {java_version}")
+        return (found, java_version)
+    return (False, "")
+
+
+def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
+    # [("OpenOffice", "2.4", ()), ("LibreOffice", "7.2", ("fr", "de",)),]
+    det_soft = [
+        ("OpenOffice", "2.0", ()),
+        (
+            "OpenOffice",
+            "2.4",
+            (
+                "pl",
+                "gr",
+            ),
+        ),
+        (
+            "LibreOffice",
+            "3.0.0",
+            (
+                "fr",
+                "de",
+            ),
+        ),
+        (
+            "LibreOffice",
+            "7.5",
+            (
+                "jp",
+                "pl",
+            ),
+        ),
+    ]
+    log.debug(f">>PRETENDING<< Found Office software: {det_soft}")
+    return det_soft
+
+
+def detect_installed_clipart() -> tuple[bool, str]:
+    clipart_version = "5.3"
+    found = True
+    log.debug(f">>PRETENDING<< Found clipart library: {(found, clipart_version)}")
+    return (found, clipart_version)

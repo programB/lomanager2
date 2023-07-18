@@ -267,6 +267,16 @@ class MainLogic(object):
         return True if status["is_OK"] else False
 
     def refresh_state(self):
+        # -- NEW Logic --
+        # 1) Query for installed software
+        installed_virtual_packages = self._detect_installed_software()
+        # 2) Query for available software
+        # 3) Create joined listo
+        # 4) apply virtual packages dependencies logic
+        # 5) Replace the old state of the list with the new one
+        # -- --------- --
+
+        # -- OLD Logic --
         # Reset packages list
         self._virtual_packages = []
         # 4) Gather system information
@@ -277,6 +287,7 @@ class MainLogic(object):
         self._latest_available_clipart_version = (
             configuration.latest_available_clipart_version
         )
+
         self._build_virtual_packages_list(system_info["installed software"])
         # TODO: This should not be done this way,
         #       latest_available_packages should not exist at all.
@@ -361,16 +372,47 @@ class MainLogic(object):
         return system_info
 
     def _detect_installed_software(self):
-        # TODO: implement
-        found_software = [
-            ["OpenOffice", "2.0"],
-            ["OpenOffice", "2.4", "pl", "gr"],
-            ["LibreOffice", "3.0.0", "fr", "de"],
-            ["LibreOffice", "7.5", "jp", "pl"],
-            ["Clipart", "5.3"],
-        ]
-        log.debug(f">>PRETENDING<< found_software: {found_software}")
-        return found_software
+        installed_virtual_packages = []
+
+        is_java_installed, java_ver = PCLOS.detect_installed_java()
+        if is_java_installed:
+            java_core_package = VirtualPackage("core-packages", "Java", java_ver)
+            java_core_package.is_installed = True
+            installed_virtual_packages.append(java_core_package)
+
+        found_office_software = PCLOS.detect_installed_office_software()
+        for suit in found_office_software:
+            family = suit[0]
+            version = suit[1]
+            office_core_package = VirtualPackage(
+                "core-packages",
+                family,
+                version,
+            )
+            office_core_package.is_installed = True
+            installed_virtual_packages.append(office_core_package)
+            for lang in suit[2]:
+                office_lang_package = VirtualPackage(lang, family, version)
+                office_lang_package.is_installed = True
+                installed_virtual_packages.append(office_lang_package)
+
+        is_clipart_installed, clipart_ver = PCLOS.detect_installed_clipart()
+        if is_clipart_installed:
+            clipart_core_package = VirtualPackage(
+                "core-packages", "Clipart", clipart_ver
+            )
+            clipart_core_package.is_installed = True
+            installed_virtual_packages.append(clipart_core_package)
+
+        # found_software = [
+        #     ["OpenOffice", "2.0"],
+        #     ["OpenOffice", "2.4", "pl", "gr"],
+        #     ["LibreOffice", "3.0.0", "fr", "de"],
+        #     ["LibreOffice", "7.5", "jp", "pl"],
+        #     ["Clipart", "5.3"],
+        # ]
+        log.debug(f">>PRETENDING<< found_software: {installed_virtual_packages}")
+        return installed_virtual_packages
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
         """'Rises' flags indicating some operations will not be available
