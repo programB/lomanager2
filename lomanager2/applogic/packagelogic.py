@@ -159,7 +159,7 @@ class MainLogic(object):
         #    to know what to do (here all java_package flags are False)
         java_package = VirtualPackage("core-packages", "Java", "")
 
-        is_java_installed = self._gather_system_info()["is Java installed"]
+        is_java_installed = PCLOS.is_java_installed()
 
         is_LO_core_requested_for_install = False
         for package in self._virtual_packages:
