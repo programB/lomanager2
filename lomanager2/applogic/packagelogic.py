@@ -271,7 +271,8 @@ class MainLogic(object):
         # 1) Query for installed software
         installed_virtual_packages = self._detect_installed_software()
         # 2) Query for available software
-        # 3) Create joined listo
+        available_virtual_packages = self._get_available_software()
+        # 3) Create joined list of packages
         # 4) apply virtual packages dependencies logic
         # 5) Replace the old state of the list with the new one
         # -- --------- --
@@ -339,6 +340,30 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
+    def _get_available_software(self):
+        available_virtual_packages = []
+
+        java_ver = configuration.latest_available_java_version
+        java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
+        java_core_vp.is_installed = False
+        available_virtual_packages.append(java_core_vp)
+
+        LO_ver = configuration.latest_available_LO_version
+        office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
+        office_core_vp.is_installed = True
+        for lang in configuration.LO_supported_langs:
+            office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
+            office_lang_vp.is_installed = False
+            available_virtual_packages.append(office_lang_vp)
+
+        clipart_ver = configuration.latest_available_clipart_version
+        clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
+        clipart_core_vp.is_installed = False
+        available_virtual_packages.append(clipart_core_vp)
+
+        log.debug(f">>PRETENDING<< available software: {available_virtual_packages}")
+        return available_virtual_packages
+
     def _gather_system_info(self) -> dict:
         """Queries the OS for information relevant to LibreOffice installation.
 
