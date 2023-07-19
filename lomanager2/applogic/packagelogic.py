@@ -25,10 +25,7 @@ class MainLogic(object):
         # 2) Create state objects
         self._warnings = [{"explanation": "", "data": ""}]
         self.global_flags = SignalFlags()
-        self._latest_available_LO_version = ""
-        self._latest_available_clipart_version = ""
         self._virtual_packages = []
-        self._latest_available_packages = []
         # self._package_menu is created by the refresh_state method
 
         # 3) Run flags_logic
@@ -279,81 +276,48 @@ class MainLogic(object):
         human_readable_vps = [
             (p.family, p.version, p.kind, p.is_installed) for p in new_packages_list
         ]
-        log.debug(f"new new_packages_list list {human_readable_vps}")
+        log.debug(f"new_packages_list {human_readable_vps}")
         # 4) apply virtual packages dependencies logic
-        self._set_packages_initial_state(new_packages_list)
+        (
+            latest_Java,
+            newest_Java,
+            latest_LO,
+            newest_LO,
+            latest_Clip,
+            newest_Clip,
+        ) = self._set_packages_initial_state(new_packages_list)
         # 5) Replace the old state of the list with the new one
+        self._virtual_packages = new_packages_list
         # -- --------- --
 
-        # -- OLD Logic --
-        # Reset packages list
-        self._virtual_packages = []
-        # 4) Gather system information
-        system_info = self._gather_system_info()
-
-        # 5) Initialize state objects
-        self._latest_available_LO_version = configuration.latest_available_LO_version
-        self._latest_available_clipart_version = (
-            configuration.latest_available_clipart_version
-        )
-
-        self._build_virtual_packages_list(system_info["installed software"])
-        # TODO: This should not be done this way,
-        #       latest_available_packages should not exist at all.
-        #       All packages, both installed and available for install,
-        #       should be added to _virtual_packages list with appropriate
-        #       flags. It is then viewmodel's job to show/hide them from
-        #       the user or present their state based on these flags
-        #       (visible/disabled etc.) latest_available_packages is indeed
-        #       a data source separate from installed_packages and has to be
-        #       treated by main logic as such but it was not pictured
-        #       explicitly in the flowchart - it is MainLogic job to deal
-        #       with this data source. So the method
-        #       _build_latest_available_packages_list is needed but this
-        #       method is called only once on object creation since lomanager2
-        #       is not and will not be (by design) capable of updating this
-        #       list on demand. If the user updates the system and thus
-        #       updates lomanager2 he needs to restart the app anyway
-        #       and the app is constructing available packages list from
-        #       the single version number and not fetching a list from
-        #       an repo server.
-        # TODO: having said all above I am keeping the concept of
-        #       _latest_available_packages for now because its removal
-        #       would require modifications in the PackageMenu class
-        #       which is not a priority at the moment.
-        #       So after this list is built here it is then passed to
-        #       to PackageMenu constructor as an additional argument
-        self._build_latest_available_packages_list(
-            self._latest_available_LO_version,
-            self._latest_available_clipart_version,
-        )
-        # TODO: Given that _latest_available_packages should be obsoleted
-        #       and new packages added to _virtual_packages which of the last
-        #       2 arguments passed here are really needed?
-        # creates self._package_menu object
-        # TODO: Since on initialization PackageMenu calls its method
-        #       _set_initial_state it has to be made aware of the
-        #       self._flags object
-        # TODO: Implement additional logic in PackageMenu that
-        #       restricts allowed package operations based on self._flags
-        #       This is because flags may override any logic
-        #       based only on package dependencies.
         self._package_menu = PackageMenu(
             self._virtual_packages,
-            self._latest_available_packages,
-            self._latest_available_LO_version,
-            self._latest_available_clipart_version,
+            latest_Java=latest_Java,
+            newest_Java=newest_Java,
+            latest_LO=latest_LO,
+            newest_LO=newest_LO,
+            latest_Clip=latest_Clip,
+            newest_Clip=newest_Clip,
         )
 
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
-    def _set_packages_initial_state(self, packageS: list[VirtualPackage]) -> None:
+    def _set_packages_initial_state(
+        self, packageS: list[VirtualPackage]
+    ) -> tuple[str, str, str, str, str, str]:
         """Decides on initial conditions for packages install/removal."""
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
         # - the latest available version from the repo
+        newest_installed_Java_version = ""
+        for package in packageS:
+            if package.family == "Java" and package.is_installed:
+                newest_installed_LO_version = package.version
+                break
+        latest_available_Java_version = configuration.latest_available_java_version
+
         newest_installed_LO_version = ""
         for package in packageS:
             if (
@@ -361,7 +325,7 @@ class MainLogic(object):
                 and package.family == "LibreOffice"
                 and package.kind == "core-packages"
             ):
-                newest_installed_LO_version = self._get_newer(
+                newest_installed_LO_version = self._return_newer_ver(
                     package.version,
                     newest_installed_LO_version,
                 )
@@ -369,8 +333,9 @@ class MainLogic(object):
 
         newest_installed_Clipart_version = ""
         for package in packageS:
-            if package.family == "Clipart":
+            if package.family == "Clipart" and package.is_installed:
                 newest_installed_Clipart_version = package.version
+                break
         latest_available_Clipart_version = (
             configuration.latest_available_clipart_version
         )
@@ -403,7 +368,7 @@ class MainLogic(object):
                         package.allow_install()
 
             # b) newer version available - allow upgrading
-            elif latest_available_LO_version == self._get_newer(
+            elif latest_available_LO_version == self._return_newer_ver(
                 latest_available_LO_version,
                 newest_installed_LO_version,
             ):
@@ -453,7 +418,7 @@ class MainLogic(object):
             if newest_installed_Clipart_version == latest_available_Clipart_version:
                 log.debug("Your Clipart is already at latest available version")
             # b) Newer version available - allow upgrading
-            elif latest_available_Clipart_version == self._get_newer(
+            elif latest_available_Clipart_version == self._return_newer_ver(
                 latest_available_Clipart_version,
                 newest_installed_Clipart_version,
             ):
@@ -493,8 +458,16 @@ class MainLogic(object):
                     and package.version == latest_available_Clipart_version
                 ):
                     package.allow_install()
+        return (
+            latest_available_Java_version,
+            newest_installed_Java_version,
+            latest_available_LO_version,
+            newest_installed_LO_version,
+            latest_available_Clipart_version,
+            newest_installed_Clipart_version,
+        )
 
-    def _get_newer(self, v1: str, v2: str) -> str:
+    def _return_newer_ver(self, v1: str, v2: str) -> str:
         """Returns the newer of to versions passed
 
         Version strings are assumed to be dot
@@ -563,38 +536,6 @@ class MainLogic(object):
 
         log.debug(f">>PRETENDING<< available software: {available_virtual_packages}")
         return available_virtual_packages
-
-    def _gather_system_info(self) -> dict:
-        """Queries the OS for information relevant to LibreOffice installation.
-
-        Returns
-        -------
-        information : dict
-            Useful information
-        """
-
-        system_info = dict()
-
-        # TODO: Implement
-        # system_information["current locale"] = get_current_locale()
-        system_info["live session"] = PCLOS.is_live_session_active()
-        # TODO: Implement
-        # system_information["free HDD space"] = free_HDD_space(install_folder_root)
-        # TODO: Implement
-        system_info["installed software"] = self._detect_installed_software()
-        system_info["is Java installed"] = PCLOS.is_java_installed()
-
-        # fmt: off
-        # global _
-        # if keep_logging_messages_in_english: _ = gettext.gettext  # switch lang
-        # message = _(
-        #     "Value returned: {} (type: {})"
-        # ).format(system_information, type(system_information))
-        # if keep_logging_messages_in_english: del _  # reset lang
-        # fmt: on
-
-        # logging.debug(message)
-        return system_info
 
     def _detect_installed_software(self):
         installed_virtual_packages = []
@@ -740,24 +681,6 @@ class MainLogic(object):
 
         return (any_limitations, info_list)
 
-    # TODO: should this method be called with arguments
-    #       at all or should it directly use attributes initialized
-    #       in the MainLogic constructor?
-    def _build_virtual_packages_list(self, software_list) -> None:
-        """Builds a list of virtual packages based on installed ones."""
-        for program in software_list:
-            family = program[0]
-            version = program[1]
-            core_packages = VirtualPackage(
-                "core-packages",
-                family,
-                version,
-            )
-            self._virtual_packages.append(core_packages)
-            for lang in program[2:]:
-                lang_package = VirtualPackage(lang, family, version)
-                self._virtual_packages.append(lang_package)
-
     def _create_packages_list(
         self,
         installed: list[VirtualPackage],
@@ -775,70 +698,6 @@ class MainLogic(object):
             if item in complement:
                 complement.remove(item)
         return installed + complement
-
-    # TODO: should this method be called with arguments
-    #       at all or should it directly use attributes initialized
-    #       in the MainLogic constructor?
-    def _build_latest_available_packages_list(
-        self,
-        latest_available_LO_version,
-        latest_available_clipart_version,
-    ) -> None:
-        # TODO: Temporary, hard coded list of new LibreOffice packages
-        #       and CLipart available for install from repo.
-        #       (+ version of those 2 software components)
-        # TODO: This list should be either generated automatically based
-        #       on hard coded latest available versions, a fixed list of
-        #       supported languages and file naming convention
-        #       or read in from a pre generated configuration file.
-        self._latest_available_packages = [
-            VirtualPackage(
-                "core-packages",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "pl",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "gr",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "fr",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "de",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "jp",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "it",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "es",
-                "LibreOffice",
-                latest_available_LO_version,
-            ),
-            VirtualPackage(
-                "core-packages",
-                "Clipart",
-                latest_available_clipart_version,
-            ),
-        ]
-        pass
 
     def _install(
         self,
@@ -1774,16 +1633,19 @@ class PackageMenu(object):
     def __init__(
         self,
         packages: list[VirtualPackage],
-        l_aval_pcks: list[VirtualPackage],
-        l_aval_LO_ver: str,
-        l_aval_clipart_ver: str,
+        latest_Java: str,
+        newest_Java: str,
+        latest_LO: str,
+        newest_LO: str,
+        latest_Clip: str,
+        newest_Clip: str,
     ) -> None:
         # TODO: Refactor these variables. In fact there is no need
         #       to make any intermediate ones, just name the
         #       arguments properly and get rid of "self."
-        self.latest_available_LO_version = l_aval_LO_ver
-        self.latest_available_clipart_version = l_aval_clipart_ver
-        self.latest_available_packages = l_aval_pcks
+        self.latest_available_LO_version = latest_LO
+        self.latest_available_clipart_version = latest_Clip
+        self.newest_installed_LO_version = newest_LO
 
         # Object representing items in the menu
         self.packages = packages
@@ -1795,11 +1657,6 @@ class PackageMenu(object):
             "packages_to_install": [],
             "space_to_be_used": 0,
         }
-
-        # Set initial state of the menu by analyzing package
-        # dependencies and system state to decide
-        # what the user can/cannot do.
-        self._set_initial_state()
 
     # Public methods
     def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
@@ -1979,42 +1836,6 @@ class PackageMenu(object):
         return 6
 
     # Private methods
-    def _allow_install(self, package: VirtualPackage) -> None:
-        """Set install flags to allow install but don't mark for it
-
-        Parameters
-        ----------
-        package : VirtualPackage
-        """
-
-        package.is_installable = True
-        package.is_install_opt_visible = True
-        package.is_install_opt_enabled = True
-
-    def _allow_removal(self, package: VirtualPackage) -> None:
-        """Set remove flags to allow removal but don't mark for it
-
-        Parameters
-        ----------
-        package : VirtualPackage
-        """
-
-        package.is_removable = True
-        package.is_remove_opt_visible = True
-        package.is_remove_opt_enabled = True
-
-    def _allow_upgrade(self, package: VirtualPackage) -> None:
-        """Set upgrade flags to allow upgrade but don't mark for it
-
-        Parameters
-        ----------
-        package : VirtualPackage
-        """
-
-        package.is_upgradable = True
-        package.is_upgrade_opt_visible = True
-        package.is_upgrade_opt_enabled = True
-
     def _apply_install_logic(self, package: VirtualPackage, mark: bool):
         """Marks package for install changing flags of other packages accordingly
 
@@ -2394,260 +2215,6 @@ class PackageMenu(object):
                 is_apply_upgrade_successul = True
 
         return is_apply_upgrade_successul
-
-    def _get_newer(self, v1: str, v2: str) -> str:
-        """Returns the newer of to versions passed
-
-        Version strings are assumed to be dot
-        separated eg. "4.5"
-        These strings MUST follow the pattern
-        but need not to be of the same length.
-        Any version is newer then an empty string
-        Empty string is returned is both v1 and v2
-        empty strings.
-
-        Parameters
-        ----------
-        v1 : str
-          package version string eg. "9.1"
-
-        v2 : str
-          package version string eg. "9.1.2"
-
-        Returns
-        -------
-        str
-          newer of the v1 and v2, here 9.1.2 because it's newer then 9.1,
-          or empty string.
-        """
-
-        if v1 != v2:
-            if v1 == "":
-                return v2
-            elif v2 == "":
-                return v1
-            else:
-                v1_int = [int(i) for i in v1.split(".")]
-                v2_int = [int(i) for i in v2.split(".")]
-                size_of_smaller_list = (
-                    len(v2_int) if (len(v2_int) < len(v1_int)) else len(v1_int)
-                )
-                for i in range(size_of_smaller_list):
-                    if v1_int[i] == v2_int[i]:
-                        continue
-                    elif v1_int[i] > v2_int[i]:
-                        return v1
-                    else:
-                        return v2
-        return v1  # ver1 = ver2
-
-    def _get_newest_installed_LO_version(self) -> str:
-        newest_verison = ""
-        for package in self.packages:
-            if (
-                package.kind == "core-packages"
-                and package.family == "LibreOffice"
-                and package.version != ""
-            ):
-                newest_verison = self._get_newer(
-                    package.version,
-                    newest_verison,
-                )
-        return newest_verison
-
-    def _set_all_flags_to_false(self, package: VirtualPackage) -> None:
-        """Sets all bools (flags) in a virtual package False
-
-        Parameters
-        ----------
-        package : VirtualPackage
-        """
-
-        # Get object's properties that start with "is_"
-        props = [prop for prop in vars(package) if "is_" in prop]
-        for prop in props:
-            package.__dict__[prop] = False
-
-    def _set_initial_state(self) -> None:
-        """Decides on initial conditions for packages install/removal."""
-
-        # 0) Disallow everything
-        for package in self.packages:
-            self._set_all_flags_to_false(package)
-        for new_package in self.latest_available_packages:
-            self._set_all_flags_to_false(new_package)
-
-        # 1) Everything that is installed can be uninstalled
-        for package in self.packages:
-            self._allow_removal(package)
-
-        # 2) Check if LibreOffice upgrade is possible
-        #     a) What is the newest version of LibreOffice core-packages
-        #        among those installed
-        #        (in unlikely case there is more then 1 LibreOffice installed)
-        self.newest_installed_LO_version = self._get_newest_installed_LO_version()
-
-        if self.newest_installed_LO_version:  # a LibreOffice is installed
-            log.debug(f"Newest installed LO: {self.newest_installed_LO_version}")
-            # b) latest version already installed
-            if self.newest_installed_LO_version == self.latest_available_LO_version:
-                log.debug("Your LO is already at latest available version")
-                # Allow for additional lang packs INSTALL coming...
-                # ...FROM THE LIST of LATEST AVAILABLE PACKAGES
-                # (LibreOffice only !!! OpenOffice office is not supported.)
-                # - skip lang packs that are already installed (obvious)
-                # (- skip core-packages as obviously it is not a lang pack)
-                installed_langs = []
-                for package in self.packages:
-                    if (
-                        package.family == "LibreOffice"
-                        and package.version == self.latest_available_LO_version
-                        and package.kind != "core-packages"
-                    ):
-                        installed_langs.append(package.kind)
-                for new_package in self.latest_available_packages:
-                    if (
-                        new_package.family == "LibreOffice"
-                        and new_package.version == self.latest_available_LO_version
-                        and new_package.kind != "core-packages"
-                        and new_package.kind not in installed_langs
-                    ):
-                        self._allow_install(new_package)
-                        # TODO: This needs to moved to a proper place later on
-                        #       eg. separate window.
-                        #       Temporally append these packages to the
-                        #       self.packages list so we can see the result
-                        #       of this logic in the View
-                        self.packages.append(new_package)
-
-            # c) newer version available - allow upgrading
-            elif self.latest_available_LO_version == self._get_newer(
-                self.latest_available_LO_version,
-                self.newest_installed_LO_version,
-            ):
-                # TODO: print for test purposes. Remove in final code
-                print(
-                    "LibreOffice version available from the repo "
-                    f"({self.latest_available_LO_version}) is newer then "
-                    f"the installed one ({self.newest_installed_LO_version}) "
-                )
-                # Allow upgrading the latest LibreOffice installed.
-                # Older LibreOffice and OpenOffice versions
-                # can only be uninstalled.
-                for package in self.packages:
-                    if (
-                        package.family == "LibreOffice"
-                        and package.version == self.newest_installed_LO_version
-                    ):
-                        self._allow_upgrade(package)
-
-            # d) Something is wrong,
-            #    installed version in newer then the latest available one
-            else:
-                # TODO: print for test purposes.
-                #       REPLACE with logging and/or return status or exception
-                print(
-                    "Whoops! How did you manage to install LO that is newer "
-                    f"({self.newest_installed_LO_version}) than the one in the"
-                    f" repo ({self.latest_available_LO_version})?"
-                )
-                print(
-                    "This program will not allow you to make any changes. "
-                    "Please consult documentation."
-                )
-                # disallow everything
-                for package in self.packages:
-                    self._set_all_flags_to_false(package)
-                for new_package in self.latest_available_packages:
-                    self._set_all_flags_to_false(new_package)
-
-        # 3) LO is not installed at all (OpenOffice may be present)
-        else:
-            print("No LO installed")
-            # allow for LO install
-            for new_package in self.latest_available_packages:
-                if (
-                    new_package.family == "LibreOffice"
-                    and new_package.version == self.latest_available_LO_version
-                ):
-                    self._allow_install(new_package)
-                    # TODO: This needs to moved to a proper place later on
-                    #       eg. separate window.
-                    #       Temporally append these packages to the
-                    #       self.packages list so we can see the result
-                    #       of this logic in the View
-                    self.packages.append(new_package)
-
-        # 4) Check if Clipart upgrade is possible
-        #     a) What is the version of installed Clipart package
-        for package in self.packages:
-            if package.family == "Clipart":
-                self.newest_installed_Clipart_version = package.version
-
-        if self.newest_installed_Clipart_version:  # Clipart is installed
-            # b) Installed Clipart already at latest version,
-            #    nothing more needs to be done
-            if (
-                self.newest_installed_Clipart_version
-                == self.latest_available_clipart_version
-            ):
-                # TODO: print for test purposes. Remove in final code
-                print("Your Clipart is already at latest available version")
-            # c) Newer version available - allow upgrading
-            elif self.latest_available_clipart_version == self._get_newer(
-                self.latest_available_clipart_version,
-                self.newest_installed_Clipart_version,
-            ):
-                # TODO: print for test purposes. Remove in final code
-                print(
-                    "Clipart version available from the repo "
-                    f"({self.latest_available_clipart_version}) is newer "
-                    "then the installed one "
-                    f"({self.newest_installed_Clipart_version})"
-                )
-                # Allow upgrade of the newest installed Clipart package
-                for package in self.packages:
-                    if package.family == "Clipart":
-                        self._allow_upgrade(package)
-
-            # d) Something is wrong,
-            #    installed version in newer then the latest available one
-            else:
-                # TODO: print for test purposes.
-                #       REPLACE with logging and/or return status or exception
-                print(
-                    "Whoops! How did you manage to install Clipart that is "
-                    f"newer ({self.newest_installed_Clipart_version}) than "
-                    "than the one in the repo "
-                    f"({self.latest_available_clipart_version})?"
-                )
-                print(
-                    "This program will not allow you to make any changes. "
-                    "Please consult documentation."
-                )
-                # Disallow everything
-                for package in self.packages:
-                    self._set_all_flags_to_false(package)
-                for new_package in self.latest_available_packages:
-                    self._set_all_flags_to_false(new_package)
-
-        # 5) Clipart is not installed at all
-        else:
-            # TODO: print for test purposes.
-            print("No Clipart installed")
-            # Allow for Clipart install
-            for new_package in self.latest_available_packages:
-                if (
-                    new_package.family == "Clipart"
-                    and new_package.version == self.latest_available_clipart_version
-                ):
-                    self._allow_install(new_package)
-                    # TODO: This needs to moved to a proper place later on
-                    #       eg. separate window.
-                    #       Temporally append these packages to the
-                    #       self.packages list so we can see the result
-                    #       of this logic in the View
-                    self.packages.append(new_package)
 
 
 class OverallProgressReporter:
