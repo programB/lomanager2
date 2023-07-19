@@ -1,3 +1,6 @@
+import weakref
+
+
 class VirtualPackage(object):
     """VirtualPackage represents a bundle of rpm packages operated as one
 
@@ -75,6 +78,8 @@ class VirtualPackage(object):
         version : str
             Version of the package. Dot separated format eg. "2.4.1"
         """
+        self._parent = None
+        self.children = []
 
         self.kind = kind
         self.family = family
@@ -100,6 +105,24 @@ class VirtualPackage(object):
         self.is_marked_for_install = False
         # Download flags
         self.is_marked_for_download = False
+
+    @property
+    def parent(self):
+        return self._parent if self._parent is None else self._parent()
+
+    @parent.setter
+    def parent(self, virtual_package):
+        self._parent = weakref.ref(virtual_package)
+
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+
+    def get_subtree(self, nodeslist):
+        if self.children:
+            for child in self.children:
+                child.get_subtree(nodeslist)
+        nodeslist.append(self)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
