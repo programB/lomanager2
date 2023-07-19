@@ -110,6 +110,48 @@ class VirtualPackage(object):
         else:
             return False
 
+    def allow_install(self) -> None:
+        """Set install flags to allow install but don't mark for it
+        """
+
+        self.is_installable = True
+        self.is_install_opt_visible = True
+        self.is_install_opt_enabled = True
+
+    def allow_removal(self) -> None:
+        """Set remove flags to allow removal but don't mark for it
+        """
+
+        self.is_removable = True
+        self.is_remove_opt_visible = True
+        self.is_remove_opt_enabled = True
+
+    def allow_upgrade(self) -> None:
+        """Set upgrade flags to allow upgrade but don't mark for it
+        """
+
+        self.is_upgradable = True
+        self.is_upgrade_opt_visible = True
+        self.is_upgrade_opt_enabled = True
+
+    def is_langpack(self) -> bool:
+        if self.kind != "core-packages" and self.family == "LibreOffice":
+            return True
+        else:
+            return False
+
+    def disallow_operations(self)-> None:
+        """Sets all non state flags in virtual package False
+        """
+
+        # Get object's properties that start with "is_"
+        props = [prop for prop in vars(self) if "is_" in prop]
+        for prop in props:
+            if "is_installed" in prop:
+                pass
+            else:
+                self.__dict__[prop] = False
+
 
 class SignalFlags(object):
     def __init__(self) -> None:

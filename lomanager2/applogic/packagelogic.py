@@ -273,12 +273,15 @@ class MainLogic(object):
         # 2) Query for available software
         available_virtual_packages = self._get_available_software()
         # 3) Create joined list of packages
-        virtual_packages = self._create_packages_list(
+        new_packages_list = self._create_packages_list(
             installed_virtual_packages, available_virtual_packages
         )
-        human_readable_vps = [(p.family,p.version,p.kind,p.is_installed) for p in virtual_packages]
-        log.debug(f"new virtual_packages list {human_readable_vps}")
+        human_readable_vps = [
+            (p.family, p.version, p.kind, p.is_installed) for p in new_packages_list
+        ]
+        log.debug(f"new new_packages_list list {human_readable_vps}")
         # 4) apply virtual packages dependencies logic
+        self._set_packages_initial_state(new_packages_list)
         # 5) Replace the old state of the list with the new one
         # -- --------- --
 
@@ -345,6 +348,198 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
+    def _set_packages_initial_state(self, packageS: list[VirtualPackage]) -> None:
+        """Decides on initial conditions for packages install/removal."""
+
+        # For each software component (Java, LibreOffice, Clipart) check:
+        # - the newest installed version
+        # - the latest available version from the repo
+        newest_installed_LO_version = ""
+        for package in packageS:
+            if (
+                package.is_installed
+                and package.family == "LibreOffice"
+                and package.kind == "core-packages"
+            ):
+                newest_installed_LO_version = self._get_newer(
+                    package.version,
+                    newest_installed_LO_version,
+                )
+        latest_available_LO_version = configuration.latest_available_LO_version
+
+        newest_installed_Clipart_version = ""
+        for package in packageS:
+            if package.family == "Clipart":
+                newest_installed_Clipart_version = package.version
+        latest_available_Clipart_version = (
+            configuration.latest_available_clipart_version
+        )
+
+        # 0) Disallow everything
+        # This is already done - every flag in VirtualPackage is False by default
+        # unless set explicitly to True. At this point only the is_installed
+        # flag is True for some virtual packages in packageS
+
+        # 1) Everything that is installed can be uninstalled
+        for package in packageS:
+            if package.is_installed:
+                package.allow_removal()
+
+        # 2) Check if LibreOffice upgrade is possible
+        if newest_installed_LO_version:
+            log.debug(f"Newest installed LO: {newest_installed_LO_version}")
+            # a) latest version already installed
+            if newest_installed_LO_version == latest_available_LO_version:
+                log.debug("Your LO is already at latest available version")
+                # Allow for additional lang packs installation
+                # - LibreOffice only !!! OpenOffice office is not supported.
+                # - skip lang packs that are already installed (obvious)
+                for package in packageS:
+                    if (
+                        package.is_langpack()
+                        and package.version == latest_available_LO_version
+                        and package.is_installed is False
+                    ):
+                        package.allow_install()
+
+            # b) newer version available - allow upgrading
+            elif latest_available_LO_version == self._get_newer(
+                latest_available_LO_version,
+                newest_installed_LO_version,
+            ):
+                log.debug(
+                    "LibreOffice version available from the repo "
+                    f"({latest_available_LO_version}) is newer then "
+                    f"the installed one ({newest_installed_LO_version}) "
+                )
+                # Allow upgrade of the latest LibreOffice installed only.
+                # Older LibreOffice and OpenOffice versions
+                # can only be uninstalled.
+                for package in packageS:
+                    if (
+                        package.family == "LibreOffice"
+                        and package.version == newest_installed_LO_version
+                    ):
+                        package.allow_upgrade()
+
+            # c) Something is wrong,
+            else:
+                log.error(
+                    "Whoops! How did you manage to install LO that is newer "
+                    f"({newest_installed_LO_version}) than the one in the"
+                    f" repo ({latest_available_LO_version})?"
+                )
+                log.error(
+                    "This program will not allow you to make any changes. "
+                    "Please consult documentation."
+                )
+                for package in packageS:
+                    package.disallow_operations()
+
+        # 3) LO is not installed at all (OpenOffice may be present)
+        else:
+            log.debug("No installed LibreOffice found")
+            # allow for LO install
+            for package in packageS:
+                if (
+                    package.family == "LibreOffice"
+                    and package.version == latest_available_LO_version
+                ):
+                    package.allow_install()
+
+        # 4) Check if Clipart upgrade is possible
+        if newest_installed_Clipart_version:  # Clipart is installed
+            # a) Installed Clipart already at latest version,
+            if newest_installed_Clipart_version == latest_available_Clipart_version:
+                log.debug("Your Clipart is already at latest available version")
+            # b) Newer version available - allow upgrading
+            elif latest_available_Clipart_version == self._get_newer(
+                latest_available_Clipart_version,
+                newest_installed_Clipart_version,
+            ):
+                log.debug(
+                    "Clipart version available from the repo "
+                    f"({latest_available_Clipart_version}) is newer "
+                    "then the installed one "
+                    f"({newest_installed_Clipart_version})"
+                )
+                for package in packageS:
+                    if package.family == "Clipart":
+                        package.allow_upgrade()
+
+            # c) Something is wrong,
+            else:
+                log.error(
+                    "Whoops! How did you manage to install Clipart that is "
+                    f"newer ({newest_installed_Clipart_version}) than "
+                    "than the one in the repo "
+                    f"({latest_available_Clipart_version})?"
+                )
+                log.error(
+                    "This program will not allow you to make any changes. "
+                    "Please consult documentation."
+                )
+                for package in packageS:
+                    package.disallow_operations()
+
+        # 5) Clipart is not installed at all
+        else:
+            log.debug("No installed Clipart library found")
+            # Allow for Clipart install
+            for package in packageS:
+                if (
+                    package.family == "Clipart"
+                    and package.is_installed is False
+                    and package.version == latest_available_Clipart_version
+                ):
+                    package.allow_install()
+
+    def _get_newer(self, v1: str, v2: str) -> str:
+        """Returns the newer of to versions passed
+
+        Version strings are assumed to be dot
+        separated eg. "4.5"
+        These strings MUST follow the pattern
+        but need not to be of the same length.
+        Any version is newer then an empty string
+        Empty string is returned is both v1 and v2
+        empty strings.
+
+        Parameters
+        ----------
+        v1 : str
+          package version string eg. "9.1"
+
+        v2 : str
+          package version string eg. "9.1.2"
+
+        Returns
+        -------
+        str
+          newer of the v1 and v2, here 9.1.2 because it's newer then 9.1,
+          or empty string.
+        """
+
+        if v1 != v2:
+            if v1 == "":
+                return v2
+            elif v2 == "":
+                return v1
+            else:
+                v1_int = [int(i) for i in v1.split(".")]
+                v2_int = [int(i) for i in v2.split(".")]
+                size_of_smaller_list = (
+                    len(v2_int) if (len(v2_int) < len(v1_int)) else len(v1_int)
+                )
+                for i in range(size_of_smaller_list):
+                    if v1_int[i] == v2_int[i]:
+                        continue
+                    elif v1_int[i] > v2_int[i]:
+                        return v1
+                    else:
+                        return v2
+        return v1  # ver1 = ver2
+
     def _get_available_software(self):
         available_virtual_packages = []
 
