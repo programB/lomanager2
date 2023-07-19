@@ -169,11 +169,11 @@ class MainLogic(object):
                 break
 
         if is_java_installed is False and is_LO_core_requested_for_install is True:
-            java_package.is_to_be_downloaded = True
+            java_package.is_marked_for_download = True
             java_package.is_marked_for_install = True
 
         if force_java_download is True:
-            java_package.is_to_be_downloaded = True
+            java_package.is_marked_for_download = True
 
         #    Add Java VirtualPackage to the list
         self._virtual_packages.append(java_package)
@@ -710,7 +710,7 @@ class MainLogic(object):
     ) -> dict:
         # STEP
         # Any files need to be downloaded?
-        packages_to_download = [p for p in virtual_packages if p.is_to_be_downloaded]
+        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
         human_readable_p = [(p.family, p.version, p.kind) for p in packages_to_download]
         log.debug(f"packages_to_download: {human_readable_p}")
         collected_files = {
@@ -1315,7 +1315,7 @@ class MainLogic(object):
             package.is_marked_for_removal = False
             package.is_marked_for_upgrade = False
             package.is_marked_for_install = False
-            package.is_to_be_downloaded = False
+            package.is_marked_for_download = False
 
         if LibreOffice_core_local_copy["isPresent"]:
             log.info("Found LibreOffice core package in local copy directory")

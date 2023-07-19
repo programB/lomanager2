@@ -33,7 +33,7 @@ class VirtualPackage(object):
           (or disabled even if it is visible).
 
     Each package also has the
-        - is_to_be_downloaded
+        - is_marked_for_download
     flag that signal whether packages associated with
     this virtual package need to be downloaded from the internet.
 
@@ -56,7 +56,7 @@ class VirtualPackage(object):
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
-    is_to_be_downloaded : bool
+    is_marked_for_download : bool
     """
 
     def __init__(self, kind: str, family: str, version: str) -> None:
@@ -81,6 +81,7 @@ class VirtualPackage(object):
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
         self.download_size = 0  # size in kilobytes
+        # State flags
         self.is_installed = False
         # Remove flags
         self.is_removable = False
@@ -97,8 +98,8 @@ class VirtualPackage(object):
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
         self.is_marked_for_install = False
-        # Action flags
-        self.is_to_be_downloaded = False
+        # Download flags
+        self.is_marked_for_download = False
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
@@ -111,24 +112,21 @@ class VirtualPackage(object):
             return False
 
     def allow_install(self) -> None:
-        """Set install flags to allow install but don't mark for it
-        """
+        """Set install flags to allow install but don't mark for it"""
 
         self.is_installable = True
         self.is_install_opt_visible = True
         self.is_install_opt_enabled = True
 
     def allow_removal(self) -> None:
-        """Set remove flags to allow removal but don't mark for it
-        """
+        """Set remove flags to allow removal but don't mark for it"""
 
         self.is_removable = True
         self.is_remove_opt_visible = True
         self.is_remove_opt_enabled = True
 
     def allow_upgrade(self) -> None:
-        """Set upgrade flags to allow upgrade but don't mark for it
-        """
+        """Set upgrade flags to allow upgrade but don't mark for it"""
 
         self.is_upgradable = True
         self.is_upgrade_opt_visible = True
@@ -140,9 +138,8 @@ class VirtualPackage(object):
         else:
             return False
 
-    def disallow_operations(self)-> None:
-        """Sets all non state flags in virtual package False
-        """
+    def disallow_operations(self) -> None:
+        """Sets all non state flags in virtual package False"""
 
         # Get object's properties that start with "is_"
         props = [prop for prop in vars(self) if "is_" in prop]
