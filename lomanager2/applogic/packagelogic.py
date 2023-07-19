@@ -273,6 +273,11 @@ class MainLogic(object):
         # 2) Query for available software
         available_virtual_packages = self._get_available_software()
         # 3) Create joined list of packages
+        virtual_packages = self._create_packages_list(
+            installed_virtual_packages, available_virtual_packages
+        )
+        human_readable_vps = [(p.family,p.version,p.kind,p.is_installed) for p in virtual_packages]
+        log.debug(f"new virtual_packages list {human_readable_vps}")
         # 4) apply virtual packages dependencies logic
         # 5) Replace the old state of the list with the new one
         # -- --------- --
@@ -557,6 +562,24 @@ class MainLogic(object):
             for lang in program[2:]:
                 lang_package = VirtualPackage(lang, family, version)
                 self._virtual_packages.append(lang_package)
+
+    def _create_packages_list(
+        self,
+        installed: list[VirtualPackage],
+        available: list[VirtualPackage],
+    ) -> list[VirtualPackage]:
+        # Doesn't work with sets: TypeError: unhashable type: 'VirtualPackage'
+        # intersection = set([p for p in installed if p in available])
+        # complement = list(set(available) - intersection)
+        # return list(installed + complement)
+
+        # intersection created from installed packages !!!
+        intersection = [p for p in installed if p in available]
+        complement = available.copy()
+        for item in intersection:
+            if item in complement:
+                complement.remove(item)
+        return installed + complement
 
     # TODO: should this method be called with arguments
     #       at all or should it directly use attributes initialized

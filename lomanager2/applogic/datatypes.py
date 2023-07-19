@@ -100,6 +100,16 @@ class VirtualPackage(object):
         # Action flags
         self.is_to_be_downloaded = False
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return (
+                other.kind == self.kind
+                and other.family == self.family
+                and other.version == self.version
+            )
+        else:
+            return False
+
 
 class SignalFlags(object):
     def __init__(self) -> None:
