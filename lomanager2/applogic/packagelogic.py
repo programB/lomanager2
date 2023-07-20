@@ -1852,41 +1852,11 @@ class PackageMenu(object):
         package = self.packages[row]
 
         if column == 3:
-            if (
-                package.is_remove_opt_visible
-                and package.is_remove_opt_enabled
-                and package.is_removable
-            ):
-                is_logic_applied = self._apply_removal_logic(package, value)
-            else:
-                is_logic_applied = False
-                raise PermissionError(
-                    "It's not permited to mark/unmark this package for removal"
-                )
+            is_logic_applied = self._apply_removal_logic(package, value)
         elif column == 4:
-            if (
-                package.is_upgrade_opt_visible
-                and package.is_upgrade_opt_enabled
-                and package.is_upgradable
-            ):
-                is_logic_applied = self._apply_upgrade_logic(package, value)
-            else:
-                is_logic_applied = False
-                raise PermissionError(
-                    "It's not permited to mark/unmark this package for upgrade"
-                )
+            is_logic_applied = self._apply_upgrade_logic(package, value)
         elif column == 5:
-            if (
-                package.is_install_opt_visible
-                and package.is_install_opt_enabled
-                and package.is_installable
-            ):
-                is_logic_applied = self._apply_install_logic(package, value)
-            else:
-                is_logic_applied = False
-                raise PermissionError(
-                    "It's not permited to mark/unmark this package for install"
-                )
+            is_logic_applied = self._apply_install_logic(package, value)
         else:
             is_logic_applied = False
 

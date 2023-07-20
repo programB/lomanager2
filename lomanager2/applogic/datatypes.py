@@ -47,15 +47,12 @@ class VirtualPackage(object):
     version : str
     real_packages = list[dict[str, int]]
     is_installed: bool
-    is_removable : bool
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
     is_marked_for_removal : bool
-    is_upgradable : bool
     is_upgrade_opt_visible : bool
     is_upgrade_opt_enabled : bool
     is_marked_for_upgrade : bool
-    is_installable : bool
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
@@ -89,17 +86,14 @@ class VirtualPackage(object):
         # State flags
         self.is_installed = False
         # Remove flags
-        self.is_removable = False
         self.is_remove_opt_visible = False
         self.is_remove_opt_enabled = False
         self.is_marked_for_removal = False
         # Upgrade flags
-        self.is_upgradable = False
         self.is_upgrade_opt_visible = False
         self.is_upgrade_opt_enabled = False
         self.is_marked_for_upgrade = False
         # Install flags
-        self.is_installable = False
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
         self.is_marked_for_install = False
@@ -160,21 +154,18 @@ class VirtualPackage(object):
     def allow_removal(self) -> None:
         """Set remove flags to allow removal but don't mark for it"""
 
-        self.is_removable = True
         self.is_remove_opt_visible = True
         self.is_remove_opt_enabled = True
 
     def allow_upgrade(self) -> None:
         """Set upgrade flags to allow upgrade but don't mark for it"""
 
-        self.is_upgradable = True
         self.is_upgrade_opt_visible = True
         self.is_upgrade_opt_enabled = True
 
     def allow_install(self) -> None:
         """Set install flags to allow install but don't mark for it"""
 
-        self.is_installable = True
         self.is_install_opt_visible = True
         self.is_install_opt_enabled = True
 
