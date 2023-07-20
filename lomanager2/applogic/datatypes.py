@@ -106,6 +106,20 @@ class VirtualPackage(object):
         # Download flags
         self.is_marked_for_download = False
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return (
+                other.kind == self.kind
+                and other.family == self.family
+                and other.version == self.version
+            )
+        else:
+            return False
+
+    def __str__(self) -> str:
+        return f"({self.kind}, {self.family}, {self.version})"
+
+    # Tree methods
     @property
     def parent(self):
         return self._parent if self._parent is None else self._parent()
@@ -131,16 +145,6 @@ class VirtualPackage(object):
             s = []
         return s
 
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, self.__class__):
-            return (
-                other.kind == self.kind
-                and other.family == self.family
-                and other.version == self.version
-            )
-        else:
-            return False
-
     def tree_representation(self, level=0):
         ret = (
             "\t" * level
@@ -151,15 +155,7 @@ class VirtualPackage(object):
             ret += child.tree_representation(level + 1)
         return ret
 
-    def __str__(self) -> str:
-        return f"({self.kind}, {self.family}, {self.version})"
-
-    def allow_install(self) -> None:
-        """Set install flags to allow install but don't mark for it"""
-
-        self.is_installable = True
-        self.is_install_opt_visible = True
-        self.is_install_opt_enabled = True
+    # end Tree methods
 
     def allow_removal(self) -> None:
         """Set remove flags to allow removal but don't mark for it"""
@@ -174,6 +170,43 @@ class VirtualPackage(object):
         self.is_upgradable = True
         self.is_upgrade_opt_visible = True
         self.is_upgrade_opt_enabled = True
+
+    def allow_install(self) -> None:
+        """Set install flags to allow install but don't mark for it"""
+
+        self.is_installable = True
+        self.is_install_opt_visible = True
+        self.is_install_opt_enabled = True
+
+    def mark_for_removal(self) -> None:
+        """Checks is_marked_for_removal flag and unchecks the others
+
+        that is is_marked_for_upgrade and is_marked_for_install
+        """
+
+        self.is_marked_for_removal = True
+        self.is_marked_for_upgrade = False
+        self.is_marked_for_install = False
+
+    def mark_for_upgrade(self) -> None:
+        """Checks is_marked_for_upgrade flag and unchecks the others
+
+        that is is_marked_for_install and is_marked_for_removal
+        """
+
+        self.is_marked_for_removal = False
+        self.is_marked_for_upgrade = True
+        self.is_marked_for_install = False
+
+    def mark_for_install(self) -> None:
+        """Checks is_marked_for_install flag and unchecks the others
+
+        that is is_marked_for_removal and is_marked_for_upgrade
+        """
+
+        self.is_marked_for_removal = False
+        self.is_marked_for_upgrade = False
+        self.is_marked_for_install = True
 
     def is_langpack(self) -> bool:
         return self.kind != "core-packages" and self.family == "LibreOffice"
