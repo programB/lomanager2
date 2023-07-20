@@ -134,6 +134,19 @@ class VirtualPackage(object):
         else:
             return False
 
+    def tree_representation(self, level=0):
+        ret = (
+            "\t" * level
+            + f"{self.family} {self.version} {'core' if self.kind == 'core-packages' else self.kind}"
+            + "\n"
+        )
+        for child in self.children:
+            ret += child.tree_representation(level + 1)
+        return ret
+
+    def __str__(self) -> str:
+        return f"({self.kind}, {self.family}, {self.version})"
+
     def allow_install(self) -> None:
         """Set install flags to allow install but don't mark for it"""
 

@@ -9,7 +9,8 @@ logging.basicConfig(
 lomanger2_version = "7.5"
 latest_available_LO_version = "7.5"
 latest_available_clipart_version = "5.8"
-latest_available_java_version = "16"
+# latest_available_java_version = "16"
+latest_available_java_version = ""
 # fmt: off
 # LO_supported_langs = ["af","am","ar","as","ast",
 #                       "be","bg","bn-IN","bn","bo","br","brx","bs",

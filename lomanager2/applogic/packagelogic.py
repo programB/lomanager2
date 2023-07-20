@@ -176,7 +176,7 @@ class MainLogic(object):
             java_package.is_marked_for_download = True
 
         #    Add Java VirtualPackage to the list
-        self._virtual_packages.append(java_package)
+        # self._virtual_packages.append(java_package)
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
@@ -273,11 +273,10 @@ class MainLogic(object):
         new_packages_list = self._create_packages_list(
             installed_virtual_packages, available_virtual_packages
         )
-        human_readable_vps = [
-            (p.family, p.version, p.kind, p.is_installed) for p in new_packages_list
-        ]
-        log.debug(f"new_packages_list {human_readable_vps}")
-        # 4) apply virtual packages dependencies logic
+        for p in new_packages_list:
+            msg = f"PACKEAGE {p}"
+            log.debug(msg)
+        # 4) apply virtual packages initial state logic
         (
             latest_Java,
             newest_Java,
@@ -286,8 +285,13 @@ class MainLogic(object):
             latest_Clip,
             newest_Clip,
         ) = self._set_packages_initial_state(new_packages_list)
-        # 5) Replace the old state of the list with the new one
+        # 5) build package dependency tree
+        top_node = self._build_dependency_tree(new_packages_list)
+        log.debug("TREE \n" + top_node.tree_representation())
+        # 6) Replace the old state of the list with the new one
         self._virtual_packages = new_packages_list
+        # 7) the same with package tree
+        self._package_tree = top_node 
         # -- --------- --
 
         self._package_menu = PackageMenu(
@@ -303,6 +307,56 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
+    def _build_dependency_tree(self, packageS: list[VirtualPackage]) -> VirtualPackage:
+        master_node = VirtualPackage("master-node", "", "")
+        current_parent = master_node
+        # 1st tier: Link Java and Clipart to top level package
+        already_handled = []
+        for package in packageS:
+            if package.family == "Clipart" and package.kind == "core-packages":
+                current_parent.add_child(package)
+                already_handled.append(package)
+        packageS = [p for p in packageS if p not in already_handled]
+
+        for package in packageS:
+            if package.family == "Java" and package.kind == "core-packages":
+                current_parent.add_child(package)
+                already_handled.append(package)
+                current_parent = package
+        # and remove from packageS list
+        # Warning: packageS now becomes and independent copy of original
+        #          packageS passed in the argument so this selective
+        #          copying is not removing items from the original list
+        packageS = [p for p in packageS if p not in already_handled]
+
+        # 2nd tier: Link OO and LO core packages to Java
+        Office_parents = []
+        for package in packageS:
+            if (
+                package.family == "OpenOffice" or package.family == "LibreOffice"
+            ) and package.kind == "core-packages":
+                current_parent.add_child(package)
+                already_handled.append(package)
+                Office_parents.append(package)
+        # and remove from packageS list
+        packageS = [p for p in packageS if p not in already_handled]
+
+
+        # 3rd tier: Link OO and LO lang packages to their parent core packages
+        for package in packageS:
+            if package.kind != "core-packages":
+                for matching_parent in Office_parents:
+                    if matching_parent.version == package.version:
+                        matching_parent.add_child(package)
+                        already_handled.append(package)
+        # and remove from packageS list
+        packageS = [p for p in packageS if p not in already_handled]
+        # At this point packageS should be empty
+        # log.debug(f"packageS: {packageS}")
+
+        # log.debug("\n" + master_node.tree_representation())
+        return master_node
+
     def _set_packages_initial_state(
         self, packageS: list[VirtualPackage]
     ) -> tuple[str, str, str, str, str, str]:
