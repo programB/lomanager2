@@ -158,16 +158,28 @@ class VirtualPackage(object):
         self.is_remove_opt_enabled = True
 
     def allow_upgrade(self) -> None:
-        """Set upgrade flags to allow upgrade but don't mark for it"""
+        """Set upgrade flags to allow upgrade but don't mark for it
 
+        This also disallows package install. A package can either
+        be eligible for install or upgrade never both.
+        """
+
+        self.is_install_opt_visible = False
+        self.is_install_opt_enabled = False
         self.is_upgrade_opt_visible = True
         self.is_upgrade_opt_enabled = True
 
     def allow_install(self) -> None:
-        """Set install flags to allow install but don't mark for it"""
+        """Set install flags to allow install but don't mark for it
+
+        This also disallows package install. A package can either
+        be eligible for install or upgrade never both.
+        """
 
         self.is_install_opt_visible = True
         self.is_install_opt_enabled = True
+        self.is_upgrade_opt_visible = False
+        self.is_upgrade_opt_enabled = False
 
     def mark_for_removal(self) -> None:
         """Checks is_marked_for_removal flag and unchecks the others
