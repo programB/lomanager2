@@ -266,18 +266,17 @@ class MainLogic(object):
     def refresh_state(self):
         # -- NEW Logic --
         # 1) Query for installed software
-        installed_virtual_packages = self._detect_installed_software()
+        installed_vps = self._detect_installed_software()
         # 2) Query for available software
-        available_virtual_packages = self._get_available_software()
-        # 3) Create joined list of packages
-        new_packages_list = self._create_packages_list(
-            installed_virtual_packages, available_virtual_packages
-        )
-        for p in new_packages_list:
+        available_vps = self._get_available_software()
+        # 3) Create joint list of packages
+        complement = [p for p in available_vps if p not in installed_vps]
+        joint_package_list = installed_vps + complement
+        for p in joint_package_list:
             msg = f"PACKEAGE {p}"
             log.debug(msg)
         # 5) build package dependency tree
-        top_node = self._build_dependency_tree(new_packages_list)
+        top_node = self._build_dependency_tree(joint_package_list)
         log.debug("TREE \n" + top_node.tree_representation())
         # 4) apply virtual packages initial state logic
         (
@@ -287,9 +286,9 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(new_packages_list, top_node)
+        ) = self._set_packages_initial_state(joint_package_list, top_node)
         # 6) Replace the old state of the list with the new one
-        self._virtual_packages = new_packages_list
+        self._virtual_packages = joint_package_list
         # 7) the same with package tree
         self._package_tree = top_node
         # -- --------- --
@@ -789,14 +788,6 @@ class MainLogic(object):
             )
 
         return (any_limitations, info_list)
-
-    def _create_packages_list(
-        self,
-        installed: list[VirtualPackage],
-        available: list[VirtualPackage],
-    ) -> list[VirtualPackage]:
-        complement = [p for p in available if p not in installed]
-        return installed + complement
 
     def _install(
         self,
