@@ -632,7 +632,7 @@ class MainLogic(object):
 
         LO_ver = configuration.latest_available_LO_version
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
-        office_core_vp.is_installed = True
+        office_core_vp.is_installed = False
         for lang in configuration.LO_supported_langs:
             office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
@@ -795,17 +795,7 @@ class MainLogic(object):
         installed: list[VirtualPackage],
         available: list[VirtualPackage],
     ) -> list[VirtualPackage]:
-        # Doesn't work with sets: TypeError: unhashable type: 'VirtualPackage'
-        # intersection = set([p for p in installed if p in available])
-        # complement = list(set(available) - intersection)
-        # return list(installed + complement)
-
-        # intersection created from installed packages !!!
-        intersection = [p for p in installed if p in available]
-        complement = available.copy()
-        for item in intersection:
-            if item in complement:
-                complement.remove(item)
+        complement = [p for p in available if p not in installed]
         return installed + complement
 
     def _install(
