@@ -286,7 +286,7 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(joint_package_list, top_node)
+        ) = self._set_packages_initial_state(top_node)
         # 6) Replace the old state of the list with the new one
         self._virtual_packages = joint_package_list
         # 7) the same with package tree
@@ -358,7 +358,6 @@ class MainLogic(object):
 
     def _set_packages_initial_state(
         self,
-        packageS: list[VirtualPackage],
         root: VirtualPackage,
     ) -> tuple[str, str, str, str, str, str]:
         """Decides on initial conditions for packages install/removal."""
@@ -370,30 +369,16 @@ class MainLogic(object):
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
             newest_installed_LO_version = java.version
-        # for package in packageS:
-        #     if package.family == "Java" and package.is_installed:
-        #         newest_installed_LO_version = package.version
-        #         break
         latest_available_Java_version = configuration.latest_available_java_version
 
         newest_installed_LO_version = ""
-        LOs = [c for c in java.children if "LibreOffice" in c.family]
-        for office in LOs:
+        LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
+        for office in LibreOfficeS:
             if office.is_installed:
                 newest_installed_LO_version = self._return_newer_ver(
                     office.version,
                     newest_installed_LO_version,
                 )
-        # for package in packageS:
-        #     if (
-        #         package.is_installed
-        #         and package.family == "LibreOffice"
-        #         and package.kind == "core-packages"
-        #     ):
-        #         newest_installed_LO_version = self._return_newer_ver(
-        #             package.version,
-        #             newest_installed_LO_version,
-        #         )
         latest_available_LO_version = configuration.latest_available_LO_version
 
         newest_installed_Clipart_version = ""
@@ -401,10 +386,6 @@ class MainLogic(object):
         for clipart in clipartS:
             if clipart.is_installed:
                 newest_installed_Clipart_version = clipart.version
-        # for package in packageS:
-        #     if package.family == "Clipart" and package.is_installed:
-        #         newest_installed_Clipart_version = package.version
-        #         break
         latest_available_Clipart_version = (
             configuration.latest_available_clipart_version
         )
@@ -420,34 +401,29 @@ class MainLogic(object):
         for package in all_packages:
             if package.is_installed:
                 package.allow_removal()
-        # for package in packageS:
-        #     if package.is_installed:
-        #         package.allow_removal()
 
-        # 2) Check if LibreOffice upgrade is possible
+        # 2)
+        # Java installation/upgrading or removal are not supported
+        # by this program. This should be done by a proper package manager
+        # like Synaptic
+
+        # 3) Check options for LibreOffice
+        #
+        # LibreOffice is installed
         if newest_installed_LO_version:
             log.debug(f"Newest installed LO: {newest_installed_LO_version}")
-            # a) latest version already installed
+
+            # a) is latest version already installed ?
             if newest_installed_LO_version == latest_available_LO_version:
-                log.debug("Your LO is already at latest available version")
+                log.debug("Installed LO is already at latest available version")
                 # Allow for additional lang packs installation
                 # - LibreOffice only !!! OpenOffice office is not supported.
                 # - skip lang packs that are already installed (obvious)
-                for office in java.children:
-                    if (
-                        office.version == latest_available_LO_version
-                        and office.family == "LibreOffice"
-                    ):
+                for office in LibreOfficeS:
+                    if office.version == latest_available_LO_version:
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_install()
-                # for package in packageS:
-                #     if (
-                #         package.is_langpack()
-                #         and package.version == latest_available_LO_version
-                #         and package.is_installed is False
-                #     ):
-                #         package.allow_install()
 
             # b) newer version available - allow upgrading
             elif latest_available_LO_version == self._return_newer_ver(
@@ -459,65 +435,49 @@ class MainLogic(object):
                     f"({latest_available_LO_version}) is newer then "
                     f"the installed one ({newest_installed_LO_version}) "
                 )
-                # Allow upgrade of the latest LibreOffice installed only.
-                # Older LibreOffice and OpenOffice versions
-                # can only be uninstalled.
-                for office in java.children:
+                # Allow upgrade flag to be set for the
+                # newest LibreOffice installed and
+                # latest LibreOffice available
+                # (older LibreOffice and OpenOffice versions
+                #  can only be uninstalled).
+                for office in LibreOfficeS:
                     if (
                         office.version == newest_installed_LO_version
-                        and office.family == "LibreOffice"
+                        or office.version == latest_available_LO_version
                     ):
                         office.allow_upgrade()
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_upgrade()
-                # for package in packageS:
-                #     if (
-                #         package.family == "LibreOffice"
-                #         and package.version == newest_installed_LO_version
-                #     ):
-                #         package.allow_upgrade()
 
             # c) Something is wrong,
             else:
                 log.error(
-                    "Whoops! How did you manage to install LO that is newer "
-                    f"({newest_installed_LO_version}) than the one in the"
-                    f" repo ({latest_available_LO_version})?"
-                )
-                log.error(
-                    "This program will not allow you to make any changes. "
-                    "Please consult documentation."
+                    "Something is wrong. Installed LibreOffice version "
+                    f"({newest_installed_LO_version}) is newer than the one "
+                    f"in the repo ({latest_available_LO_version}). "
+                    "This program will not allow you to make any changes."
                 )
                 for package in all_packages:
                     package.disallow_operations()
-                # for package in packageS:
-                #     package.disallow_operations()
 
-        # 3) LO is not installed at all (OpenOffice may be present)
+        # LibreOffice is not installed at all (OpenOffice may be present)
         else:
             log.debug("No installed LibreOffice found")
-            # allow for LO install
-            for office in java.children:
-                if (
-                    office.version == latest_available_LO_version
-                    and office.family == "LibreOffice"
-                ):
+            # Allow for latest available LibreOffice to be installed
+            for office in LibreOfficeS:
+                if office.version == latest_available_LO_version:
                     office.allow_install()
                     for lang in office.children:
                         office.allow_install()
-            # for package in packageS:
-            #     if (
-            #         package.family == "LibreOffice"
-            #         and package.version == latest_available_LO_version
-            #     ):
-            #         package.allow_install()
 
-        # 4) Check if Clipart upgrade is possible
-        if newest_installed_Clipart_version:  # Clipart is installed
+        # 4) Check options for Clipart
+        #
+        # Clipart is installed
+        if newest_installed_Clipart_version:
             # a) Installed Clipart already at latest version,
             if newest_installed_Clipart_version == latest_available_Clipart_version:
-                log.debug("Your Clipart is already at latest available version")
+                log.debug("Clipart is already at latest available version")
             # b) Newer version available - allow upgrading
             elif latest_available_Clipart_version == self._return_newer_ver(
                 latest_available_Clipart_version,
@@ -529,43 +489,35 @@ class MainLogic(object):
                     "then the installed one "
                     f"({newest_installed_Clipart_version})"
                 )
+                # Allow upgrade flag to be set for the
+                # newest Clipart installed and
+                # latest Clipart available
                 for clipart in clipartS:
-                    clipart.allow_upgrade()
-                # for package in packageS:
-                #     if package.family == "Clipart":
-                #         package.allow_upgrade()
+                    if (
+                        clipart.version == newest_installed_Clipart_version
+                        or clipart.version == latest_available_Clipart_version
+                    ):
+                        clipart.allow_upgrade()
 
             # c) Something is wrong,
             else:
                 log.error(
-                    "Whoops! How did you manage to install Clipart that is "
-                    f"newer ({newest_installed_Clipart_version}) than "
-                    "than the one in the repo "
-                    f"({latest_available_Clipart_version})?"
-                )
-                log.error(
-                    "This program will not allow you to make any changes. "
-                    "Please consult documentation."
+                    "Something is wrong. Installed Openclipart version "
+                    f"({newest_installed_Clipart_version}) is newer than "
+                    f"the one in the repo({latest_available_Clipart_version}). "
+                    "This program will not allow you to make any changes."
                 )
                 for package in all_packages:
                     package.disallow_operations()
-                # for package in packageS:
-                #     package.disallow_operations()
 
-        # 5) Clipart is not installed at all
+        # Clipart is not installed at all
         else:
             log.debug("No installed Clipart library found")
-            # Allow for Clipart install
+            # Allow for latest available Clipart to be installed
             for clipart in clipartS:
-                if not clipart.is_installed and clipart.version == latest_available_Clipart_version:
+                if clipart.version == latest_available_Clipart_version:
                     clipart.allow_install()
-            # for package in packageS:
-            #     if (
-            #         package.family == "Clipart"
-            #         and package.is_installed is False
-            #         and package.version == latest_available_Clipart_version
-            #     ):
-            #         package.allow_install()
+
         return (
             latest_available_Java_version,
             newest_installed_Java_version,
