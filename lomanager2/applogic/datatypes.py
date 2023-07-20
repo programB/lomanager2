@@ -118,11 +118,18 @@ class VirtualPackage(object):
         self.children.append(child)
         child.parent = self
 
-    def get_subtree(self, nodeslist):
+    def get_subtree(self, nodeslist: list):
         if self.children:
             for child in self.children:
                 child.get_subtree(nodeslist)
         nodeslist.append(self)
+
+    def get_syblings(self) -> list:
+        if self.parent is not None:
+            s = [child for child in self.parent.children if child is not self]
+        else:
+            s = []
+        return s
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
@@ -169,10 +176,10 @@ class VirtualPackage(object):
         self.is_upgrade_opt_enabled = True
 
     def is_langpack(self) -> bool:
-        if self.kind != "core-packages" and self.family == "LibreOffice":
-            return True
-        else:
-            return False
+        return self.kind != "core-packages" and self.family == "LibreOffice"
+
+    def is_corepack(self) -> bool:
+        return self.kind == "core-packages"
 
     def disallow_operations(self) -> None:
         """Sets all non state flags in virtual package False"""
