@@ -877,8 +877,8 @@ class MainLogic(object):
             p
             for p in virtual_packages
             if p.is_marked_for_removal
-            and p.family == "OpenOffice"
-            or p.family == "LibreOffice"
+            and (p.family == "OpenOffice"
+            or p.family == "LibreOffice")
         ]
         if office_packages_to_remove:
             step.start("Removing selected Office components...")
