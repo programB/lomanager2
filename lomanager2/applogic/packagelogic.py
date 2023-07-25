@@ -455,7 +455,7 @@ class MainLogic(object):
                 if office.version == latest_available_LO_version:
                     office.allow_install()
                     for lang in office.children:
-                        office.allow_install()
+                        lang.allow_install()
 
         # 5) Check options for Clipart
         #
