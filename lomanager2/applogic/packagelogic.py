@@ -1924,6 +1924,7 @@ class PackageMenu(object):
             package.is_marked_for_install = mark
             is_apply_install_successul = True
 
+        self._decide_what_to_download()
         return is_apply_install_successul
 
     def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
@@ -1992,6 +1993,7 @@ class PackageMenu(object):
             package.is_marked_for_removal = mark
             is_apply_removal_successul = True
 
+        self._decide_what_to_download()
         return is_apply_removal_successul
 
     def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
@@ -2113,7 +2115,13 @@ class PackageMenu(object):
                 package.is_marked_for_upgrade = True
                 is_apply_upgrade_successul = True
 
+        self._decide_what_to_download()
         return is_apply_upgrade_successul
+
+    def _decide_what_to_download(self):
+        for package in self.packages:
+            if package.is_marked_for_install and package.is_installed is False:
+                package.is_marked_for_download = True
 
 
 class OverallProgressReporter:
