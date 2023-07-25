@@ -245,9 +245,6 @@ class MainLogic(object):
         # 3) Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
-        for p in joint_package_list:
-            msg = f"PACKEAGE {p}"
-            log.debug(msg)
         # 5) build package dependency tree
         top_node = self._build_dependency_tree(joint_package_list)
         log.debug("TREE \n" + top_node.tree_representation())
@@ -581,7 +578,9 @@ class MainLogic(object):
         clipart_core_vp.is_installed = False
         available_virtual_packages.append(clipart_core_vp)
 
-        log.debug(f">>PRETENDING<< available software: {available_virtual_packages}")
+        log.debug(f">>PRETENDING<< available software:")
+        for p in available_virtual_packages:
+            log.debug(f"                                 *  {p}")
         return available_virtual_packages
 
     def _detect_installed_software(self):
@@ -617,14 +616,9 @@ class MainLogic(object):
             clipart_core_package.is_installed = True
             installed_virtual_packages.append(clipart_core_package)
 
-        # found_software = [
-        #     ["OpenOffice", "2.0"],
-        #     ["OpenOffice", "2.4", "pl", "gr"],
-        #     ["LibreOffice", "3.0.0", "fr", "de"],
-        #     ["LibreOffice", "7.5", "jp", "pl"],
-        #     ["Clipart", "5.3"],
-        # ]
-        log.debug(f">>PRETENDING<< found_software: {installed_virtual_packages}")
+        log.debug(f">>PRETENDING<< found_software:")
+        for p in installed_virtual_packages:
+            log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
     def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
@@ -741,7 +735,6 @@ class MainLogic(object):
         # Any files need to be downloaded?
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
         human_readable_p = [(p.family, p.version, p.kind) for p in packages_to_download]
-        log.debug(f"packages_to_download: {human_readable_p}")
         collected_files = {
             "files_to_install": {
                 "Java": [],
@@ -1052,7 +1045,9 @@ class MainLogic(object):
         # -> add path to {}
         # return {}
 
-        log.debug(f"Packages to download: {packages_to_download}")
+        log.debug(f"Packages to download:")
+        for p in packages_to_download:
+            log.debug(f"                    * {p}")
         log.debug(">>PRETENDING<< Collecting packages...")
         time.sleep(2)
         log.debug(">>PRETENDING<< ...done collecting packages.")
@@ -1167,7 +1162,9 @@ class MainLogic(object):
         is_uninstall_successful = False
         uninstall_msg = ""
 
-        log.debug(f"Packages to remove: {packages_to_remove}")
+        log.debug(f"Packages to remove:")
+        for p in packages_to_remove:
+            log.debug(f"                  * {p}")
         log.info(">>PRETENDING<< to be removing packages...")
 
         time.sleep(2)
@@ -1234,7 +1231,9 @@ class MainLogic(object):
         is_uninstall_successful = False
         uninstall_msg = ""
 
-        log.debug(f"Packages to remove: {packages_to_remove}")
+        log.debug(f"Packages to remove:")
+        for p in packages_to_remove:
+            log.debug(f"                  * {p}")
         log.info(">>PRETENDING<< to be removing packages...")
 
         time.sleep(2)
