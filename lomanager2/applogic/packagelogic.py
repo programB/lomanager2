@@ -350,9 +350,6 @@ class MainLogic(object):
                     office.version,
                     newest_installed_LO_version,
                 )
-                office.is_remove_opt_visible = True
-            else:
-                office.is_install_opt_visible = True
         latest_available_LO_version = configuration.latest_available_LO_version
 
         newest_installed_Clipart_version = ""
@@ -360,9 +357,6 @@ class MainLogic(object):
         for clipart in clipartS:
             if clipart.is_installed:
                 newest_installed_Clipart_version = clipart.version
-                clipart.is_remove_opt_visible = True
-            else:
-                clipart.is_install_opt_visible = True
         latest_available_Clipart_version = (
             configuration.latest_available_clipart_version
         )
@@ -418,20 +412,21 @@ class MainLogic(object):
                     f"({latest_available_LO_version}) is newer then "
                     f"the installed one ({newest_installed_LO_version}) "
                 )
-                # Allow upgrade flag to be set for the
-                # newest LibreOffice installed and
-                # latest LibreOffice available
+                # newest LibreOffice installed can be removed
+                # latest LibreOffice available can be installed
                 # (older LibreOffice and OpenOffice versions
                 #  can only be uninstalled).
                 for office in LibreOfficeS:
-                    if (
-                        office.version == newest_installed_LO_version
-                        or office.version == latest_available_LO_version
-                    ):
-                        office.allow_upgrade()
+                    if office.version == newest_installed_LO_version:
+                        office.allow_removal()
                         for lang in office.children:
                             if not lang.is_installed:
-                                lang.allow_upgrade()
+                                lang.allow_removal()
+                    if office.version == latest_available_LO_version:
+                        office.allow_install()
+                        for lang in office.children:
+                            if not lang.is_installed:
+                                lang.allow_install()
 
             # c) Something is wrong,
             else:
@@ -472,16 +467,13 @@ class MainLogic(object):
                     "then the installed one "
                     f"({newest_installed_Clipart_version})"
                 )
-                # Allow upgrade flag to be set for the
-                # newest Clipart installed and
-                # latest Clipart available
+                # newest Clipart installed can be removed
+                # latest Clipart available can be installed
                 for clipart in clipartS:
-                    if (
-                        clipart.version == newest_installed_Clipart_version
-                        or clipart.version == latest_available_Clipart_version
-                    ):
-                        clipart.allow_upgrade()
-
+                    if clipart.version == newest_installed_Clipart_version:
+                        clipart.allow_removal()
+                    if clipart.version == latest_available_Clipart_version:
+                        clipart.allow_install()
             # c) Something is wrong,
             else:
                 log.error(
@@ -1904,10 +1896,17 @@ class PackageMenu(object):
             if mark is True:
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
-                # 1a) Java not installed - install it
+                # 2) Java not installed - install it
                 if not self.java.is_installed:
                     self.java.is_marked_for_install = True
-                # 2) If this is a lang pack
+                # 3) if installing latest LO mark older versions for removal
+                if package.version == self.latest_available_LO_version:
+                    for office in self.java.children:
+                        if office.version !=self.latest_available_LO_version:
+                            office.mark_for_removal()
+                            for lang in office.children:
+                                lang.mark_for_removal()
+                # 4) If this is a lang pack
                 if package.is_langpack():
                     if package.parent is not None:
                         if package.parent.is_installed:
@@ -1917,7 +1916,7 @@ class PackageMenu(object):
                             # parent not installed - install it as well
                             package.parent.is_marked_for_install = True
                 # TODO: Possible not true anymore
-                # 4)  As the install option is only available
+                #     As the install option is only available
                 #     when no installed LO was detected
                 #     and thus the latest LO was added to self.packages
                 #     there is no need to care about other installed LO suits
