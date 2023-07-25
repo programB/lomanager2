@@ -570,6 +570,7 @@ class MainLogic(object):
         LO_ver = configuration.latest_available_LO_version
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
+        available_virtual_packages.append(office_core_vp)
         for lang in configuration.LO_supported_langs:
             office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
