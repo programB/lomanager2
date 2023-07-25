@@ -1755,6 +1755,12 @@ class PackageMenu(object):
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
+        elif column == 6:
+            return(
+                package.is_installed,
+                True,
+                True,
+            )
         else:
             return (None, None, None)
 
@@ -1835,7 +1841,7 @@ class PackageMenu(object):
         int
           Currently package menu is thought as having 6 columns
         """
-        return 6
+        return 7
 
     # Private methods
     def _apply_install_logic(self, package: VirtualPackage, mark: bool):

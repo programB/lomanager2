@@ -171,6 +171,8 @@ class PackageMenuViewModel(QAbstractTableModel):
                     return "marked for upgrade?"
                 elif section == 5:
                     return "marked for install?"
+                elif section == 6:
+                    return "is installed?"
                 else:
                     return None
 
