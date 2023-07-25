@@ -1900,7 +1900,10 @@ class PackageMenu(object):
                     is_any_sybling_marked_for_install = any(
                         [s for s in syblings if s.is_marked_for_install]
                     )
-                    if not is_any_sybling_marked_for_install:
+                    if (
+                        not is_any_sybling_marked_for_install
+                        and package.parent is not None
+                    ):
                         package.parent.is_remove_opt_enabled = True
                 # 3) If this IS the core-packages
                 #    don't leave your lang packs hanging - unmark them
@@ -1918,12 +1921,13 @@ class PackageMenu(object):
                     self.java.is_marked_for_install = True
                 # 2) If this is a lang pack
                 if package.is_langpack():
-                    if package.parent.is_installed:
-                        # prevent installed parent getting removed
-                        package.parent.is_remove_opt_enabled = False
-                    else:
-                        # parent not installed - install it as well
-                        package.parent.is_marked_for_install = True
+                    if package.parent is not None:
+                        if package.parent.is_installed:
+                            # prevent installed parent getting removed
+                            package.parent.is_remove_opt_enabled = False
+                        else:
+                            # parent not installed - install it as well
+                            package.parent.is_marked_for_install = True
                 # TODO: Possible not true anymore
                 # 4)  As the install option is only available
                 #     when no installed LO was detected
@@ -2063,7 +2067,7 @@ class PackageMenu(object):
                 if package.is_corepack():
                     for child in package.children:
                         child.is_marked_for_upgrade = False
-                if package.is_langpack():
+                if package.is_langpack() and package.parent is not None:
                     package.parent.is_marked_for_upgrade = False
                 is_apply_upgrade_successul = True
 
@@ -2103,7 +2107,7 @@ class PackageMenu(object):
                 if package.is_corepack():
                     for child in package.children:
                         child.is_marked_for_upgrade = True
-                if package.is_langpack():
+                if package.is_langpack() and package.parent is not None:
                     package.parent.is_marked_for_upgrade = True
                 is_apply_upgrade_successul = True
 
