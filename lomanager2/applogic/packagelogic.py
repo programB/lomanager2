@@ -1891,6 +1891,7 @@ class PackageMenu(object):
                     if (
                         not is_any_sybling_marked_for_install
                         and package.parent is not None
+                        and package.parent.is_installed
                     ):
                         package.parent.is_remove_opt_enabled = True
                 # 3) If this IS the core-packages
