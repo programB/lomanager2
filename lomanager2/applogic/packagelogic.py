@@ -392,8 +392,6 @@ class MainLogic(object):
 
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
-        # unless set explicitly to True. At this point only the is_installed
-        # flag is True for some virtual packages in packageS
 
         # 1) Everything that is installed can be uninstalled
         all_packages = []
@@ -402,12 +400,19 @@ class MainLogic(object):
             if package.is_installed:
                 package.allow_removal()
 
-        # 2)
+        # 2) Mark any OpenOffice package found for unconditional removal
+        #    (mark for removal and prevent the user from unmarking them)
+        for package in all_packages:
+            if package.family == "OpenOffice":
+                package.is_marked_for_removal = True
+                package.is_remove_opt_enabled = False
+
+        # 3)
         # Java installation/upgrading or removal are not supported
         # by this program. This should be done by a proper package manager
         # like Synaptic
 
-        # 3) Check options for LibreOffice
+        # 4) Check options for LibreOffice
         #
         # LibreOffice is installed
         if newest_installed_LO_version:
@@ -471,7 +476,7 @@ class MainLogic(object):
                     for lang in office.children:
                         office.allow_install()
 
-        # 4) Check options for Clipart
+        # 5) Check options for Clipart
         #
         # Clipart is installed
         if newest_installed_Clipart_version:
@@ -1877,14 +1882,8 @@ class PackageMenu(object):
         is_apply_install_successul = False
 
         # OpenOffice dependency tree
-        if package.family == "OpenOffice":
-            # OpenOffice is not supported and can never be installed
-            # by this program - it can only be removed.
-            # The code here should never execute.
-            is_apply_install_successul = False
-            raise NotImplementedError(
-                "OpenOffice cannot be installed, it can only be uninstalled."
-            )
+        # OpenOffice cannot be installed, it can only be uninstalled
+        # and is always marked for removal if detected.
 
         # LibreOffice dependency tree
         if package.family == "LibreOffice":
@@ -1895,8 +1894,7 @@ class PackageMenu(object):
                 # 2) If this is the request to unmark the last of all
                 #    new lang packs marked for install (user changes mind
                 #    and decides not to install any new languages) -
-                #    allow to uninstall the existing (is any) core-packages.
-                # if package.kind != "core-packages":
+                #    allow to uninstall the existing (if any) core-packages.
                 if package.is_langpack():
                     syblings = package.get_syblings()
                     is_any_sybling_marked_for_install = any(
@@ -1904,66 +1902,20 @@ class PackageMenu(object):
                     )
                     if not is_any_sybling_marked_for_install:
                         package.parent.is_remove_opt_enabled = True
-                    # langs_left = []
-                    # for candidate in self.packages:
-                    #     if (
-                    #         candidate.family == "LibreOffice"
-                    #         and candidate.version == package.version
-                    #         and candidate.kind != "core-packages"
-                    #         and candidate.is_installable is True
-                    #         and candidate.is_marked_for_install is True
-                    #     ):
-                    #         langs_left.append(candidate)
-
-                    # if not langs_left:
-                    #     for candidate in self.packages:
-                    #         if (
-                    #             candidate.family == "LibreOffice"
-                    #             and candidate.version == package.version
-                    #             and candidate.kind == "core-packages"
-                    #         ):
-                    #             candidate.is_remove_opt_enabled = True
                 # 3) If this IS the core-packages
                 #    don't leave your lang packs hanging - unmark them
                 if package.is_corepack():
                     for child in package.children:
                         child.is_marked_for_install = False
-                    # for candidate in self.packages:
-                    #     if (
-                    #         candidate.family == "LibreOffice"
-                    #         and candidate.version == package.version
-                    #         and candidate.kind != "core-packages"
-                    #     ):
-                    #         candidate.is_marked_for_install = False
-                    # 4) Unmark the removal field of any OpenOffice to
-                    #    prevent the case when the user changes mind
-                    #    and unmarks LibreOffice install but
-                    #    OpenOffice that was marked for uninstall
-                    #    (in the "requesting install" case below) stays
-                    #    marked and gets accidentally removed leaving
-                    #    the user with NO Office installed at all.
-                    #    This can be done ONLY IF no LibreOffice package
-                    #    is left marked for install. That is only after
-                    #    the last LibreOffice package that was marked
-                    #    for install gets unmarked - and this happens here
-                    #    automatically when the core-packages
-                    #    gets unmarked.
-                    for office in self.java.children:
-                        if office.family == "OpenOffice":
-                            office.is_marked_for_removal = False
-                            office.is_remove_opt_enabled = True
-                            for lang in office.children:
-                                lang.is_marked_for_removal = False
-                                lang.is_remove_opt_enabled = True
-                        # if candidate.family == "OpenOffice":
-                        #     candidate.is_marked_for_removal = False
-                        #     candidate.is_remove_opt_enabled = True
                 is_apply_install_successul = True
 
             # requesting install
             if mark is True:
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
+                # 1a) Java not installed - install it
+                if not self.java.is_installed:
+                    self.java.is_marked_for_install = True
                 # 2) If this is a lang pack
                 if package.is_langpack():
                     if package.parent.is_installed:
@@ -1972,34 +1924,6 @@ class PackageMenu(object):
                     else:
                         # parent not installed - install it as well
                         package.parent.is_marked_for_install = True
-                # if package.kind != "core-packages":
-                #     for candidate in self.packages:
-                #         if (
-                #             candidate.family == "LibreOffice"
-                #             and candidate.version == package.version
-                #             and candidate.kind == "core-packages"
-                #         ):
-                #             # core-packages already installed - prevent
-                #             # it's removal
-                #             if candidate.is_removable is True:
-                #                 candidate.is_remove_opt_enabled = False
-                #             # core-packages not installed - mark for install
-                #             else:
-                #                 candidate.is_marked_for_install = True
-                # 3) mark any OpenOffice for removal
-                #    and set is_remove_opt_enabled to False
-                for office in self.java.children:
-                    if office.family == "OpenOffice":
-                        office.is_marked_for_removal = True
-                        office.is_remove_opt_enabled = False
-                        for lang in office.children:
-                            lang.is_marked_for_removal = True
-                            lang.is_remove_opt_enabled = False
-                # for candidate in self.packages:
-                #     if candidate.family == "OpenOffice":
-                #         candidate.is_marked_for_removal = True
-                #         candidate.is_remove_opt_enabled = False
-
                 # TODO: Possible not true anymore
                 # 4)  As the install option is only available
                 #     when no installed LO was detected
@@ -2042,39 +1966,8 @@ class PackageMenu(object):
         is_apply_removal_successul = False
 
         # OpenOffice dependency tree
-        if package.family == "OpenOffice":
-            # unmarking the request for removal
-            # if mark is False:
-            # If the users wants to unmark the removal of an OpenOffice
-            # (previously marked for removal) for whatever reason
-            # this should be allowed BUT:
-            # Since the OpenOffice is not supported and this is
-            # LibreOffice Manager not OpenOffice Manager there are
-            # only 2 options:
-            # - keep OpenOffice and not install LibreOffice at all
-            # - or completely remove ANY and ALL OpenOffice packages
-            # This program will not allow for any partial marking of
-            # OpenOffice packages.
-            for office in self.java.children:
-                if office.family == "OpenOffice":
-                    office.is_marked_for_removal = mark
-                    for lang in office.children:
-                        lang.is_marked_for_removal = mark
-                # for candidate in self.packages:
-                #     if candidate.family == "OpenOffice":
-                #         candidate.is_marked_for_removal = False
-                # is_apply_removal_successul = True
-
-            # requesting removal
-            # if mark is True:
-            # In case the user marks ANY OpenOffice package for removal
-            # it's a good opportunity to get rid of all OpenOffice
-            # packages since this suite is NOT SUPPORTED
-            # for markpackege in self.packages:
-            #     if markpackege.family == "OpenOffice":
-            #         markpackege.is_marked_for_removal = True
-            # is_apply_removal_successul = True
-            is_apply_removal_successul = True
+        # OpenOffice cannot be installed, it can only be uninstalled
+        # and is always marked for removal if detected.
 
         # LibreOffice dependency tree
         if package.family == "LibreOffice":
@@ -2082,35 +1975,21 @@ class PackageMenu(object):
             if mark is False:
                 # unmark yourself from removal
                 package.is_marked_for_removal = False
-                # If the users wants to unmark the removal of an LibreOffice
-                # package previously marked for removal (for whatever reason)
-                # this should be allowed BUT:
-                # - it should not lead (by marking and unmarking core-packages)
-                #   to lang packs left without their core-packages.
-                # - the install option for new lang packs should re-enabled
+                # unmark the removal of an LibreOffice
+                # - Do not orphan lang packs
+                # - install option for new lang packs should re-enabled
                 if package.is_corepack():
                     for child in package.children:
                         child.is_marked_for_removal = False
                         if not child.is_installed:
                             child.is_install_opt_enabled = True
-                # if package.kind == "core-packages":
-                #     for candidate in self.packages:
-                #         if (
-                #             candidate.kind != "core-packages"
-                #             and candidate.family == "LibreOffice"
-                #             and candidate.version == package.version
-                #         ):
-                #             candidate.is_marked_for_removal = False
-                #             if candidate.is_installable:
-                #                 candidate.is_install_opt_enabled = True
                 is_apply_removal_successul = True
 
-            # requesting removal of ...
+            # requesting removal
             if mark is True:
-                # ... a LibreOffice core-packages
+                # mark yourself for removal
+                package.is_marked_for_removal = True
                 if package.is_corepack():
-                    # mark yourself for removal
-                    package.is_marked_for_removal = True
                     #  mark all your children (lang packages) for removal too
                     for child in package.children:
                         if child.is_installed:
@@ -2119,27 +1998,6 @@ class PackageMenu(object):
                         else:
                             child.is_install_opt_enabled = False
                             child.is_marked_for_install = False
-                    # for candidate in self.packages:
-                    #     if (
-                    #         candidate.kind != "core-packages"
-                    #         and candidate.family == "LibreOffice"
-                    #         and candidate.version == package.version
-                    #     ):
-                    #         candidate.is_marked_for_removal = True
-                    # prevent installation of any new lang packs
-                    # for candidate in self.packages:
-                    #     if (
-                    #         candidate.kind != "core-packages"
-                    #         and candidate.family == "LibreOffice"
-                    #         and candidate.version == package.version
-                    #         and candidate.is_installable is True
-                    #     ):
-                    #         candidate.is_marked_for_install = False
-                    #         candidate.is_install_opt_enabled = False
-                # ... any lang package
-                if package.is_langpack():
-                    # only mark yourself for removal
-                    package.is_marked_for_removal = True
                 is_apply_removal_successul = True
 
         # Clipart dependency tree
@@ -2176,14 +2034,8 @@ class PackageMenu(object):
         is_apply_upgrade_successul = False
 
         # OpenOffice dependency tree
-        if package.family == "OpenOffice":
-            # OpenOffice is not supported and can never be upgraded
-            # by this program - it can only be removed.
-            # The code here should never execute.
-            is_apply_upgrade_successul = False
-            raise NotImplementedError(
-                "OpenOffice cannot be upgraded, it can only be uninstalled."
-            )
+        # OpenOffice cannot be installed, it can only be uninstalled
+        # and is always marked for removal if detected.
 
         # LibreOffice dependency tree
         if package.family == "LibreOffice":
@@ -2191,26 +2043,19 @@ class PackageMenu(object):
             if mark is False:
                 #  unmark yourself
                 package.is_marked_for_upgrade = False
-                # TODO: Unmark any removals of ANY Office. This is to prevent
+                # TODO: Unmark any removals of LibreOffice. This is to prevent
                 #       the situation when unmarking the (already marked)
                 #       upgrade options leaves existing Office suit(s)
                 #       marked for removal. Then accidental "Apply Changes"
                 #       would lead to all existing office suits getting
                 #       uninstalled and latest office not installed.
                 for office in self.java.children:
-                    if office.family == "OpenOffice" or office.family == "LibreOffice":
+                    if office.family == "LibreOffice":
                         office.is_marked_for_removal = False
                         office.is_remove_opt_enabled = True
                         for lang in office.children:
                             lang.is_marked_for_removal = False
                             lang.is_remove_opt_enabled = True
-                # for candidate in self.packages:
-                #     if (
-                #         candidate.family == "OpenOffice"
-                #         or candidate.family == "LibreOffice"
-                #     ):
-                #         candidate.is_marked_for_removal = False
-                #         candidate.is_remove_opt_enabled = True
                 # 4b)   Upgrade is atomic -- all or none so:
                 #       unmark for upgrade other packages in the same tree
                 #       (parent or children or sibling(s))
@@ -2220,31 +2065,10 @@ class PackageMenu(object):
                         child.is_marked_for_upgrade = False
                 if package.is_langpack():
                     package.parent.is_marked_for_upgrade = False
-                # for candidate in self.packages:
-                #     if (
-                #         candidate is not package
-                #         and candidate.family == "LibreOffice"
-                #         and candidate.version == package.version
-                #         and candidate.is_upgradable
-                #     ):
-                #         candidate.is_marked_for_upgrade = False
                 is_apply_upgrade_successul = True
 
             # requesting upgrade
             if mark is True:
-                # 1a) mark for removal ALL OpenOffice packages
-                # 1b)   and their remove_opt_enabled to False
-                for office in self.java.children:
-                    if office.family == "OpenOffice":
-                        office.is_marked_for_removal = True
-                        office.is_remove_opt_enabled = False
-                        for lang in office.children:
-                            lang.is_marked_for_removal = True
-                            lang.is_remove_opt_enabled = False
-                # for candidate in self.packages:
-                #     if candidate.family == "OpenOffice":
-                #         candidate.is_marked_for_removal = True
-                #         candidate.is_remove_opt_enabled = False
                 # 2a) mark installed LibreOffice versions other then
                 #     newest installed for removal
                 # 2b)   and their remove_opt_enabled to False
@@ -2258,13 +2082,6 @@ class PackageMenu(object):
                         for lang in office.children:
                             lang.is_marked_for_removal = True
                             lang.is_remove_opt_enabled = False
-                    # for candidate in self.packages:
-                    #     if (
-                    #         candidate.family == "LibreOffice"
-                    #         and candidate.version != self.newest_installed_LO_version
-                    #     ):
-                    #         candidate.is_marked_for_removal = True
-                    #         candidate.is_remove_opt_enabled = False
                     # 3a) Do not mark newest installed LO for removal. Just
                     #     mark its remove_opt_enabled as False
                     #     (disable explicit removal request)
@@ -2277,11 +2094,6 @@ class PackageMenu(object):
                         office.is_remove_opt_enabled = False
                         for lang in office.children:
                             lang.is_remove_opt_enabled = False
-                    # if (
-                    #     candidate.family == "LibreOffice"
-                    #     and candidate.version == self.newest_installed_LO_version
-                    # ):
-                    #     candidate.is_remove_opt_enabled = False
                 # 4a) mark yourself for upgrade
                 package.is_marked_for_upgrade = True
                 # 4b)   Upgrade is atomic -- all or none so:
@@ -2293,14 +2105,6 @@ class PackageMenu(object):
                         child.is_marked_for_upgrade = True
                 if package.is_langpack():
                     package.parent.is_marked_for_upgrade = True
-                # for candidate in self.packages:
-                #     if (
-                #         candidate is not package
-                #         and candidate.family == "LibreOffice"
-                #         and candidate.version == package.version
-                #         and candidate.is_upgradable
-                #     ):
-                #         candidate.is_marked_for_upgrade = True
                 is_apply_upgrade_successul = True
 
         # Clipart dependency tree
