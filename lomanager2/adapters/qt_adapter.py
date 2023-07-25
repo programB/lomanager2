@@ -72,6 +72,8 @@ class Adapter(QObject):
 
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
+        # FIXME: hide upgrade column for now. To be removed completly later
+        self._package_menu_view.hideColumn(4)
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
