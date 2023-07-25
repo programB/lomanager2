@@ -146,37 +146,10 @@ class MainLogic(object):
         progress_description = progress_description_closure(callbacks=kwargs)
         step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
-        # TODO: Java virtual package should already be in the list
-        #       of virtual and no decision making should be done
-        #       here other then marking java to be downloaded
-        #       if this was requested by the user in the UI.
-        # Decide what to do with Java
-        #
-        #    Create Java VirtualPackage for the install subprocedure
-        #    to know what to do (here all java_package flags are False)
-        java_package = VirtualPackage("core-packages", "Java", "")
-
-        is_java_installed = PCLOS.is_java_installed()
-
-        is_LO_core_requested_for_install = False
-        for package in self._virtual_packages:
-            if (
-                package.family == "LibreOffice"
-                and package.kind == "core-packages"
-                and package.is_marked_for_install
-            ):
-                is_LO_core_requested_for_install = True
-                break
-
-        if is_java_installed is False and is_LO_core_requested_for_install is True:
-            java_package.is_marked_for_download = True
-            java_package.is_marked_for_install = True
-
+        # Mark Java for download if the user requests that
+        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
         if force_java_download is True:
             java_package.is_marked_for_download = True
-
-        #    Add Java VirtualPackage to the list
-        # self._virtual_packages.append(java_package)
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
