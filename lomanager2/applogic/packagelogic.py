@@ -370,6 +370,7 @@ class MainLogic(object):
         if java.is_installed:
             newest_installed_LO_version = java.version
         latest_available_Java_version = configuration.latest_available_java_version
+        # java install/remove/upgrade options are never visible
 
         newest_installed_LO_version = ""
         LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
@@ -379,6 +380,9 @@ class MainLogic(object):
                     office.version,
                     newest_installed_LO_version,
                 )
+                office.is_remove_opt_visible = True
+            else:
+                office.is_install_opt_visible = True
         latest_available_LO_version = configuration.latest_available_LO_version
 
         newest_installed_Clipart_version = ""
@@ -386,6 +390,9 @@ class MainLogic(object):
         for clipart in clipartS:
             if clipart.is_installed:
                 newest_installed_Clipart_version = clipart.version
+                clipart.is_remove_opt_visible = True
+            else:
+                clipart.is_install_opt_visible = True
         latest_available_Clipart_version = (
             configuration.latest_available_clipart_version
         )
@@ -406,6 +413,7 @@ class MainLogic(object):
             if package.family == "OpenOffice":
                 package.is_marked_for_removal = True
                 package.is_remove_opt_enabled = False
+                package.is_remove_opt_visible = True
 
         # 3)
         # Java installation/upgrading or removal are not supported
