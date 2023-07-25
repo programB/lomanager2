@@ -1908,8 +1908,8 @@ class PackageMenu(object):
                 # 3) If this IS the core-packages
                 #    don't leave your lang packs hanging - unmark them
                 if package.is_corepack():
-                    for child in package.children:
-                        child.is_marked_for_install = False
+                    for lang in package.children:
+                        lang.is_marked_for_install = False
                 is_apply_install_successul = True
 
             # requesting install
@@ -1983,10 +1983,10 @@ class PackageMenu(object):
                 # - Do not orphan lang packs
                 # - install option for new lang packs should re-enabled
                 if package.is_corepack():
-                    for child in package.children:
-                        child.is_marked_for_removal = False
-                        if not child.is_installed:
-                            child.is_install_opt_enabled = True
+                    for lang in package.children:
+                        lang.is_marked_for_removal = False
+                        if not lang.is_installed:
+                            lang.is_install_opt_enabled = True
                 is_apply_removal_successul = True
 
             # requesting removal
@@ -1994,14 +1994,14 @@ class PackageMenu(object):
                 # mark yourself for removal
                 package.is_marked_for_removal = True
                 if package.is_corepack():
-                    #  mark all your children (lang packages) for removal too
-                    for child in package.children:
-                        if child.is_installed:
-                            child.is_marked_for_removal = True
+                    #  mark all your lang packages for removal too
+                    for lang in package.children:
+                        if lang.is_installed:
+                            lang.is_marked_for_removal = True
                         # prevent installation of any new lang packs
                         else:
-                            child.is_install_opt_enabled = False
-                            child.is_marked_for_install = False
+                            lang.is_install_opt_enabled = False
+                            lang.is_marked_for_install = False
                 is_apply_removal_successul = True
 
         # Clipart dependency tree
@@ -2065,8 +2065,8 @@ class PackageMenu(object):
                 #       (parent or children or sibling(s))
                 #       BUT only those that were marked as upgradable
                 if package.is_corepack():
-                    for child in package.children:
-                        child.is_marked_for_upgrade = False
+                    for lang in package.children:
+                        lang.is_marked_for_upgrade = False
                 if package.is_langpack() and package.parent is not None:
                     package.parent.is_marked_for_upgrade = False
                 is_apply_upgrade_successul = True
@@ -2105,8 +2105,8 @@ class PackageMenu(object):
                 #       (parent or children or sibling(s))
                 #       BUT only those that were marked as upgradable
                 if package.is_corepack():
-                    for child in package.children:
-                        child.is_marked_for_upgrade = True
+                    for lang in package.children:
+                        lang.is_marked_for_upgrade = True
                 if package.is_langpack() and package.parent is not None:
                     package.parent.is_marked_for_upgrade = True
                 is_apply_upgrade_successul = True
