@@ -61,10 +61,12 @@ class PackageMenuViewModel(QAbstractTableModel):
             # shade of grey if the operation is in
             # non enabled state
             if column >= 3:
-                if pf_enabled is False:
+                if pf_enabled is False and pf_vis is True:
                     return QtGui.QColor("#484544")  # dark grey
-                if pf_enabled is True:
+                if pf_enabled is True and pf_vis is True:
                     return QtGui.QColor("#6d6967")  # light grey
+                if pf_vis is False:
+                    return QtGui.QColor("black")
 
         if role == Qt.ItemDataRole.ForegroundRole:
             # Set text color in the cell
