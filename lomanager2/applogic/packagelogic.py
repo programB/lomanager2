@@ -1821,6 +1821,19 @@ class PackageMenu(object):
                 if package.is_corepack():
                     for lang in package.children:
                         lang.is_marked_for_install = False
+                # 4) if unmarking the last LO package of
+                #    the latest available version
+                #    make the removal option for installed Office
+                #    accessible again
+                if package.version == self.latest_available_LO_version:
+                    family_members = package.get_your_family()
+                    is_any_member_marked_for_install = any([m for m in family_members if m.is_marked_for_install])
+                    if not is_any_member_marked_for_install:
+                        for office in self.java.children:
+                            if office.version != self.latest_available_LO_version:
+                                office.is_remove_opt_enabled = True
+                                for lang in office.children:
+                                    lang.is_remove_opt_enabled = True
                 is_apply_install_successul = True
 
             # requesting install
@@ -1835,8 +1848,10 @@ class PackageMenu(object):
                     for office in self.java.children:
                         if office.version !=self.latest_available_LO_version:
                             office.mark_for_removal()
+                            office.is_remove_opt_enabled = False
                             for lang in office.children:
                                 lang.mark_for_removal()
+                                lang.is_remove_opt_enabled = False
                 # 4) If this is a lang pack
                 if package.is_langpack():
                     if package.parent is not None:

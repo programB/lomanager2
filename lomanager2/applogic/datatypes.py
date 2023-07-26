@@ -215,6 +215,14 @@ class VirtualPackage(Node):
     def is_corepack(self) -> bool:
         return self.kind == "core-packages"
 
+    def get_your_family(self) -> list:
+        family_list = []
+        if self.is_corepack():
+            self.get_subtree(family_list)
+        if self.is_langpack() and self.parent is not None:
+            self.parent.get_subtree(family_list)
+        return family_list
+
     def disallow_operations(self) -> None:
         """Sets all non state flags in virtual package False"""
 
