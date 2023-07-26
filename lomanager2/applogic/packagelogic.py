@@ -97,9 +97,6 @@ class MainLogic(object):
             f"Flag <<ready_to_apply_changes>> is: "
             f"<<{self.global_flags.ready_to_apply_changes}>>"
         )
-        # TODO: bypassing for tests
-        log.warning(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
-        self.global_flags.ready_to_apply_changes = True
 
         # Callback function for reporting the status of the procedure
         def statusfunc(isOK: bool, msg: str):
@@ -182,9 +179,6 @@ class MainLogic(object):
             f"Flag <<ready_to_apply_changes>> is: "
             f"<<{self.global_flags.ready_to_apply_changes}>>"
         )
-        # TODO: bypassing for tests
-        log.debug(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
-        self.global_flags.ready_to_apply_changes = True
 
         log.debug(
             f"Flag <<block_local_copy_install>> is: "
@@ -282,6 +276,7 @@ class MainLogic(object):
             latest_Clip=latest_Clip,
             newest_Clip=newest_Clip,
         )
+        self.global_flags.ready_to_apply_changes = True
 
     # -- end Public interface for MainLogic
 
