@@ -816,23 +816,8 @@ class MainLogic(object):
         step.end()
 
         # STEP
-        # Java needs to be upgraded or installed?
-        if rpms_and_tgzs_to_use["files_to_upgrade"]["Java"]:
-            step.start("Upgrading Java...")
-
-            is_upgraded, msg = self._upgrade_Java(
-                rpms_and_tgzs_to_use,
-                progress_description,
-                progress_percentage,
-            )
-            if is_upgraded is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to upgrade Java.\n" + msg,
-                )
-            step.end("...done upgrading Java")
-
-        elif rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        # Java needs to be installed?
+        if rpms_and_tgzs_to_use["files_to_install"]["Java"]:
             step.start("Installing Java...")
 
             is_installed, msg = self._install_Java(
@@ -846,7 +831,7 @@ class MainLogic(object):
                     msg="Failed to install Java.\n" + msg,
                 )
             step.end("...done installing Java")
-        # No Java upgrade or install requested
+        # No Java install requested
         else:
             step.skip()
 
@@ -1107,43 +1092,6 @@ class MainLogic(object):
         is_install_successful = True
         log.info("Java successfully installed.")
         return (is_install_successful, install_msg)
-
-    def _upgrade_Java(
-        self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
-    ) -> tuple[bool, str]:
-        is_upgrade_successful = False
-        upgrade_msg = ""
-
-        log.debug(">>PRETENDING<< to be upgrading Java...")
-        if "files_to_upgrade" in downloaded_files.keys():
-            if rpms := downloaded_files["files_to_upgrade"]["Java"]:
-                log.debug(f"Java rpms to upgrade {rpms}")
-                progress_description("Upgrading java rpms ....")
-                total_time_sek = 5
-                steps = 30
-                for i in range(steps):
-                    progress = int((i / (steps - 1)) * 100)
-                    progress_percentage(progress)
-                    time.sleep(total_time_sek / steps)
-                progress_description("...done upgrading java rpms")
-                log.debug("...done")
-                is_upgrade_successful = True
-                upgrade_msg = ""
-            else:
-                is_upgrade_successful = False
-                upgrade_msg = "Java upgrade requested but list of files is empty."
-                log.error(upgrade_msg)
-        else:
-            is_upgrade_successful = False
-            upgrade_msg = "Java upgrade requested but no files_to_upgrade dict passed."
-            log.error(upgrade_msg)
-
-        is_upgrade_successful = True
-        log.info("Java successfully upgraded.")
-        return (is_upgrade_successful, upgrade_msg)
 
     def _uninstall_office_components(
         self,
