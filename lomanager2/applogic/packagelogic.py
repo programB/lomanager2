@@ -734,12 +734,6 @@ class MainLogic(object):
                 "LibreOffice-langs": [],
                 "Clipart": [],
             },
-            "files_to_upgrade": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
         }
 
         # Some packages need to be downloaded
@@ -1035,12 +1029,6 @@ class MainLogic(object):
         #       collected rpm(s) or tar.gz(s) (best pathlib.Path not string)
         rpms_and_tgzs_to_use = {
             "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-            "files_to_upgrade": {
                 "Java": [],
                 "LibreOffice-core": [],
                 "LibreOffice-langs": [],
