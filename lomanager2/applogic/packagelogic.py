@@ -2132,8 +2132,11 @@ class PackageMenu(object):
 
     def _decide_what_to_download(self):
         for package in self.packages:
+            # if package.is_marked_for_install and package.is_installed is False:
             if package.is_marked_for_install and package.is_installed is False:
                 package.is_marked_for_download = True
+            else:
+                package.is_marked_for_download = False
 
 
 class OverallProgressReporter:
