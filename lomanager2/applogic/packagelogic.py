@@ -1235,12 +1235,6 @@ class MainLogic(object):
                 "LibreOffice-langs": [],
                 "Clipart": [],
             },
-            "files_to_upgrade": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
         }
 
         # local_copy_directory exists?
@@ -1269,7 +1263,6 @@ class MainLogic(object):
         # The logic of what should be installed/removed follows
         for package in virtual_packages:
             package.is_marked_for_removal = False
-            package.is_marked_for_upgrade = False
             package.is_marked_for_install = False
             package.is_marked_for_download = False
 
@@ -1313,10 +1306,9 @@ class MainLogic(object):
 
             # Reaching this point means Java is or will be installed
 
-            # For Office we don't care if something is already installed
-            # No upgrade path is supported when installing from
-            # localy saved files.
-            # Simply remove every Office package that is installed.
+            # No complex checks/comparisons for Office. To make sure
+            # nothing gets messed up simply remove every Office package
+            # that is installed.
             # (That includes OO, LO and any langpacks)
             log.debug("Marking ALL existing Office packages for removal.")
             for package in virtual_packages:
@@ -1356,8 +1348,6 @@ class MainLogic(object):
                 if package.family == "Clipart" and package.is_installed:
                     log.debug("Installed Clipart installation marked for removal")
                     # Clipart is already installed.
-                    # No upgrade path is supported when installing from
-                    # locally saved files.
                     # Simply remove it and install the one from local copy
                     package.is_marked_for_removal = True
 
