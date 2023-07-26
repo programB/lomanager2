@@ -1,7 +1,44 @@
 import weakref
 
 
-class VirtualPackage(object):
+class Node:
+    def __init__(self) -> None:
+        self._parent = None
+        self.children = []
+
+    @property
+    def parent(self):
+        return self._parent if self._parent is None else self._parent()
+
+    @parent.setter
+    def parent(self, virtual_package):
+        self._parent = weakref.ref(virtual_package)
+
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+
+    def get_subtree(self, nodeslist: list):
+        if self.children:
+            for child in self.children:
+                child.get_subtree(nodeslist)
+        nodeslist.append(self)
+
+    def get_syblings(self) -> list:
+        if self.parent is not None:
+            s = [child for child in self.parent.children if child is not self]
+        else:
+            s = []
+        return s
+
+    def tree_representation(self, level=0):
+        ret = "\t" * level + f"{self}" + "\n"
+        for child in self.children:
+            ret += child.tree_representation(level + 1)
+        return ret
+
+
+class VirtualPackage(Node):
     """VirtualPackage represents a bundle of rpm packages operated as one
 
     A bundle is one or more rpm packages that are or should be
@@ -75,8 +112,7 @@ class VirtualPackage(object):
         version : str
             Version of the package. Dot separated format eg. "2.4.1"
         """
-        self._parent = None
-        self.children = []
+        super().__init__()
 
         self.kind = kind
         self.family = family
@@ -112,44 +148,6 @@ class VirtualPackage(object):
 
     def __str__(self) -> str:
         return f"({self.kind}, {self.family}, {self.version})"
-
-    # Tree methods
-    @property
-    def parent(self):
-        return self._parent if self._parent is None else self._parent()
-
-    @parent.setter
-    def parent(self, virtual_package):
-        self._parent = weakref.ref(virtual_package)
-
-    def add_child(self, child):
-        self.children.append(child)
-        child.parent = self
-
-    def get_subtree(self, nodeslist: list):
-        if self.children:
-            for child in self.children:
-                child.get_subtree(nodeslist)
-        nodeslist.append(self)
-
-    def get_syblings(self) -> list:
-        if self.parent is not None:
-            s = [child for child in self.parent.children if child is not self]
-        else:
-            s = []
-        return s
-
-    def tree_representation(self, level=0):
-        ret = (
-            "\t" * level
-            + f"{self.family} {self.version} {'core' if self.kind == 'core-packages' else self.kind}"
-            + "\n"
-        )
-        for child in self.children:
-            ret += child.tree_representation(level + 1)
-        return ret
-
-    # end Tree methods
 
     def allow_removal(self) -> None:
         """Set remove flags to allow removal but don't mark for it"""
