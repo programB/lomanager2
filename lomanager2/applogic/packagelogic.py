@@ -1752,6 +1752,12 @@ class PackageMenu(object):
                 True,
                 True,
             )
+        elif column == 7:
+            return(
+                package.is_marked_for_download,
+                True,
+                True,
+            )
         else:
             return (None, None, None)
 
@@ -1832,7 +1838,7 @@ class PackageMenu(object):
         int
           Currently package menu is thought as having 6 columns
         """
-        return 7
+        return 8
 
     # Private methods
     def _apply_install_logic(self, package: VirtualPackage, mark: bool):
