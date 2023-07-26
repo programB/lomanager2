@@ -1,4 +1,44 @@
-class VirtualPackage(object):
+import weakref
+
+
+class Node:
+    def __init__(self) -> None:
+        self._parent = None
+        self.children = []
+
+    @property
+    def parent(self):
+        return self._parent if self._parent is None else self._parent()
+
+    @parent.setter
+    def parent(self, virtual_package):
+        self._parent = weakref.ref(virtual_package)
+
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+
+    def get_subtree(self, nodeslist: list):
+        if self.children:
+            for child in self.children:
+                child.get_subtree(nodeslist)
+        nodeslist.append(self)
+
+    def get_syblings(self) -> list:
+        if self.parent is not None:
+            s = [child for child in self.parent.children if child is not self]
+        else:
+            s = []
+        return s
+
+    def tree_representation(self, level=0):
+        ret = "\t" * level + f"{self}" + "\n"
+        for child in self.children:
+            ret += child.tree_representation(level + 1)
+        return ret
+
+
+class VirtualPackage(Node):
     """VirtualPackage represents a bundle of rpm packages operated as one
 
     A bundle is one or more rpm packages that are or should be
@@ -33,7 +73,7 @@ class VirtualPackage(object):
           (or disabled even if it is visible).
 
     Each package also has the
-        - is_to_be_downloaded
+        - is_marked_for_download
     flag that signal whether packages associated with
     this virtual package need to be downloaded from the internet.
 
@@ -44,19 +84,16 @@ class VirtualPackage(object):
     version : str
     real_packages = list[dict[str, int]]
     is_installed: bool
-    is_removable : bool
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
     is_marked_for_removal : bool
-    is_upgradable : bool
     is_upgrade_opt_visible : bool
     is_upgrade_opt_enabled : bool
     is_marked_for_upgrade : bool
-    is_installable : bool
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
-    is_to_be_downloaded : bool
+    is_marked_for_download : bool
     """
 
     def __init__(self, kind: str, family: str, version: str) -> None:
@@ -75,30 +112,127 @@ class VirtualPackage(object):
         version : str
             Version of the package. Dot separated format eg. "2.4.1"
         """
+        super().__init__()
 
         self.kind = kind
         self.family = family
         self.version = version
         self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
         self.download_size = 0  # size in kilobytes
+        # State flags
         self.is_installed = False
         # Remove flags
-        self.is_removable = False
         self.is_remove_opt_visible = False
         self.is_remove_opt_enabled = False
         self.is_marked_for_removal = False
         # Upgrade flags
-        self.is_upgradable = False
         self.is_upgrade_opt_visible = False
         self.is_upgrade_opt_enabled = False
         self.is_marked_for_upgrade = False
         # Install flags
-        self.is_installable = False
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
         self.is_marked_for_install = False
-        # Action flags
-        self.is_to_be_downloaded = False
+        # Download flags
+        self.is_marked_for_download = False
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return (
+                other.kind == self.kind
+                and other.family == self.family
+                and other.version == self.version
+            )
+        else:
+            return False
+
+    def __str__(self) -> str:
+        return f"({self.kind}, {self.family}, {self.version})"
+
+    def allow_removal(self) -> None:
+        """Set remove flags to allow removal but don't mark for it"""
+
+        self.is_remove_opt_visible = True
+        self.is_remove_opt_enabled = True
+
+    def allow_upgrade(self) -> None:
+        """Set upgrade flags to allow upgrade but don't mark for it
+
+        This also disallows package install. A package can either
+        be eligible for install or upgrade never both.
+        """
+
+        self.is_install_opt_visible = False
+        self.is_install_opt_enabled = False
+        self.is_upgrade_opt_visible = True
+        self.is_upgrade_opt_enabled = True
+
+    def allow_install(self) -> None:
+        """Set install flags to allow install but don't mark for it
+
+        This also disallows package install. A package can either
+        be eligible for install or upgrade never both.
+        """
+
+        self.is_install_opt_visible = True
+        self.is_install_opt_enabled = True
+        self.is_upgrade_opt_visible = False
+        self.is_upgrade_opt_enabled = False
+
+    def mark_for_removal(self) -> None:
+        """Checks is_marked_for_removal flag and unchecks the others
+
+        that is is_marked_for_upgrade and is_marked_for_install
+        """
+
+        self.is_marked_for_removal = True
+        self.is_marked_for_upgrade = False
+        self.is_marked_for_install = False
+
+    def mark_for_upgrade(self) -> None:
+        """Checks is_marked_for_upgrade flag and unchecks the others
+
+        that is is_marked_for_install and is_marked_for_removal
+        """
+
+        self.is_marked_for_removal = False
+        self.is_marked_for_upgrade = True
+        self.is_marked_for_install = False
+
+    def mark_for_install(self) -> None:
+        """Checks is_marked_for_install flag and unchecks the others
+
+        that is is_marked_for_removal and is_marked_for_upgrade
+        """
+
+        self.is_marked_for_removal = False
+        self.is_marked_for_upgrade = False
+        self.is_marked_for_install = True
+
+    def is_langpack(self) -> bool:
+        return self.kind != "core-packages" and self.family == "LibreOffice"
+
+    def is_corepack(self) -> bool:
+        return self.kind == "core-packages"
+
+    def get_your_family(self) -> list:
+        family_list = []
+        if self.is_corepack():
+            self.get_subtree(family_list)
+        if self.is_langpack() and self.parent is not None:
+            self.parent.get_subtree(family_list)
+        return family_list
+
+    def disallow_operations(self) -> None:
+        """Sets all non state flags in virtual package False"""
+
+        # Get object's properties that start with "is_"
+        props = [prop for prop in vars(self) if "is_" in prop]
+        for prop in props:
+            if "is_installed" in prop:
+                pass
+            else:
+                self.__dict__[prop] = False
 
 
 class SignalFlags(object):
