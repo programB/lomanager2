@@ -30,6 +30,7 @@ class Adapter(QObject):
     refresh_signal = Signal()
     status_signal = Signal(dict)
     worker_ready_signal = Signal()
+    warning_signal = Signal()
     GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
@@ -66,14 +67,20 @@ class Adapter(QObject):
         self._force_java_download = False
         self._local_copy_folder = None
 
-        # Flags blocking parts of the interface during certain operations
-        self._is_packages_selecting_allowed = True
-        self._is_starting_procedures_allowed = True
-
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
         # FIXME: hide upgrade column for now. To be removed completly later
         self._package_menu_view.hideColumn(4)
+
+        # Flags blocking parts of the interface during certain operations
+        self._is_packages_selecting_allowed = True
+        self._is_starting_procedures_allowed = True
+
+        # Check if there are any limitation on this program's
+        # operations as a result of problems detected
+        # during initial system verification
+        if self._main_model.any_limitations:
+            self.warning_signal.emit()
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
@@ -117,6 +124,9 @@ class Adapter(QObject):
 
         # Internal Signal: starts already prepared thread
         self.worker_ready_signal.connect(self._start_procedure_thread)
+
+        # Internal Signal: Shows dialog with initial system state
+        self.warning_signal.connect(self._show_warnings)
 
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
@@ -260,6 +270,17 @@ class Adapter(QObject):
                 self._main_view.info_dialog.setText(info)
                 self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
                 self._main_view.info_dialog.exec()
+
+    def _show_warnings(self):
+        info = "Due to issues below this program will not be able to perform some operations:\n\n"
+        for i, warning in enumerate(self._main_model._warnings):
+            expl = warning["explanation"]
+            data = str(warning["data"])
+            info = info + str(i+1) + ") " + expl + "\n" + data + "\n"
+        self._main_view.info_dialog.setWindowTitle("Warning")
+        self._main_view.info_dialog.setText(info)
+        self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
+        self._main_view.info_dialog.show()
 
     def change_GUI_locks(self):
         # TODO: Query MainLogic for allowed/disallowed operations
