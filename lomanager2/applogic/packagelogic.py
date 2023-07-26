@@ -25,8 +25,8 @@ class MainLogic(object):
         # 2) Create state objects
         self._warnings = [{"explanation": "", "data": ""}]
         self.global_flags = SignalFlags()
-        self._virtual_packages = []
-        # self._package_menu is created by the refresh_state method
+        self._package_tree = VirtualPackage.__new__(VirtualPackage)
+        self._package_menu = PackageMenu.__new__(PackageMenu)
 
         # 3) Run flags_logic
         any_limitations, self._warnings = self._flags_logic()
@@ -151,6 +151,11 @@ class MainLogic(object):
         if force_java_download is True:
             java_package.is_marked_for_download = True
 
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
@@ -160,7 +165,7 @@ class MainLogic(object):
             #       Do I want for any reason pass a deepcopy here?
             #       or perhaps it will be different when _virtual_packages
             #       changes to tree rather then simple list?
-            self._virtual_packages,
+            virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
             progress_description=progress_description,
@@ -222,12 +227,17 @@ class MainLogic(object):
         progress_description = progress_description_closure(callbacks=kwargs)
         step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
         status = self._local_copy_install_procedure(
-            self._virtual_packages,
+            virtual_packages=virtual_packages,
             local_copy_directory=local_copy_directory,
             statusfunc=statusfunc,
             progress_description=progress_description,
@@ -246,8 +256,8 @@ class MainLogic(object):
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         # 5) build package dependency tree
-        top_node = self._build_dependency_tree(joint_package_list)
-        log.debug("TREE \n" + top_node.tree_representation())
+        root_node = self._build_dependency_tree(joint_package_list)
+        log.debug("TREE \n" + root_node.tree_representation())
         # 4) apply virtual packages initial state logic
         (
             latest_Java,
@@ -256,16 +266,15 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(top_node)
+        ) = self._set_packages_initial_state(root_node)
         # 6) Replace the old state of the list with the new one
-        self._virtual_packages = joint_package_list
+        # self._virtual_packages = joint_package_list
         # 7) the same with package tree
-        self._package_tree = top_node
+        self._package_tree = root_node
         # -- --------- --
 
         self._package_menu = PackageMenu(
-            self._virtual_packages,
-            self._package_tree,
+            root_node=self._package_tree,
             latest_Java=latest_Java,
             newest_Java=newest_Java,
             latest_LO=latest_LO,
@@ -1578,8 +1587,7 @@ class MainLogic(object):
 class PackageMenu(object):
     def __init__(
         self,
-        packages: list[VirtualPackage],
-        top_node: VirtualPackage,
+        root_node: VirtualPackage,
         latest_Java: str,
         newest_Java: str,
         latest_LO: str,
@@ -1595,9 +1603,13 @@ class PackageMenu(object):
         self.newest_installed_LO_version = newest_LO
 
         # Object representing items in the menu
-        self.packages = packages
-        self.root = top_node
+        self.root = root_node
         self.java = [c for c in self.root.children if "Java" in c.family][0]
+
+        # useful at times
+        self.packages = []
+        self.root.get_subtree(self.packages)
+        self.packages.remove(self.root)
 
         # A dictionary of packages to alter
         self.package_delta = {
