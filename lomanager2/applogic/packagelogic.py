@@ -26,7 +26,7 @@ class MainLogic(object):
         self._warnings = [{"explanation": "", "data": ""}]
         self.global_flags = SignalFlags()
         self._package_tree = VirtualPackage.__new__(VirtualPackage)
-        self._package_menu = PackageMenu.__new__(PackageMenu)
+        self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
 
         # 3) Run flags_logic
         any_limitations, self._warnings = self._flags_logic()
@@ -273,7 +273,7 @@ class MainLogic(object):
         self._package_tree = root_node
         # -- --------- --
 
-        self._package_menu = PackageMenu(
+        self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
             latest_Java=latest_Java,
             newest_Java=newest_Java,
@@ -1584,7 +1584,7 @@ class MainLogic(object):
     # -- end Private methods of MainLogic
 
 
-class PackageMenu(object):
+class ManualSelectionLogic(object):
     def __init__(
         self,
         root_node: VirtualPackage,
