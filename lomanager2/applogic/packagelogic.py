@@ -1661,11 +1661,8 @@ class PackageMenu(object):
                 package.is_remove_opt_enabled,
             )
         elif column == 4:
-            return (
-                package.is_marked_for_upgrade,
-                package.is_upgrade_opt_visible,
-                package.is_upgrade_opt_enabled,
-            )
+            # Notion of upgrade logic is deprecated
+            return(False, False, False)
         elif column == 5:
             return (
                 package.is_marked_for_install,
@@ -1713,7 +1710,9 @@ class PackageMenu(object):
         if column == 3:
             is_logic_applied = self._apply_removal_logic(package, value)
         elif column == 4:
-            is_logic_applied = self._apply_upgrade_logic(package, value)
+            # Notion of upgrade logic is deprecated
+            # return False
+            is_logic_applied = False
         elif column == 5:
             is_logic_applied = self._apply_install_logic(package, value)
         else:
@@ -1933,128 +1932,6 @@ class PackageMenu(object):
 
         self._decide_what_to_download()
         return is_apply_removal_successul
-
-    def _apply_upgrade_logic(self, package: VirtualPackage, mark: bool):
-        """Marks package for upgrade changing flags of other packages accordingly
-
-        This procedure will mark requested package for upgrade and make
-        sure this causes other packages to be also upgraded or prevented
-        from being removed respecting dependencies.
-
-        Parameters
-        ----------
-        package : VirtualPackage
-
-        mark : bool
-          True - mark for upgrade, False - unmark (give up upgrading)
-
-        Returns
-        -------
-        bool
-          True if packages upgrade logic was applied successfully,
-          False otherwise
-        """
-
-        log.debug(">>> Upgrade logic triggerd <<<")
-        is_apply_upgrade_successul = False
-
-        # OpenOffice dependency tree
-        # OpenOffice cannot be installed, it can only be uninstalled
-        # and is always marked for removal if detected.
-
-        # LibreOffice dependency tree
-        if package.family == "LibreOffice":
-            # unmarking the request for upgrade
-            if mark is False:
-                #  unmark yourself
-                package.is_marked_for_upgrade = False
-                # TODO: Unmark any removals of LibreOffice. This is to prevent
-                #       the situation when unmarking the (already marked)
-                #       upgrade options leaves existing Office suit(s)
-                #       marked for removal. Then accidental "Apply Changes"
-                #       would lead to all existing office suits getting
-                #       uninstalled and latest office not installed.
-                for office in self.java.children:
-                    if office.family == "LibreOffice":
-                        office.is_marked_for_removal = False
-                        office.is_remove_opt_enabled = True
-                        for lang in office.children:
-                            lang.is_marked_for_removal = False
-                            lang.is_remove_opt_enabled = True
-                # 4b)   Upgrade is atomic -- all or none so:
-                #       unmark for upgrade other packages in the same tree
-                #       (parent or children or sibling(s))
-                #       BUT only those that were marked as upgradable
-                if package.is_corepack():
-                    for lang in package.children:
-                        lang.is_marked_for_upgrade = False
-                if package.is_langpack() and package.parent is not None:
-                    package.parent.is_marked_for_upgrade = False
-                is_apply_upgrade_successul = True
-
-            # requesting upgrade
-            if mark is True:
-                # 2a) mark installed LibreOffice versions other then
-                #     newest installed for removal
-                # 2b)   and their remove_opt_enabled to False
-                for office in self.java.children:
-                    if (
-                        office.family == "LibreOffice"
-                        and office.version != self.newest_installed_LO_version
-                    ):
-                        office.is_marked_for_removal = True
-                        office.is_remove_opt_enabled = False
-                        for lang in office.children:
-                            lang.is_marked_for_removal = True
-                            lang.is_remove_opt_enabled = False
-                    # 3a) Do not mark newest installed LO for removal. Just
-                    #     mark its remove_opt_enabled as False
-                    #     (disable explicit removal request)
-                    #     This will show the latest is not removed but upgraded
-                    # 3b)
-                    if (
-                        office.family == "LibreOffice"
-                        and office.version == self.newest_installed_LO_version
-                    ):
-                        office.is_remove_opt_enabled = False
-                        for lang in office.children:
-                            lang.is_remove_opt_enabled = False
-                # 4a) mark yourself for upgrade
-                package.is_marked_for_upgrade = True
-                # 4b)   Upgrade is atomic -- all or none so:
-                #       mark for upgrade other packages in the same tree
-                #       (parent or children or sibling(s))
-                #       BUT only those that were marked as upgradable
-                if package.is_corepack():
-                    for lang in package.children:
-                        lang.is_marked_for_upgrade = True
-                if package.is_langpack() and package.parent is not None:
-                    package.parent.is_marked_for_upgrade = True
-                is_apply_upgrade_successul = True
-
-        # Clipart dependency tree
-        if package.family == "Clipart":
-            # unmarking the request for upgrade
-            if mark is False:
-                # unmark yourself
-                package.is_marked_for_upgrade = False
-                # The user changed his mind and is unmarking update so:
-                # - unmarked removal of existing clipart package
-                # - allow manual marking of its removal
-                package.is_marked_for_removal = False
-                package.is_remove_opt_enabled = True
-                is_apply_upgrade_successul = True
-
-            # requesting upgrade
-            if mark is True:
-                # mark yourself
-                # TODO: should it be also marked_for_removal ?
-                package.is_remove_opt_enabled = False
-                package.is_marked_for_upgrade = True
-                is_apply_upgrade_successul = True
-
-        self._decide_what_to_download()
-        return is_apply_upgrade_successul
 
     def _decide_what_to_download(self):
         for package in self.packages:
