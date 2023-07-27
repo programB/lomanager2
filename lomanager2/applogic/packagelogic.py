@@ -80,7 +80,7 @@ class MainLogic(object):
         space_available = PCLOS.free_space_in_dir(configuration.download_dir)
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
-        if total_space_needed < space_available:
+        if space_available < total_space_needed:
             self.global_flags.ready_to_apply_changes = False
             self._warnings = [
                 {
@@ -778,16 +778,6 @@ class MainLogic(object):
         if packages_to_download:
             step.start("Collecting packages...")
 
-            # Check if there is enough disk space to download them
-            free_space = PCLOS.free_space_in_dir(configuration.download_dir)
-            total_dowload_size = sum([p.download_size for p in packages_to_download])
-
-            if free_space < total_dowload_size:
-                return statusfunc(
-                    isOK=False,
-                    msg="Insufficient disk space to download packages",
-                )
-
             # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
@@ -798,7 +788,7 @@ class MainLogic(object):
             if is_every_pkg_collected is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to download all requested packages.\n" + msg,
+                    msg="Failed to download requested packages.\n" + msg,
                 )
             else:
                 step.end("...done collecting files")
@@ -1060,6 +1050,7 @@ class MainLogic(object):
 
         # Get [(file_to_download, url)] from packages_to_download
         # for file, url in [] check if file @ url -> error if False
+        total_dowload_size = 0
         for package in packages_to_download:
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
@@ -1073,7 +1064,22 @@ class MainLogic(object):
                     msg = f"While trying to download {url} an error occured: "
                     msg = msg + f"{error.reason}"
                     return (False, msg, rpms_and_tgzs_to_use)
+                else:
+                    content_length = resp.info()["Content-Length"]
+                    if content_length is not None and content_length != "0":
+                        size = int(int(content_length)/1024)
+                        total_dowload_size += size
+                    else:
+                        total_dowload_size += file["estimated_size"]
 
+        free_space = PCLOS.free_space_in_dir(configuration.download_dir)
+
+        log.debug(f"free space in {configuration.download_dir} is {free_space}")
+        log.debug(f"total_dowload_size is {total_dowload_size}")
+
+        if free_space < total_dowload_size:
+            msg="Insufficient disk space to download packages"
+            return (False, msg, rpms_and_tgzs_to_use)
 
         # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
         # -> add path to {}
