@@ -1,6 +1,7 @@
 import time  # TODO: just for the tests
 import re
 import pathlib
+from copy import deepcopy
 import configuration
 from configuration import logging as log
 from typing import Any, Tuple, Callable
@@ -29,13 +30,15 @@ class MainLogic(object):
         self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
 
         # 3) Run flags_logic
-        any_limitations, self._warnings = self._flags_logic()
-        if any_limitations is True:
-            # TODO: Somehow the adapter or view have to be informed that
-            #       some there are warnings that the user needs to see.
-            #       How to to this avoiding Qt signal/slot mechanism
-            #       which will make this code not reusable in CLI ?
-            pass
+        self.any_limitations, self._warnings = self._flags_logic()
+        if self.any_limitations is True:
+            log.error("System not ready for all operations")
+            for i, warning in enumerate(self._warnings):
+                expl = warning["explanation"]
+                data = warning["data"]
+                log.error(f"{i}: {expl}")
+                if data:
+                    log.error(f"{data}")
 
         # 4) Gather system information
         #           AND
@@ -90,7 +93,12 @@ class MainLogic(object):
         return pms
 
     def get_warnings(self):
-        return self._warnings
+        warnings = deepcopy(self._warnings)
+        self._clear_warnings()
+        return warnings
+
+    def _clear_warnings(self):
+        self._warnings = [{"explanation": "", "data": ""}]
 
     def apply_changes(self, *args, **kwargs):
         log.debug(
@@ -647,9 +655,9 @@ class MainLogic(object):
                 {
                     "explanation": "Some package managers still running and "
                     "as a result you won't be able to install or uninstall "
-                    "LibreOffice packages.\n"
-                    "Advice: Close them and restart this program.\n"
-                    "(Manager | PID)",
+                    "LibreOffice packages. "
+                    "Close them and restart this program."
+                    "{Manager: PID}",
                     "data": running_managers,
                 }
             )
@@ -664,9 +672,9 @@ class MainLogic(object):
                 {
                     "explanation": "Office is running and as a result you "
                     "won't be able to install or uninstall LibreOffice "
-                    "packages.\n"
+                    "packages."
                     "Advice: Save your work, close Office and restart "
-                    "this program.\n"
+                    "this program."
                     "(Office | PID)",
                     "data": running_office_suits,
                 }
@@ -675,31 +683,32 @@ class MainLogic(object):
         # no running manager prevents access to system rpm database
         if self.global_flags.block_checking_4_updates is False:
             check_successfull, is_updated = PCLOS.get_system_update_status()
-            if is_updated is False:
-                self.global_flags.block_network_install = True
-                any_limitations = True
-                if check_successfull:
+            if check_successfull:
+                if not is_updated:
+                    self.global_flags.block_network_install = True
+                    any_limitations = True
                     info_list.append(
                         {
-                            "explanation": "Uninstalled updates were detected "
-                            "and as a result you won't be able to install "
-                            "LibreOffice packages.\n"
-                            "Advice: Update your system and restart "
+                            "explanation": "The OS is not fully updated "
+                            "and as a result installations are blocked. "
+                            "Update your system and restart "
                             "this program.",
                             "data": "",
                         }
                     )
-                else:
-                    info_list.append(
-                        {
-                            "explanation": "Failed to check update status "
-                            "and as a result you won't be able to install "
-                            "LibreOffice packages.\n"
-                            "Advice: Check you internet connection "
-                            "and restart this program.",
-                            "data": "",
-                        }
-                    )
+            else:
+                self.global_flags.block_network_install = True
+                any_limitations = True
+                info_list.append(
+                    {
+                        "explanation": "Failed to check update status "
+                        "and as a result you won't be able to install "
+                        "LibreOffice packages. "
+                        "Check you internet connection "
+                        "and restart this program.",
+                        "data": "",
+                    }
+                )
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
@@ -709,7 +718,7 @@ class MainLogic(object):
                     "explanation": "You are running outdated version of "
                     "this program! "
                     "As a result you won't be able to install "
-                    "LibreOffice packages.\n"
+                    "LibreOffice packages."
                     "Advice: Update your system and restart "
                     "this program.",
                     "data": "",

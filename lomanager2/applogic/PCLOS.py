@@ -35,7 +35,9 @@ def get_PID_by_name(names: list[str]) -> dict[str, str]:
 
 def get_running_package_managers() -> dict:
     # TODO: Implement
-    pass
+    package_managers = {"fake_pacman": "9999"}
+    log.debug(f">>PRETENDING<< running package manager: {package_managers}")
+    return package_managers
 
 
 def get_running_Office_processes() -> dict[str, str]:
@@ -55,14 +57,14 @@ def is_live_session_active() -> bool:
 
 def get_system_update_status() -> tuple:
     # TODO: Implement
-    check_successfull = False
+    check_successfull = True
     system_updated = False
     return (check_successfull, system_updated)
 
 
 def is_lomanager2_latest(lomanger2_version: str) -> bool:
     # TODO: Implement
-    return False
+    return True
 
 
 def get_disk_space() -> int:
