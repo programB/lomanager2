@@ -13,6 +13,7 @@ directly from the system on each call.
 
 
 import os
+import shutil
 import pathlib
 from configuration import logging as log
 
@@ -69,16 +70,18 @@ def is_lomanager2_latest(lomanger2_version: str) -> bool:
     return True
 
 
-def get_disk_space() -> int:
-    # TODO: Implement
-    return 0
+def free_space_in_dir(dir: pathlib.Path) -> int:
+    """Return free disk space for the partition holding dir.
 
+    Returns
+    -------
+    free_space : int
+        Free space in kibibytes (KiB).
+    """
 
-def get_free_space_in_dir(dir) -> int:
-    # TODO: Implement
-    free_space_kiB = 0
-    log.debug(f">>PRETENDING<< free_space_kiB: {free_space_kiB}")
-    return free_space_kiB
+    free_space = int(shutil.disk_usage(dir).free / 1024)
+    log.debug(f"free space in {dir}: {free_space} KiB")
+    return free_space
 
 
 def is_java_installed() -> bool:

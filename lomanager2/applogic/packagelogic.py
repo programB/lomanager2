@@ -76,7 +76,7 @@ class MainLogic(object):
             self._package_menu.package_delta["space_to_be_used"]
             - self._package_menu.package_delta["space_to_be_freed"]
         )
-        space_available = PCLOS.get_disk_space()
+        space_available = PCLOS.free_space_in_dir(configuration.download_dir)
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
         if total_space_needed < space_available:
@@ -728,9 +728,7 @@ class MainLogic(object):
             step.start("Collecting packages...")
 
             # Check if there is enough disk space to download them
-            # TODO: Change configuration.tmp_directory to
-            #       configuration.download_directory
-            free_space = PCLOS.get_free_space_in_dir(configuration.tmp_directory)
+            free_space = PCLOS.free_space_in_dir(configuration.download_dir)
             total_dowload_size = sum([p.download_size for p in packages_to_download])
 
             if free_space < total_dowload_size:
