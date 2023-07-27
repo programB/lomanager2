@@ -7,6 +7,12 @@ from configuration import logging as log
 from typing import Any, Tuple, Callable
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
+from .callbacks import (
+    OverallProgressReporter,
+    progress_closure,
+    progress_description_closure,
+    statusfunc_closure,
+)
 
 
 class MainLogic(object):
@@ -98,16 +104,7 @@ class MainLogic(object):
 
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
-        def statusfunc(isOK: bool, msg: str):
-            if isOK:
-                log.info(msg)
-            else:
-                log.error(msg)
-            status = {"is_OK": isOK, "explanation": msg}
-            if "report_status" in kwargs.keys():
-                # This emits Qt signal if passed here in "report_status"
-                kwargs["report_status"](status)
-            return status
+        statusfunc = statusfunc_closure(callbacks=kwargs)
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
@@ -151,7 +148,7 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        is_successful = self._install(
+        status = self._install(
             virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
@@ -159,23 +156,11 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
-        if is_successful:
-            return statusfunc(isOK=True, msg="All changes successfully applied")
-        else:
-            return statusfunc(isOK=False, msg="Failed to apply changes")
+        return status
 
     def install_from_local_copy(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
-        def statusfunc(isOK: bool, msg: str):
-            if isOK:
-                log.info(msg)
-            else:
-                log.error(msg)
-            status = {"is_OK": isOK, "explanation": msg}
-            if "report_status" in kwargs.keys():
-                # This emits Qt signal if passed here in "report_status"
-                kwargs["report_status"](status)
-            return status
+        statusfunc = statusfunc_closure(callbacks=kwargs)
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
@@ -216,7 +201,7 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
-        return True if status["is_OK"] else False
+        return status
 
     def refresh_state(self):
         # -- NEW Logic --
@@ -773,7 +758,7 @@ class MainLogic(object):
             step.skip()
 
         # Uninstall/Upgrade/Install packages
-        output = self._make_changes(
+        status = self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
             keep_packages=keep_packages,
@@ -782,7 +767,7 @@ class MainLogic(object):
             progress_percentage=progress_percentage,
             step=step,
         )
-        return output
+        return status
 
     def _make_changes(
         self,
@@ -1000,7 +985,8 @@ class MainLogic(object):
             )
         step.end("...done removing temporary files and folders")
 
-        return True
+        status = {"is_OK": True, "explanation": ""}
+        return status
 
     def _collect_packages(
         self,
@@ -1960,66 +1946,3 @@ class ManualSelectionLogic(object):
                 package.is_marked_for_download = True
             else:
                 package.is_marked_for_download = False
-
-
-class OverallProgressReporter:
-    def __init__(self, total_steps: int, callbacks={}):
-        self.callbacks = callbacks
-        self.counter = 0
-        self.n_steps = total_steps
-
-    def _overall_progress_description(self, txt: str):
-        log.info(txt)
-        if "overall_progress_description" in self.callbacks.keys():
-            self.callbacks["overall_progress_description"](txt)
-
-    def _overall_progress_percentage(self, percentage: int):
-        # TODO: Should progress % be logged ?
-        if "overall_progress_percentage" in self.callbacks.keys():
-            self.callbacks["overall_progress_percentage"](percentage)
-
-    def start(self, txt: str = ""):
-        if txt:
-            self._overall_progress_description(txt)
-
-    def skip(self, txt: str = ""):
-        if txt:
-            self._overall_progress_description(txt)
-        self.end()
-
-    def end(self, txt: str = ""):
-        if txt:
-            self._overall_progress_description(txt)
-        self.counter += 1
-        self._overall_progress_percentage(int(100 * (self.counter / self.n_steps)))
-
-
-def progress_closure(callbacks: dict):
-    if "progress_percentage" in callbacks.keys():
-        progressfunc = callbacks["progress_percentage"]
-
-        def progress(percentage: int):
-            progressfunc(percentage)
-
-    else:
-
-        def progress(percentage: int):
-            pass
-
-    return progress
-
-
-def progress_description_closure(callbacks: dict):
-    if "progress_description" in callbacks.keys():
-        progressdescfunc = callbacks["progress_description"]
-
-        def progress_description(txt: str):
-            log.info(txt)
-            progressdescfunc(txt)
-
-    else:
-
-        def progress_description(txt: str):
-            log.info(txt)
-
-    return progress_description
