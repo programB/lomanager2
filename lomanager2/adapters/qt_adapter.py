@@ -274,9 +274,7 @@ class Adapter(QObject):
     def _show_warnings(self):
         info = "Due to issues below this program will not be able to perform some operations:\n\n"
         for i, warning in enumerate(self._main_model._warnings):
-            expl = warning["explanation"]
-            data = str(warning["data"])
-            info = info + str(i+1) + ") " + expl + "\n" + data + "\n"
+            info = info + str(i + 1) + ") " + warning + "\n\n"
         self._main_view.info_dialog.setWindowTitle("Warning")
         self._main_view.info_dialog.setText(info)
         self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)

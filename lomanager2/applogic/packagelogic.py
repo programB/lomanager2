@@ -24,7 +24,7 @@ class MainLogic(object):
         #    PCLOS.create_folder(configuration.temp_folder_path)
 
         # 2) Create state objects
-        self._warnings = [{"explanation": "", "data": ""}]
+        self._warnings = [""]
         self.global_flags = SignalFlags()
         self._package_tree = VirtualPackage.__new__(VirtualPackage)
         self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
@@ -32,13 +32,9 @@ class MainLogic(object):
         # 3) Run flags_logic
         self.any_limitations, self._warnings = self._flags_logic()
         if self.any_limitations is True:
-            log.error("System not ready for all operations")
+            log.error("System not ready for all operations:")
             for i, warning in enumerate(self._warnings):
-                expl = warning["explanation"]
-                data = warning["data"]
-                log.error(f"{i}: {expl}")
-                if data:
-                    log.error(f"{data}")
+                log.error(f"{i+1}: {warning}")
 
         # 4) Gather system information
         #           AND
@@ -98,7 +94,7 @@ class MainLogic(object):
         return warnings
 
     def _clear_warnings(self):
-        self._warnings = [{"explanation": "", "data": ""}]
+        self._warnings = [""]
 
     def apply_changes(self, *args, **kwargs):
         log.debug(
@@ -644,7 +640,7 @@ class MainLogic(object):
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
-    def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
+    def _flags_logic(self) -> tuple[bool, list[str]]:
         """'Rises' flags indicating some operations will not be available
 
         This method performs checks of the operating system and
@@ -654,9 +650,9 @@ class MainLogic(object):
         Returns
         -------
         tuple
-          (any_limitations: bool, info_list: list of dicts)
+          (any_limitations: bool, info_list: list of strings)
           any_limitations is True if ANY flag was raised
-          dict(s) in list contain(s) human readable reason(s) for rising
+          list contain human readable reason(s) for rising them.
         """
 
         # TODO: Add logging
@@ -670,16 +666,16 @@ class MainLogic(object):
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "Some package managers still running and "
-                    "as a result you won't be able to install or uninstall "
-                    "LibreOffice packages. "
-                    "Close them and restart this program."
-                    "{Manager: PID}",
-                    "data": running_managers,
-                }
+            msg = (
+                "Some package managers are still running and "
+                "as a result you won't be able to install or uninstall "
+                "any packages. "
+                "Close the managers listed and restart this program.\n"
+                "manager: PID\n"
             )
+            for manager, pid in running_managers.items():
+                msg = msg + manager + ": " + pid + "  "
+            info_list.append(msg)
 
         running_office_suits = PCLOS.get_running_Office_processes()
         if running_office_suits:  # an office app is running
@@ -687,62 +683,62 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "Office is running and as a result you "
-                    "won't be able to install or uninstall LibreOffice "
-                    "packages."
-                    "Advice: Save your work, close Office and restart "
-                    "this program."
-                    "(Office | PID)",
-                    "data": running_office_suits,
-                }
+            msg = (
+                "Office is running and as a result you "
+                "won't be able to install or uninstall "
+                "any packages."
+                "Save your work, close Office and restart "
+                "this program.\n"
+                "Office: PID\n"
             )
+            for office, pid in running_office_suits.items():
+                msg = msg + office + ": " + pid + "  "
+            info_list.append(msg)
 
         # no running manager prevents access to system rpm database
         if self.global_flags.block_checking_4_updates is False:
-            check_successfull, is_updated = PCLOS.get_system_update_status()
+            (
+                check_successfull,
+                is_updated,
+                explanation,
+            ) = PCLOS.get_system_update_status()
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_network_install = True
                     any_limitations = True
-                    info_list.append(
-                        {
-                            "explanation": "The OS is not fully updated "
-                            "and as a result installations are blocked. "
-                            "Update your system and restart "
-                            "this program.",
-                            "data": "",
-                        }
+                    msg = (
+                        "The OS is not fully updated "
+                        "and as a result installations are blocked. "
+                        "Update your system and restart "
+                        "this program."
                     )
+                    info_list.append(msg)
             else:
                 self.global_flags.block_network_install = True
                 any_limitations = True
-                info_list.append(
-                    {
-                        "explanation": "Failed to check update status "
-                        "and as a result you won't be able to install "
-                        "LibreOffice packages. "
-                        "Check you internet connection "
-                        "and restart this program.",
-                        "data": "",
-                    }
+                msg = (
+                    "Failed to check update status \n"
+                    "and as a result you won't be able to install "
+                    "LibreOffice packages. "
+                    "Check you internet connection "
+                    "and restart this program."
                 )
+                if explanation:
+                    msg = msg + "\n" + explanation
+                info_list.append(msg)
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "You are running outdated version of "
-                    "this program! "
-                    "As a result you won't be able to install "
-                    "LibreOffice packages."
-                    "Advice: Update your system and restart "
-                    "this program.",
-                    "data": "",
-                }
+            msg = (
+                "You are running outdated version of "
+                "this program! "
+                "As a result you won't be able to install "
+                "any packages."
+                "Update your system and restart "
+                "this program."
             )
+            info_list.append(msg)
 
         return (any_limitations, info_list)
 
