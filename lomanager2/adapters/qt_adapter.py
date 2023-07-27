@@ -283,21 +283,28 @@ class Adapter(QObject):
         self._main_view.info_dialog.show()
 
     def change_GUI_locks(self):
-        # TODO: Query MainLogic for allowed/disallowed operations
-        #       and set controls in GUI accordingly
         if self._is_packages_selecting_allowed is True:
             self._main_view.package_menu_view.setEnabled(True)
         else:
             self._main_view.package_menu_view.setEnabled(False)
 
-        if self._is_starting_procedures_allowed is True:
-            self._main_view.button_apply_changes.setEnabled(True)
-            self._main_view.button_install_from_local_copy.setEnabled(True)
-            self._main_view.button_add_langs.setEnabled(True)
+        if (
+            self._is_starting_procedures_allowed
+            and not self._main_model.global_flags.block_network_install
+        ):
+            is_apply_enabled = True
         else:
-            self._main_view.button_apply_changes.setEnabled(False)
-            self._main_view.button_install_from_local_copy.setEnabled(False)
-            self._main_view.button_add_langs.setEnabled(False)
+            is_apply_enabled = False
+        self._main_view.button_apply_changes.setEnabled(is_apply_enabled)
+
+        if (
+            self._is_starting_procedures_allowed
+            and not self._main_model.global_flags.block_local_copy_install
+        ):
+            is_local_enabled = True
+        else:
+            is_local_enabled = False
+        self._main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
 
 
 def main():

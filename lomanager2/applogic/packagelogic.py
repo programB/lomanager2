@@ -505,6 +505,25 @@ class MainLogic(object):
                 if clipart.version == latest_available_Clipart_version:
                     clipart.allow_install()
 
+        # If some operations are not permited because
+        # of the system state not allowing for it
+        # block them here
+        block_any_install = (
+            True
+            if (
+                self.global_flags.block_network_install
+                or self.global_flags.block_local_copy_install
+            )
+            else False
+        )
+        block_removal = True if self.global_flags.block_removal else False
+
+        for package in all_packages:
+            if block_any_install:
+                package.is_install_opt_enabled = False
+            if block_removal:
+                package.is_remove_opt_enabled = False
+
         return (
             latest_available_Java_version,
             newest_installed_Java_version,
