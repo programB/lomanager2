@@ -62,3 +62,18 @@ def progress_description_closure(callbacks: dict):
             log.info(txt)
 
     return progress_description
+
+
+def statusfunc_closure(callbacks: dict):
+    def statusfunc(isOK: bool, msg: str):
+        if isOK:
+            log.info(msg)
+        else:
+            log.error(msg)
+        status = {"is_OK": isOK, "explanation": msg}
+        if "report_status" in callbacks.keys():
+            # This emits Qt signal if passed here in "report_status"
+            callbacks["report_status"](status)
+        return status
+
+    return statusfunc

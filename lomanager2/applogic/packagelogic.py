@@ -11,6 +11,7 @@ from .callbacks import (
     OverallProgressReporter,
     progress_closure,
     progress_description_closure,
+    statusfunc_closure,
 )
 
 
@@ -103,16 +104,7 @@ class MainLogic(object):
 
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
-        def statusfunc(isOK: bool, msg: str):
-            if isOK:
-                log.info(msg)
-            else:
-                log.error(msg)
-            status = {"is_OK": isOK, "explanation": msg}
-            if "report_status" in kwargs.keys():
-                # This emits Qt signal if passed here in "report_status"
-                kwargs["report_status"](status)
-            return status
+        statusfunc = statusfunc_closure(callbacks=kwargs)
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
@@ -171,16 +163,7 @@ class MainLogic(object):
 
     def install_from_local_copy(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
-        def statusfunc(isOK: bool, msg: str):
-            if isOK:
-                log.info(msg)
-            else:
-                log.error(msg)
-            status = {"is_OK": isOK, "explanation": msg}
-            if "report_status" in kwargs.keys():
-                # This emits Qt signal if passed here in "report_status"
-                kwargs["report_status"](status)
-            return status
+        statusfunc = statusfunc_closure(callbacks=kwargs)
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
