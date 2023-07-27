@@ -97,11 +97,6 @@ class MainLogic(object):
         self._warnings = [""]
 
     def apply_changes(self, *args, **kwargs):
-        log.debug(
-            f"Flag <<ready_to_apply_changes>> is: "
-            f"<<{self.global_flags.ready_to_apply_changes}>>"
-        )
-
         # Callback function for reporting the status of the procedure
         def statusfunc(isOK: bool, msg: str):
             if isOK:
@@ -116,14 +111,11 @@ class MainLogic(object):
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(
-                isOK=False,
-                msg="Not ready to apply requested changes.",
-            )
+            return statusfunc(isOK=False, msg="Not ready to apply changes.")
 
-        # Check if local copy installation was not blocked
-        if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
+        # Check if normal installation was not blocked
+        if self.global_flags.block_network_install is True:
+            return statusfunc(isOK=False, msg="Modifications were blocked.")
 
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
@@ -138,8 +130,6 @@ class MainLogic(object):
             return statusfunc(
                 isOK=False, msg="force_java_download argument is obligatory"
             )
-
-        log.debug(f"force_java_download: {force_java_download}")
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -162,10 +152,6 @@ class MainLogic(object):
         # ...and proceed with the procedure
         log.info("Applying changes...")
         is_successful = self._install(
-            # TODO: passing property to method within class doesn't make sense
-            #       Do I want for any reason pass a deepcopy here?
-            #       or perhaps it will be different when _virtual_packages
-            #       changes to tree rather then simple list?
             virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
@@ -179,18 +165,6 @@ class MainLogic(object):
             return statusfunc(isOK=False, msg="Failed to apply changes")
 
     def install_from_local_copy(self, *args, **kwargs):
-        log.debug(
-            f"Flag <<ready_to_apply_changes>> is: "
-            f"<<{self.global_flags.ready_to_apply_changes}>>"
-        )
-
-        log.debug(
-            f"Flag <<block_local_copy_install>> is: "
-            f"<<{self.global_flags.block_local_copy_install}>>"
-        )
-        log.debug(f"TEST: Manually SETTING <<block_local_copy_install>> <<False>>")
-        self.global_flags.block_local_copy_install = False
-
         # Callback function for reporting the status of the procedure
         def statusfunc(isOK: bool, msg: str):
             if isOK:
@@ -205,11 +179,11 @@ class MainLogic(object):
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply requested changes.")
+            return statusfunc(isOK=False, msg="Not ready to apply changes.")
 
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
+            return statusfunc(isOK=False, msg="Local copy installation was blocked.")
 
         # Check if local copy directory was passed
         if "local_copy_folder" in kwargs.keys():
