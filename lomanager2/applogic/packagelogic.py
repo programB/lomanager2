@@ -1,6 +1,7 @@
 import time  # TODO: just for the tests
 import re
 import pathlib
+import urllib.request, urllib.error
 from copy import deepcopy
 import configuration
 from configuration import logging as log
@@ -540,20 +541,70 @@ class MainLogic(object):
         java_ver = configuration.latest_available_java_version
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
         java_core_vp.is_installed = False
+        java_core_vp.real_files = [
+            {
+                "name": "task-java-2019-1pclos2019.noarch.rpm",
+                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "estimated_download_size": 2,  # size in kilobytes
+                "checksum": "",
+            },
+            {
+                "name": "java-sun-16-2pclos2021.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "estimated_download_size": 116736,  # size in kilobytes
+                "checksum": "",
+            },
+        ]
         available_virtual_packages.append(java_core_vp)
 
         LO_ver = configuration.latest_available_LO_version
+        LO_minor_ver = configuration.latest_available_LO_minor_version
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
+        office_core_vp.real_files = [
+            {
+                "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm.tar.gz",
+                "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                "estimated_download_size": 229376,  # size in kilobytes
+                "checksum": "md5",
+            },
+        ]
         available_virtual_packages.append(office_core_vp)
         for lang in configuration.LO_supported_langs:
             office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
+            office_lang_vp.real_files = [
+                {
+                    "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm_helppack_" + lang + ".tar.gz",
+                    "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                    "estimated_download_size": 3277,  # size in kilobytes
+                    "checksum": "md5",
+                },
+                {
+                    "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm_langpack_" + lang + ".tar.gz",
+                    "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                    "estimated_download_size": 17408,  # size in kilobytes
+                    "checksum": "md5",
+                },
+            ]
             available_virtual_packages.append(office_lang_vp)
-
         clipart_ver = configuration.latest_available_clipart_version
         clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
         clipart_core_vp.is_installed = False
+        clipart_core_vp.real_files = [
+            {
+                "name": "libreoffice-openclipart-" + clipart_ver + "-1pclos2023.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "estimated_download_size": 8704,  # size in kilobytes
+                "checksum": "",
+            },
+            {
+                "name": "clipart-openclipart-2.0-1pclos2021.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "estimated_download_size": 877568,  # size in kilobytes
+                "checksum": "",
+            },
+        ]
         available_virtual_packages.append(clipart_core_vp)
 
         log.debug(f">>PRETENDING<< available software:")
@@ -992,12 +1043,38 @@ class MainLogic(object):
         progress_description,
         progress_percentage,
     ) -> tuple[bool, str, dict]:
-        # Preparations
-        tmp_directory = configuration.tmp_directory
 
+        # Preparations
         is_every_package_collected = False
+        msg = ""
+        rpms_and_tgzs_to_use = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+
+        working_dir = configuration.working_dir
+
         # Get [(file_to_download, url)] from packages_to_download
         # for file, url in [] check if file @ url -> error if False
+        for package in packages_to_download:
+            for file in package.real_files:
+                url = file["base_url"] + file["name"]
+                try:
+                    resp = urllib.request.urlopen(url)
+                except urllib.error.HTTPError as error:
+                    msg = f"While trying to download {url} an error occured: "
+                    msg = msg + f"HTTP error {error.code}: {error.reason}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+                except urllib.error.URLError as error:
+                    msg = f"While trying to download {url} an error occured: "
+                    msg = msg + f"{error.reason}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+
+
         # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
         # -> add path to {}
         # return {}
@@ -1013,15 +1090,7 @@ class MainLogic(object):
         # TODO: This function should return a following dict
         #       and items in lists should be absolute paths to
         #       collected rpm(s) or tar.gz(s) (best pathlib.Path not string)
-        rpms_and_tgzs_to_use = {
-            "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-        }
-        return (is_every_package_collected, "", rpms_and_tgzs_to_use)
+        return (is_every_package_collected, msg, rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
         log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
@@ -1717,18 +1786,18 @@ class ManualSelectionLogic(object):
         for package in self.packages:
             if package.is_marked_for_removal or package.is_marked_for_upgrade:
                 size = 0
-                for real_package in package.real_packages:
-                    size += real_package["size"]
+                for file in package.real_files:
+                    size += file["estimated_download_size"]
                     self.package_delta["packages_to_remove"] += [
-                        real_package["rpm name"]
+                        file["name"]
                     ]
                 self.package_delta["space_to_be_freed"] = size
             if package.is_marked_for_install:
                 size = 0
-                for real_package in package.real_packages:
-                    size += real_package["size"]
+                for file in package.real_files:
+                    size += file["estimated_download_size"]
                     self.package_delta["packages_to_install"] += [
-                        real_package["rpm name"]
+                        file["name"]
                     ]
                 self.package_delta["space_to_be_used"] = size
 

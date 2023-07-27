@@ -117,8 +117,14 @@ class VirtualPackage(Node):
         self.kind = kind
         self.family = family
         self.version = version
-        self.real_packages = [{"rpm name": "", "size": 0}]  # size in kilobytes
-        self.download_size = 0  # size in kilobytes
+        self.real_files = [
+            {
+                "name": "",
+                "base_url": "",
+                "estimated_download_size": 0,  # size in kilobytes
+                "chesum": ""
+            }
+        ]
         # State flags
         self.is_installed = False
         # Remove flags

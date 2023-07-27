@@ -8,7 +8,8 @@ logging.basicConfig(
 
 lomanger2_version = "7.5"
 latest_available_LO_version = "7.5"
-latest_available_clipart_version = "5.8"
+latest_available_LO_minor_version = "7.5.4"
+latest_available_clipart_version = "7.5"
 # latest_available_java_version = "16"
 latest_available_java_version = ""
 # fmt: off
@@ -43,6 +44,14 @@ LO_supported_langs = ["de", "fr", "it", "ja", "pl", "sk", "sv", "uk", "xh"]
 
 # Only every set tmp_directory in this module
 tmp_directory = pathlib.Path("/tmp/lomanager2-tmp")
+download_dir = pathlib.Path("/tmp")
+working_dir = pathlib.Path("/tmp/lomanager2-tmp/working_directory")
 
 # Read only
 keep_packages = False
+
+# Urls
+PCLOS_repo_base_url = "https://ftp.nluug.nl/"
+PCLOS_repo_path = "/os/Linux/distr/pclinuxos/pclinuxos/apt/pclinuxos/64bit/RPMS.x86_64/"
+DocFund_base_url = "http://download.documentfoundation.org/libreoffice/stable/"
+DocFund_path_ending = "/rpm/x86_64/"
