@@ -148,7 +148,7 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        is_successful = self._install(
+        status = self._install(
             virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
@@ -156,10 +156,7 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
-        if is_successful:
-            return statusfunc(isOK=True, msg="All changes successfully applied")
-        else:
-            return statusfunc(isOK=False, msg="Failed to apply changes")
+        return status
 
     def install_from_local_copy(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
@@ -204,7 +201,7 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
-        return True if status["is_OK"] else False
+        return status
 
     def refresh_state(self):
         # -- NEW Logic --
@@ -761,7 +758,7 @@ class MainLogic(object):
             step.skip()
 
         # Uninstall/Upgrade/Install packages
-        output = self._make_changes(
+        status = self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
             keep_packages=keep_packages,
@@ -770,7 +767,7 @@ class MainLogic(object):
             progress_percentage=progress_percentage,
             step=step,
         )
-        return output
+        return status
 
     def _make_changes(
         self,
@@ -988,7 +985,8 @@ class MainLogic(object):
             )
         step.end("...done removing temporary files and folders")
 
-        return True
+        status = {"is_OK": True, "explanation": ""}
+        return status
 
     def _collect_packages(
         self,
