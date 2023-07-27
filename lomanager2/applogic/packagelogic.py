@@ -1,6 +1,7 @@
 import time  # TODO: just for the tests
 import re
 import pathlib
+from copy import deepcopy
 import configuration
 from configuration import logging as log
 from typing import Any, Tuple, Callable
@@ -23,19 +24,17 @@ class MainLogic(object):
         #    PCLOS.create_folder(configuration.temp_folder_path)
 
         # 2) Create state objects
-        self._warnings = [{"explanation": "", "data": ""}]
+        self._warnings = [""]
         self.global_flags = SignalFlags()
         self._package_tree = VirtualPackage.__new__(VirtualPackage)
         self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
 
         # 3) Run flags_logic
-        any_limitations, self._warnings = self._flags_logic()
-        if any_limitations is True:
-            # TODO: Somehow the adapter or view have to be informed that
-            #       some there are warnings that the user needs to see.
-            #       How to to this avoiding Qt signal/slot mechanism
-            #       which will make this code not reusable in CLI ?
-            pass
+        self.any_limitations, self._warnings = self._flags_logic()
+        if self.any_limitations is True:
+            log.error("System not ready for all operations:")
+            for i, warning in enumerate(self._warnings):
+                log.error(f"{i+1}: {warning}")
 
         # 4) Gather system information
         #           AND
@@ -90,17 +89,14 @@ class MainLogic(object):
         return pms
 
     def get_warnings(self):
-        return self._warnings
+        warnings = deepcopy(self._warnings)
+        self._clear_warnings()
+        return warnings
+
+    def _clear_warnings(self):
+        self._warnings = [""]
 
     def apply_changes(self, *args, **kwargs):
-        log.debug(
-            f"Flag <<ready_to_apply_changes>> is: "
-            f"<<{self.global_flags.ready_to_apply_changes}>>"
-        )
-        # TODO: bypassing for tests
-        log.warning(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
-        self.global_flags.ready_to_apply_changes = True
-
         # Callback function for reporting the status of the procedure
         def statusfunc(isOK: bool, msg: str):
             if isOK:
@@ -115,14 +111,11 @@ class MainLogic(object):
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(
-                isOK=False,
-                msg="Not ready to apply requested changes.",
-            )
+            return statusfunc(isOK=False, msg="Not ready to apply changes.")
 
-        # Check if local copy installation was not blocked
-        if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
+        # Check if normal installation was not blocked
+        if self.global_flags.block_network_install is True:
+            return statusfunc(isOK=False, msg="Modifications were blocked.")
 
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
@@ -137,8 +130,6 @@ class MainLogic(object):
             return statusfunc(
                 isOK=False, msg="force_java_download argument is obligatory"
             )
-
-        log.debug(f"force_java_download: {force_java_download}")
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -161,10 +152,6 @@ class MainLogic(object):
         # ...and proceed with the procedure
         log.info("Applying changes...")
         is_successful = self._install(
-            # TODO: passing property to method within class doesn't make sense
-            #       Do I want for any reason pass a deepcopy here?
-            #       or perhaps it will be different when _virtual_packages
-            #       changes to tree rather then simple list?
             virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
@@ -178,21 +165,6 @@ class MainLogic(object):
             return statusfunc(isOK=False, msg="Failed to apply changes")
 
     def install_from_local_copy(self, *args, **kwargs):
-        log.debug(
-            f"Flag <<ready_to_apply_changes>> is: "
-            f"<<{self.global_flags.ready_to_apply_changes}>>"
-        )
-        # TODO: bypassing for tests
-        log.debug(f"TEST: Manually SETTING <<ready_to_apply_changes>> <<True>>")
-        self.global_flags.ready_to_apply_changes = True
-
-        log.debug(
-            f"Flag <<block_local_copy_install>> is: "
-            f"<<{self.global_flags.block_local_copy_install}>>"
-        )
-        log.debug(f"TEST: Manually SETTING <<block_local_copy_install>> <<False>>")
-        self.global_flags.block_local_copy_install = False
-
         # Callback function for reporting the status of the procedure
         def statusfunc(isOK: bool, msg: str):
             if isOK:
@@ -207,11 +179,11 @@ class MainLogic(object):
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply requested changes.")
+            return statusfunc(isOK=False, msg="Not ready to apply changes.")
 
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation is not allowed.")
+            return statusfunc(isOK=False, msg="Local copy installation was blocked.")
 
         # Check if local copy directory was passed
         if "local_copy_folder" in kwargs.keys():
@@ -282,6 +254,7 @@ class MainLogic(object):
             latest_Clip=latest_Clip,
             newest_Clip=newest_Clip,
         )
+        self.global_flags.ready_to_apply_changes = True
 
     # -- end Public interface for MainLogic
 
@@ -502,6 +475,25 @@ class MainLogic(object):
                 if clipart.version == latest_available_Clipart_version:
                     clipart.allow_install()
 
+        # If some operations are not permited because
+        # of the system state not allowing for it
+        # block them here
+        block_any_install = (
+            True
+            if (
+                self.global_flags.block_network_install
+                or self.global_flags.block_local_copy_install
+            )
+            else False
+        )
+        block_removal = True if self.global_flags.block_removal else False
+
+        for package in all_packages:
+            if block_any_install:
+                package.is_install_opt_enabled = False
+            if block_removal:
+                package.is_remove_opt_enabled = False
+
         return (
             latest_available_Java_version,
             newest_installed_Java_version,
@@ -622,7 +614,7 @@ class MainLogic(object):
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
-    def _flags_logic(self) -> tuple[bool, list[dict[str, str]]]:
+    def _flags_logic(self) -> tuple[bool, list[str]]:
         """'Rises' flags indicating some operations will not be available
 
         This method performs checks of the operating system and
@@ -632,9 +624,9 @@ class MainLogic(object):
         Returns
         -------
         tuple
-          (any_limitations: bool, info_list: list of dicts)
+          (any_limitations: bool, info_list: list of strings)
           any_limitations is True if ANY flag was raised
-          dict(s) in list contain(s) human readable reason(s) for rising
+          list contain human readable reason(s) for rising them.
         """
 
         # TODO: Add logging
@@ -648,16 +640,16 @@ class MainLogic(object):
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "Some package managers still running and "
-                    "as a result you won't be able to install or uninstall "
-                    "LibreOffice packages.\n"
-                    "Advice: Close them and restart this program.\n"
-                    "(Manager | PID)",
-                    "data": running_managers,
-                }
+            msg = (
+                "Some package managers are still running and "
+                "as a result you won't be able to install or uninstall "
+                "any packages. "
+                "Close the managers listed and restart this program.\n"
+                "manager: PID\n"
             )
+            for manager, pid in running_managers.items():
+                msg = msg + manager + ": " + pid + "  "
+            info_list.append(msg)
 
         running_office_suits = PCLOS.get_running_Office_processes()
         if running_office_suits:  # an office app is running
@@ -665,61 +657,62 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "Office is running and as a result you "
-                    "won't be able to install or uninstall LibreOffice "
-                    "packages.\n"
-                    "Advice: Save your work, close Office and restart "
-                    "this program.\n"
-                    "(Office | PID)",
-                    "data": running_office_suits,
-                }
+            msg = (
+                "Office is running and as a result you "
+                "won't be able to install or uninstall "
+                "any packages."
+                "Save your work, close Office and restart "
+                "this program.\n"
+                "Office: PID\n"
             )
+            for office, pid in running_office_suits.items():
+                msg = msg + office + ": " + pid + "  "
+            info_list.append(msg)
 
         # no running manager prevents access to system rpm database
         if self.global_flags.block_checking_4_updates is False:
-            check_successfull, is_updated = PCLOS.get_system_update_status()
-            if is_updated is False:
+            (
+                check_successfull,
+                is_updated,
+                explanation,
+            ) = PCLOS.get_system_update_status()
+            if check_successfull:
+                if not is_updated:
+                    self.global_flags.block_network_install = True
+                    any_limitations = True
+                    msg = (
+                        "The OS is not fully updated "
+                        "and as a result installations are blocked. "
+                        "Update your system and restart "
+                        "this program."
+                    )
+                    info_list.append(msg)
+            else:
                 self.global_flags.block_network_install = True
                 any_limitations = True
-                if check_successfull:
-                    info_list.append(
-                        {
-                            "explanation": "Uninstalled updates were detected "
-                            "and as a result you won't be able to install "
-                            "LibreOffice packages.\n"
-                            "Advice: Update your system and restart "
-                            "this program.",
-                            "data": "",
-                        }
-                    )
-                else:
-                    info_list.append(
-                        {
-                            "explanation": "Failed to check update status "
-                            "and as a result you won't be able to install "
-                            "LibreOffice packages.\n"
-                            "Advice: Check you internet connection "
-                            "and restart this program.",
-                            "data": "",
-                        }
-                    )
+                msg = (
+                    "Failed to check update status \n"
+                    "and as a result you won't be able to install "
+                    "LibreOffice packages. "
+                    "Check you internet connection "
+                    "and restart this program."
+                )
+                if explanation:
+                    msg = msg + "\n" + explanation
+                info_list.append(msg)
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
             any_limitations = True
-            info_list.append(
-                {
-                    "explanation": "You are running outdated version of "
-                    "this program! "
-                    "As a result you won't be able to install "
-                    "LibreOffice packages.\n"
-                    "Advice: Update your system and restart "
-                    "this program.",
-                    "data": "",
-                }
+            msg = (
+                "You are running outdated version of "
+                "this program! "
+                "As a result you won't be able to install "
+                "any packages."
+                "Update your system and restart "
+                "this program."
             )
+            info_list.append(msg)
 
         return (any_limitations, info_list)
 

@@ -33,14 +33,17 @@ def get_PID_by_name(names: list[str]) -> dict[str, str]:
     pass
 
 
-def get_running_package_managers() -> dict:
+def get_running_package_managers() -> dict[str, str]:
     # TODO: Implement
-    pass
+    package_managers = {"fake_pacman": "9999", "fake_synaptic": "7777"}
+    log.debug(f">>PRETENDING<< running package manager: {package_managers}")
+    return package_managers
 
 
 def get_running_Office_processes() -> dict[str, str]:
     binaries_to_check = ["soffice.bin"]
-    return get_PID_by_name(binaries_to_check)
+    # return get_PID_by_name(binaries_to_check)
+    return {"soffice.bin": "3333"}
 
 
 def get_system_users() -> list[str]:
@@ -53,16 +56,17 @@ def is_live_session_active() -> bool:
     return pathlib.Path("/union").exists()
 
 
-def get_system_update_status() -> tuple:
+def get_system_update_status() -> tuple[bool, bool, str]:
     # TODO: Implement
-    check_successfull = False
+    check_successful = True
     system_updated = False
-    return (check_successfull, system_updated)
+    explanation = "System not updated"
+    return (check_successful, system_updated, explanation)
 
 
 def is_lomanager2_latest(lomanger2_version: str) -> bool:
     # TODO: Implement
-    return False
+    return True
 
 
 def get_disk_space() -> int:
