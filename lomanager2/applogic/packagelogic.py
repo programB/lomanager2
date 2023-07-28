@@ -1519,10 +1519,12 @@ class MainLogic(object):
 
         Based on expected files names this function checks
         the directory passed for the presence of:
-            - 2 Java rpm packages (in Java_RPMS subdir)
-            - any LibreOffice core tar.gz archive (in LO_core_TGZS subdir)
-            - LibreOffice langs/help tar.gz archives (in LO_lang_TGZS subdir)
-            - 2 clipart rpm packages (in Clipart_RPMS subdir)
+            - 2 Java rpm packages (in Java_rpms subdir)
+            - any LibreOffice core tar.gz archive
+              (in LibreOffice-core_tgzs subdir)
+            - LibreOffice langs/help tar.gz archives
+              (in LibreOffice-langs_tgzs subdir)
+            - 2 clipart rpm packages (in Clipart_rpms subdir)
 
         No specific LibreOffice version is enforced but version consistency
         among LibreOffice core and lang packages is checked.
@@ -1552,10 +1554,9 @@ class MainLogic(object):
         Clipart_local_copy = {"isPresent": False, "rpm_abs_paths": []}
 
         log.debug("Verifying local copy ...")
-        # 1) Directory for Java rpms exist inside?
-        # (Java_RPMS as a directory name is hardcoded here)
-        Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_RPMS")
-        log.debug(f"Java RPMS dir: {Java_dir}")
+        # 1) Java rpms directory
+        Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_rpms")
+        log.info(f"Checking {Java_dir} for Java rpm files.")
         if Java_dir.is_dir():
             # Files: task-java-<something>.rpm ,  java-sun-<something>.rpm
             # are inside? (no specific version numbers are assumed or checked)
@@ -1575,9 +1576,13 @@ class MainLogic(object):
                 for filename in task_java_files + java_sun_files:
                     abs_file_path = Java_dir.joinpath(filename)
                     Java_local_copy["rpm_abs_paths"].append(abs_file_path)
+        else:
+            log.info("Java_rpms folder not found")
 
-        # 2) LibreOffice core packages folder
-        LO_core_dir = pathlib.Path(local_copy_directory).joinpath("LO_core_TGZS")
+        # 2) LibreOffice core packages directory
+        LO_core_dir = pathlib.Path(local_copy_directory)
+        LO_core_dir = LO_core_dir.joinpath("LibreOffice-core_tgzs")
+        log.info(f"Checking {LO_core_dir} for LibreOffice core file")
         if LO_core_dir.is_dir():
             # Check for tar.gz archive with core packages
             regex_core = re.compile(
@@ -1594,11 +1599,15 @@ class MainLogic(object):
                 # pick only the first one.
                 abs_file_path = LO_core_dir.joinpath(LO_core_tgzs[0])
                 LibreOffice_core_local_copy["tgz_abs_paths"].append(abs_file_path)
+        else:
+            log.info("LibreOffice-core_tgzs folder not found")
 
-        # 3) LibreOffice lang and help packages folder
+        # 3) LibreOffice lang and help packages directory
         #    (its content is not critical for the decision procedure
         #     so just check if it exists and is non empty)
-        LO_lang_dir = pathlib.Path(local_copy_directory).joinpath("LO_lang_TGZS")
+        LO_lang_dir = pathlib.Path(local_copy_directory)
+        LO_lang_dir = LO_lang_dir.joinpath("LibreOffice-langs_tgzs")
+        log.info(f"Checking {LO_lang_dir} for LibreOffice lang and helppacks")
         if LO_lang_dir.is_dir():
             # Check for any tar.gz archives with lang and help packages
             regex_lang = re.compile(
@@ -1661,9 +1670,13 @@ class MainLogic(object):
                         LibreOffice_langs_local_copy["tgz_abs_paths"].append(
                             abs_file_path
                         )
+        else:
+            log.info("LibreOffice-langs_tgzs folder not found")
 
         # 4) Clipart directory
-        Clipart_dir = pathlib.Path(local_copy_directory).joinpath("Clipart_RPMS")
+        Clipart_dir = pathlib.Path(local_copy_directory)
+        Clipart_dir = Clipart_dir.joinpath("Clipart_rpms")
+        log.info(f"Checking {Clipart_dir} for Openclipart rpm files")
         if Clipart_dir.is_dir():
             # Files: libreoffice-openclipart-<something>.rpm ,
             # clipart-openclipart-<something>.rpm
@@ -1685,6 +1698,8 @@ class MainLogic(object):
                 for filename in lo_clipart_files + openclipart_files:
                     abs_file_path = Java_dir.joinpath(filename)
                     Clipart_local_copy["rpm_abs_paths"].append(abs_file_path)
+        else:
+            log.info("Clipart_rpms folder not found")
 
         log.debug(f"Java is present: {Java_local_copy['isPresent']}")
         log.debug(f"LO core is present: {LibreOffice_core_local_copy['isPresent']}")
