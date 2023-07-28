@@ -122,7 +122,7 @@ class VirtualPackage(Node):
                 "name": "",
                 "base_url": "",
                 "estimated_download_size": 0,  # size in kilobytes
-                "chesum": ""
+                "checksum": ""
             }
         ]
         # State flags
