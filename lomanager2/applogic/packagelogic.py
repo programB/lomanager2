@@ -1112,8 +1112,12 @@ class MainLogic(object):
                         msg = f"While trying to download {csf_url} an error occured: "
                         msg = msg + error_msg
                         return (False, msg, rpms_and_tgzs_to_use)
-                    if not PCLOS.verify_checksum(f_dest, csf_dest):
-                        msg = f"Verification of {file['name']} failed"
+
+                    is_correct = PCLOS.verify_checksum(
+                        f_dest, csf_dest, progress_percentage, progress_description
+                    )
+                    if not is_correct:
+                        msg = f"Verification of the {file['name']} failed"
                         return (False, msg, rpms_and_tgzs_to_use)
                     if not PCLOS.force_remove_file(csf_dest):
                         msg = f"Error removing file {csf_dest}"

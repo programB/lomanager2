@@ -19,6 +19,7 @@ import pathlib
 from typing import Callable
 from configuration import logging as log
 import urllib.request, urllib.error
+import hashlib
 
 
 def has_root_privileges() -> bool:
@@ -252,9 +253,34 @@ def download_file(
     return (is_download_successful, info)
 
 
-def verify_checksum(file: pathlib.Path, checksum_file: pathlib.Path) -> bool:
-    is_correct = True
-    log.debug(f">>PRETENDING<< verifying file: {file}")
+def verify_checksum(
+    file: pathlib.Path,
+    checksum_file: pathlib.Path,
+    progress: Callable,
+    progress_description: Callable,
+) -> bool:
+    progress_description(f"Verifying {file.name}")
+
+    with open(file, "rb") as f:
+        file_tot_size = file.stat().st_size
+        chunk_size = 8192
+        steps = int(file_tot_size / chunk_size) + 2
+        i = 0
+        file_hash = hashlib.md5()
+        while chunk := f.read(chunk_size):
+            file_hash.update(chunk)
+            progress_p = int((i / (steps)) * 100)
+            progress(progress_p)
+            i += 1
+
+    calculated_hash = file_hash.hexdigest()
+
+    with open(checksum_file, "r") as fmd:
+        lines = fmd.readlines()
+    checksum = lines[0].split()[0]  # first word in the first line
+
+    if is_correct := calculated_hash == checksum:
+        progress_description(f"{file.name} successfully verified")
     return is_correct
 
 
