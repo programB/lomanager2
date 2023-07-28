@@ -1,6 +1,7 @@
 import time  # TODO: just for the tests
 import re
 import pathlib
+import urllib.request, urllib.error
 from copy import deepcopy
 import configuration
 from configuration import logging as log
@@ -76,10 +77,10 @@ class MainLogic(object):
             self._package_menu.package_delta["space_to_be_used"]
             - self._package_menu.package_delta["space_to_be_freed"]
         )
-        space_available = PCLOS.get_disk_space()
+        space_available = PCLOS.free_space_in_dir(configuration.download_dir)
         # 4) set "ready for state transition flag" (T/F) accordingly
         # 5) add warning message to self._warnings if not enough space
-        if total_space_needed < space_available:
+        if space_available < total_space_needed:
             self.global_flags.ready_to_apply_changes = False
             self._warnings = [
                 {
@@ -540,20 +541,90 @@ class MainLogic(object):
         java_ver = configuration.latest_available_java_version
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
         java_core_vp.is_installed = False
+        java_core_vp.real_files = [
+            {
+                "name": "task-java-2019-1pclos2019.noarch.rpm",
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
+                "estimated_download_size": 2,  # size in kilobytes
+                "checksum": "",
+            },
+            {
+                "name": "java-sun-16-2pclos2021.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
+                "estimated_download_size": 116736,  # size in kilobytes
+                "checksum": "",
+            },
+        ]
         available_virtual_packages.append(java_core_vp)
 
         LO_ver = configuration.latest_available_LO_version
+        LO_minor_ver = configuration.latest_available_LO_minor_version
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
+        office_core_vp.real_files = [
+            {
+                "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm.tar.gz",
+                "base_url": configuration.DocFund_base_url
+                + LO_minor_ver
+                + configuration.DocFund_path_ending,
+                "estimated_download_size": 229376,  # size in kilobytes
+                "checksum": "md5",
+            },
+        ]
         available_virtual_packages.append(office_core_vp)
         for lang in configuration.LO_supported_langs:
             office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
+            office_lang_vp.real_files = [
+                {
+                    "name": "LibreOffice_"
+                    + LO_minor_ver
+                    + "_Linux_x86-64_rpm_helppack_"
+                    + lang
+                    + ".tar.gz",
+                    "base_url": configuration.DocFund_base_url
+                    + LO_minor_ver
+                    + configuration.DocFund_path_ending,
+                    "estimated_download_size": 3277,  # size in kilobytes
+                    "checksum": "md5",
+                },
+                {
+                    "name": "LibreOffice_"
+                    + LO_minor_ver
+                    + "_Linux_x86-64_rpm_langpack_"
+                    + lang
+                    + ".tar.gz",
+                    "base_url": configuration.DocFund_base_url
+                    + LO_minor_ver
+                    + configuration.DocFund_path_ending,
+                    "estimated_download_size": 17408,  # size in kilobytes
+                    "checksum": "md5",
+                },
+            ]
             available_virtual_packages.append(office_lang_vp)
-
         clipart_ver = configuration.latest_available_clipart_version
         clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
         clipart_core_vp.is_installed = False
+        clipart_core_vp.real_files = [
+            {
+                "name": "libreoffice-openclipart-"
+                + clipart_ver
+                + "-1pclos2023.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
+                "estimated_download_size": 8704,  # size in kilobytes
+                "checksum": "",
+            },
+            {
+                "name": "clipart-openclipart-2.0-1pclos2021.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
+                "estimated_download_size": 877568,  # size in kilobytes
+                "checksum": "",
+            },
+        ]
         available_virtual_packages.append(clipart_core_vp)
 
         log.debug(f">>PRETENDING<< available software:")
@@ -727,18 +798,6 @@ class MainLogic(object):
         if packages_to_download:
             step.start("Collecting packages...")
 
-            # Check if there is enough disk space to download them
-            # TODO: Change configuration.tmp_directory to
-            #       configuration.download_directory
-            free_space = PCLOS.get_free_space_in_dir(configuration.tmp_directory)
-            total_dowload_size = sum([p.download_size for p in packages_to_download])
-
-            if free_space < total_dowload_size:
-                return statusfunc(
-                    isOK=False,
-                    msg="Insufficient disk space to download packages",
-                )
-
             # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
@@ -749,7 +808,7 @@ class MainLogic(object):
             if is_every_pkg_collected is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to download all requested packages.\n" + msg,
+                    msg="Failed to download requested packages.\n" + msg,
                 )
             else:
                 step.end("...done collecting files")
@@ -828,8 +887,7 @@ class MainLogic(object):
             p
             for p in virtual_packages
             if p.is_marked_for_removal
-            and (p.family == "OpenOffice"
-            or p.family == "LibreOffice")
+            and (p.family == "OpenOffice" or p.family == "LibreOffice")
         ]
         if office_packages_to_remove:
             step.start("Removing selected Office components...")
@@ -993,28 +1051,8 @@ class MainLogic(object):
         packages_to_download: list,
         progress_description,
         progress_percentage,
+        skip_verify=False,
     ) -> tuple[bool, str, dict]:
-        # Preparations
-        tmp_directory = configuration.tmp_directory
-
-        is_every_package_collected = False
-        # Get [(file_to_download, url)] from packages_to_download
-        # for file, url in [] check if file @ url -> error if False
-        # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
-        # -> add path to {}
-        # return {}
-
-        log.debug(f"Packages to download:")
-        for p in packages_to_download:
-            log.debug(f"                    * {p}")
-        log.debug(">>PRETENDING<< Collecting packages...")
-        time.sleep(2)
-        log.debug(">>PRETENDING<< ...done collecting packages.")
-
-        is_every_package_collected = True
-        # TODO: This function should return a following dict
-        #       and items in lists should be absolute paths to
-        #       collected rpm(s) or tar.gz(s) (best pathlib.Path not string)
         rpms_and_tgzs_to_use = {
             "files_to_install": {
                 "Java": [],
@@ -1023,7 +1061,106 @@ class MainLogic(object):
                 "Clipart": [],
             },
         }
-        return (is_every_package_collected, "", rpms_and_tgzs_to_use)
+
+        log.debug(f"Packages to download:")
+        for p in packages_to_download:
+            log.debug(f"                    * {p}")
+
+        # Check if there is connection to the server(s)
+        # and requested files exist.
+        # If so calculate/estimate the total download size
+        total_download_size = 0
+        for package in packages_to_download:
+            for file in package.real_files:
+                url = file["base_url"] + file["name"]
+                try:
+                    resp = urllib.request.urlopen(url)
+                except urllib.error.HTTPError as error:
+                    msg = f"While trying to open {url} an error occurred: "
+                    msg = msg + f"HTTP error {error.code}: {error.reason}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+                except urllib.error.URLError as error:
+                    msg = f"While trying to open {url} an error occurred: "
+                    msg = msg + f"{error.reason}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+                else:
+                    content_length = resp.info()["Content-Length"]
+                    if content_length is not None and content_length != "0":
+                        size = int(int(content_length) / 1024)
+                        total_download_size += size
+                    else:
+                        total_download_size += file["estimated_size"]
+
+        free_space = PCLOS.free_space_in_dir(configuration.working_dir)
+
+        if free_space < total_download_size:
+            msg = "Insufficient disk space to download packages"
+            return (False, msg, rpms_and_tgzs_to_use)
+
+        for package in packages_to_download:
+            for file in package.real_files:
+                f_url = file["base_url"] + file["name"]
+                f_dest = configuration.working_dir.joinpath(file["name"])
+
+                is_downloaded, error_msg = PCLOS.download_file(
+                    f_url,
+                    f_dest,
+                    progress_percentage,
+                    progress_description,
+                )
+                if not is_downloaded:
+                    msg = f"Error while trying to download {f_url}: "
+                    msg = msg + error_msg
+                    return (False, msg, rpms_and_tgzs_to_use)
+
+                if file["checksum"] and not skip_verify:
+                    checksum_file = file["name"] + "." + file["checksum"]
+                    csf_url = file["base_url"] + checksum_file
+                    csf_dest = configuration.working_dir.joinpath(checksum_file)
+
+                    is_downloaded, error_msg = PCLOS.download_file(
+                        csf_url,
+                        csf_dest,
+                        progress_percentage,
+                        progress_description,
+                    )
+                    if not is_downloaded:
+                        msg = f"Error while trying to download {csf_url}: "
+                        msg = msg + error_msg
+                        return (False, msg, rpms_and_tgzs_to_use)
+
+                    is_correct = PCLOS.verify_checksum(
+                        f_dest, csf_dest, progress_percentage, progress_description
+                    )
+                    if not is_correct:
+                        msg = f"Verification of the {file['name']} failed"
+                        return (False, msg, rpms_and_tgzs_to_use)
+
+                    if not PCLOS.force_remove_file(csf_dest):
+                        msg = f"Error removing file {csf_dest}"
+                        return (False, msg, rpms_and_tgzs_to_use)
+
+                # Move file to verified files directory
+                if package.family == "LibreOffice":
+                    if package.is_langpack():
+                        ending = "-langs"
+                    else:
+                        ending = "-core"
+                    label = package.family + ending
+                    folder_name = label + "_tgzs"
+                else:
+                    label = package.family
+                    folder_name = label + "_rpms"
+                f_verified = configuration.verified_dir.joinpath(folder_name)
+                f_verified = f_verified.joinpath(file["name"])
+                if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
+                    msg = f"Error moving file {f_dest} to {f_verified}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+                # Add file path to verified files list
+                rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
+
+        log.debug(f"rpms_and_tgzs_to_use: {rpms_and_tgzs_to_use}")
+        return (True, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
         log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
@@ -1653,7 +1790,7 @@ class ManualSelectionLogic(object):
             )
         elif column == 4:
             # Notion of upgrade logic is deprecated
-            return(False, False, False)
+            return (False, False, False)
         elif column == 5:
             return (
                 package.is_marked_for_install,
@@ -1661,13 +1798,13 @@ class ManualSelectionLogic(object):
                 package.is_install_opt_enabled,
             )
         elif column == 6:
-            return(
+            return (
                 package.is_installed,
                 True,
                 True,
             )
         elif column == 7:
-            return(
+            return (
                 package.is_marked_for_download,
                 True,
                 True,
@@ -1719,19 +1856,15 @@ class ManualSelectionLogic(object):
         for package in self.packages:
             if package.is_marked_for_removal or package.is_marked_for_upgrade:
                 size = 0
-                for real_package in package.real_packages:
-                    size += real_package["size"]
-                    self.package_delta["packages_to_remove"] += [
-                        real_package["rpm name"]
-                    ]
+                for file in package.real_files:
+                    size += file["estimated_download_size"]
+                    self.package_delta["packages_to_remove"] += [file["name"]]
                 self.package_delta["space_to_be_freed"] = size
             if package.is_marked_for_install:
                 size = 0
-                for real_package in package.real_packages:
-                    size += real_package["size"]
-                    self.package_delta["packages_to_install"] += [
-                        real_package["rpm name"]
-                    ]
+                for file in package.real_files:
+                    size += file["estimated_download_size"]
+                    self.package_delta["packages_to_install"] += [file["name"]]
                 self.package_delta["space_to_be_used"] = size
 
         return is_logic_applied
@@ -1818,7 +1951,9 @@ class ManualSelectionLogic(object):
                 #    accessible again
                 if package.version == self.latest_available_LO_version:
                     family_members = package.get_your_family()
-                    is_any_member_marked_for_install = any([m for m in family_members if m.is_marked_for_install])
+                    is_any_member_marked_for_install = any(
+                        [m for m in family_members if m.is_marked_for_install]
+                    )
                     if not is_any_member_marked_for_install:
                         for office in self.java.children:
                             if office.version != self.latest_available_LO_version:
@@ -1837,7 +1972,7 @@ class ManualSelectionLogic(object):
                 # 3) if installing latest LO mark older versions for removal
                 if package.version == self.latest_available_LO_version:
                     for office in self.java.children:
-                        if office.version !=self.latest_available_LO_version:
+                        if office.version != self.latest_available_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
                             for lang in office.children:

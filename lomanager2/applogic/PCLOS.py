@@ -12,9 +12,14 @@ directly from the system on each call.
 """
 
 
+import time
 import os
+import shutil
 import pathlib
+from typing import Callable
 from configuration import logging as log
+import urllib.request, urllib.error
+import hashlib
 
 
 def has_root_privileges() -> bool:
@@ -69,16 +74,18 @@ def is_lomanager2_latest(lomanger2_version: str) -> bool:
     return True
 
 
-def get_disk_space() -> int:
-    # TODO: Implement
-    return 0
+def free_space_in_dir(dir: pathlib.Path) -> int:
+    """Return free disk space for the partition holding dir.
 
+    Returns
+    -------
+    free_space : int
+        Free space in kibibytes (KiB).
+    """
 
-def get_free_space_in_dir(dir) -> int:
-    # TODO: Implement
-    free_space_kiB = 0
-    log.debug(f">>PRETENDING<< free_space_kiB: {free_space_kiB}")
-    return free_space_kiB
+    free_space = int(shutil.disk_usage(dir).free / 1024)
+    log.debug(f"free space in {dir}: {free_space} KiB")
+    return free_space
 
 
 def is_java_installed() -> bool:
@@ -203,3 +210,85 @@ def detect_installed_clipart() -> tuple[bool, str]:
     found = True
     log.debug(f">>PRETENDING<< Found clipart library: {(found, clipart_version)}")
     return (found, clipart_version)
+
+
+def download_file(
+    src_url: str,
+    dest_path: pathlib.Path,
+    progress: Callable,
+    progress_description: Callable,
+    max_retries: int = 3,
+    retry_delay_sec: int = 5,
+) -> tuple[bool, str]:
+    info = ""
+
+    def progress_reporthook(n_blocks_transferred, block_size, file_tot_size):
+        already_got_bytes = n_blocks_transferred * block_size
+        if file_tot_size == -1:
+            pass
+        else:
+            percent_p = int(100 * (already_got_bytes / file_tot_size))
+            progress(percent_p)
+
+    filename = src_url.split("/")[-1]
+    progress_description(f"Now downloading: {filename}")
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            urllib.request.urlretrieve(
+                src_url,
+                filename=dest_path,
+                reporthook=progress_reporthook,
+            )
+            progress_description(f"Downloaded:      {filename}")
+            return (True, "")
+        except Exception as error:
+            log.error(f"Attempt {attempt} of {max_retries} failed")
+            log.error(error)
+            info = str(error)
+            time.sleep(retry_delay_sec)
+    info = "Failed to download file. " + info
+    return (True, info)
+
+
+def verify_checksum(
+    file: pathlib.Path,
+    checksum_file: pathlib.Path,
+    progress: Callable,
+    progress_description: Callable,
+) -> bool:
+    progress_description(f"Verifying:       {file.name}")
+
+    with open(file, "rb") as f:
+        file_tot_size = file.stat().st_size
+        chunk_size = 8192
+        steps = int(file_tot_size / chunk_size) + 2
+        i = 0
+        file_hash = hashlib.md5()
+        while chunk := f.read(chunk_size):
+            file_hash.update(chunk)
+            progress_p = int((i / (steps)) * 100)
+            progress(progress_p)
+            i += 1
+
+    calculated_hash = file_hash.hexdigest()
+
+    with open(checksum_file, "r") as fmd:
+        lines = fmd.readlines()
+    checksum = lines[0].split()[0]  # first word in the first line
+
+    if is_correct := calculated_hash == checksum:
+        progress_description(f"hash OK:         {file.name}")
+    return is_correct
+
+
+def force_remove_file(file: pathlib.Path) -> bool:
+    is_removed = True
+    log.debug(f">>PRETENDING<< removing file: {file}")
+    return is_removed
+
+
+def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
+    is_moved = True
+    log.debug(f">>PRETENDING<< moving {from_path} to {to_path}")
+    return is_moved
