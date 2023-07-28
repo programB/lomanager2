@@ -12,10 +12,13 @@ directly from the system on each call.
 """
 
 
+import time
 import os
 import shutil
 import pathlib
+from typing import Callable
 from configuration import logging as log
+import urllib.request, urllib.error
 
 
 def has_root_privileges() -> bool:
@@ -206,3 +209,44 @@ def detect_installed_clipart() -> tuple[bool, str]:
     found = True
     log.debug(f">>PRETENDING<< Found clipart library: {(found, clipart_version)}")
     return (found, clipart_version)
+
+
+def download_file(
+    src_url: str,
+    dest_path: pathlib.Path,
+    progress: Callable,
+    max_retries: int = 3,
+    retry_delay_sec: int = 5,
+) -> tuple[bool, str]:
+    is_download_successful = False
+    info = ""
+
+    def progress_reporthook(n_blocks_transferred, block_size, file_tot_size):
+        already_got_bytes = n_blocks_transferred * block_size
+        if file_tot_size == -1:
+            pass
+        else:
+            percent_p = int(100 * (already_got_bytes / file_tot_size))
+            progress(percent_p)
+
+    log.debug(f"Now downloading: {src_url}")
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            urllib.request.urlretrieve(
+                src_url,
+                filename=dest_path,
+                reporthook=progress_reporthook,
+            )
+            log.debug("...done downloading.")
+            is_download_successful = True
+            info = ""
+            return (is_download_successful, info)
+        except Exception as error:
+            log.error(f"Attempt {attempt} of {max_retries} failed")
+            log.error(error)
+            info = str(error)
+            time.sleep(retry_delay_sec)
+    is_download_successful = False
+    info = "Failed to download file. " + info
+    return (is_download_successful, info)

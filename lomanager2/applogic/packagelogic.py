@@ -1081,16 +1081,26 @@ class MainLogic(object):
             msg="Insufficient disk space to download packages"
             return (False, msg, rpms_and_tgzs_to_use)
 
+        log.debug(f"Packages to download:")
+        for p in packages_to_download:
+            log.debug(f"                    * {p}")
+        for package in packages_to_download:
+            for file in package.real_files:
+                progress_description(f"Downloading {file['name']}")
+                url = file["base_url"] + file["name"]
+                dest = configuration.working_dir.joinpath(file["name"])
+                log.debug(f"url: {url}")
+                log.debug(f"dest: {dest}")
+                status, info = PCLOS.download_file(url, dest, progress_percentage)
+                if status is False:
+                    msg = f"While trying to download {url} an error occured: "
+                    msg = msg + info
+                    return (False, msg, rpms_and_tgzs_to_use)
+                progress_description("")
         # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
         # -> add path to {}
         # return {}
 
-        log.debug(f"Packages to download:")
-        for p in packages_to_download:
-            log.debug(f"                    * {p}")
-        log.debug(">>PRETENDING<< Collecting packages...")
-        time.sleep(2)
-        log.debug(">>PRETENDING<< ...done collecting packages.")
 
         is_every_package_collected = True
         # TODO: This function should return a following dict
