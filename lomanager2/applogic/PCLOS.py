@@ -216,10 +216,10 @@ def download_file(
     src_url: str,
     dest_path: pathlib.Path,
     progress: Callable,
+    progress_description: Callable,
     max_retries: int = 3,
     retry_delay_sec: int = 5,
 ) -> tuple[bool, str]:
-    is_download_successful = False
     info = ""
 
     def progress_reporthook(n_blocks_transferred, block_size, file_tot_size):
@@ -230,7 +230,8 @@ def download_file(
             percent_p = int(100 * (already_got_bytes / file_tot_size))
             progress(percent_p)
 
-    log.debug(f"Now downloading: {src_url}")
+    filename = src_url.split("/")[-1]
+    progress_description(f"Now downloading: {filename}")
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -239,18 +240,15 @@ def download_file(
                 filename=dest_path,
                 reporthook=progress_reporthook,
             )
-            log.debug("...done downloading.")
-            is_download_successful = True
-            info = ""
-            return (is_download_successful, info)
+            progress_description(f"Downloaded:      {filename}")
+            return (True, "")
         except Exception as error:
             log.error(f"Attempt {attempt} of {max_retries} failed")
             log.error(error)
             info = str(error)
             time.sleep(retry_delay_sec)
-    is_download_successful = False
     info = "Failed to download file. " + info
-    return (is_download_successful, info)
+    return (True, info)
 
 
 def verify_checksum(
@@ -259,7 +257,7 @@ def verify_checksum(
     progress: Callable,
     progress_description: Callable,
 ) -> bool:
-    progress_description(f"Verifying {file.name}")
+    progress_description(f"Verifying:       {file.name}")
 
     with open(file, "rb") as f:
         file_tot_size = file.stat().st_size
@@ -280,7 +278,7 @@ def verify_checksum(
     checksum = lines[0].split()[0]  # first word in the first line
 
     if is_correct := calculated_hash == checksum:
-        progress_description(f"{file.name} successfully verified")
+        progress_description(f"hash OK:         {file.name}")
     return is_correct
 
 

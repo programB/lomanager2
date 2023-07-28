@@ -1032,11 +1032,8 @@ class MainLogic(object):
         packages_to_download: list,
         progress_description,
         progress_percentage,
-        skip_verify = False
+        skip_verify=False,
     ) -> tuple[bool, str, dict]:
-        # Preparations
-        is_every_package_collected = False
-        msg = ""
         rpms_and_tgzs_to_use = {
             "files_to_install": {
                 "Java": [],
@@ -1046,56 +1043,54 @@ class MainLogic(object):
             },
         }
 
-        working_dir = configuration.working_dir
+        log.debug(f"Packages to download:")
+        for p in packages_to_download:
+            log.debug(f"                    * {p}")
 
-        # Get [(file_to_download, url)] from packages_to_download
-        # for file, url in [] check if file @ url -> error if False
-        total_dowload_size = 0
+        # Check if there is connection to the server(s)
+        # and requested files exist.
+        # If so calculate/estimate the total download size
+        total_download_size = 0
         for package in packages_to_download:
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
                 try:
                     resp = urllib.request.urlopen(url)
                 except urllib.error.HTTPError as error:
-                    msg = f"While trying to download {url} an error occured: "
+                    msg = f"While trying to open {url} an error occurred: "
                     msg = msg + f"HTTP error {error.code}: {error.reason}"
                     return (False, msg, rpms_and_tgzs_to_use)
                 except urllib.error.URLError as error:
-                    msg = f"While trying to download {url} an error occured: "
+                    msg = f"While trying to open {url} an error occurred: "
                     msg = msg + f"{error.reason}"
                     return (False, msg, rpms_and_tgzs_to_use)
                 else:
                     content_length = resp.info()["Content-Length"]
                     if content_length is not None and content_length != "0":
-                        size = int(int(content_length)/1024)
-                        total_dowload_size += size
+                        size = int(int(content_length) / 1024)
+                        total_download_size += size
                     else:
-                        total_dowload_size += file["estimated_size"]
+                        total_download_size += file["estimated_size"]
 
-        free_space = PCLOS.free_space_in_dir(configuration.download_dir)
+        free_space = PCLOS.free_space_in_dir(configuration.working_dir)
 
-        log.debug(f"free space in {configuration.download_dir} is {free_space}")
-        log.debug(f"total_dowload_size is {total_dowload_size}")
-
-        if free_space < total_dowload_size:
-            msg="Insufficient disk space to download packages"
+        if free_space < total_download_size:
+            msg = "Insufficient disk space to download packages"
             return (False, msg, rpms_and_tgzs_to_use)
 
-        log.debug(f"Packages to download:")
-        for p in packages_to_download:
-            log.debug(f"                    * {p}")
         for package in packages_to_download:
             for file in package.real_files:
-                progress_description(f"Downloading {file['name']}")
                 f_url = file["base_url"] + file["name"]
                 f_dest = configuration.working_dir.joinpath(file["name"])
-                log.debug(f"f_url: {f_url}")
-                log.debug(f"f_dest: {f_dest}")
+
                 is_downloaded, error_msg = PCLOS.download_file(
-                    f_url, f_dest, progress_percentage
+                    f_url,
+                    f_dest,
+                    progress_percentage,
+                    progress_description,
                 )
                 if not is_downloaded:
-                    msg = f"While trying to download {f_url} an error occured: "
+                    msg = f"Error while trying to download {f_url}: "
                     msg = msg + error_msg
                     return (False, msg, rpms_and_tgzs_to_use)
 
@@ -1103,13 +1098,15 @@ class MainLogic(object):
                     checksum_file = file["name"] + "." + file["checksum"]
                     csf_url = file["base_url"] + checksum_file
                     csf_dest = configuration.working_dir.joinpath(checksum_file)
-                    log.debug(f"csf_url: {csf_url}")
-                    log.debug(f"csf_dest: {csf_dest}")
+
                     is_downloaded, error_msg = PCLOS.download_file(
-                        csf_url, csf_dest, progress_percentage
+                        csf_url,
+                        csf_dest,
+                        progress_percentage,
+                        progress_description,
                     )
                     if not is_downloaded:
-                        msg = f"While trying to download {csf_url} an error occured: "
+                        msg = f"Error while trying to download {csf_url}: "
                         msg = msg + error_msg
                         return (False, msg, rpms_and_tgzs_to_use)
 
@@ -1119,10 +1116,12 @@ class MainLogic(object):
                     if not is_correct:
                         msg = f"Verification of the {file['name']} failed"
                         return (False, msg, rpms_and_tgzs_to_use)
+
                     if not PCLOS.force_remove_file(csf_dest):
                         msg = f"Error removing file {csf_dest}"
                         return (False, msg, rpms_and_tgzs_to_use)
 
+                # Move file to verified files directory
                 if package.family == "LibreOffice":
                     if package.is_langpack():
                         ending = "-langs"
@@ -1133,18 +1132,16 @@ class MainLogic(object):
                 else:
                     label = package.family
                     folder_name = label + "_rpms"
-                f_verified = configuration.verified_dir.joinpath(folder_name).joinpath(
-                    file["name"]
-                )
+                f_verified = configuration.verified_dir.joinpath(folder_name)
+                f_verified = f_verified.joinpath(file["name"])
                 if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
                     msg = f"Error moving file {f_dest} to {f_verified}"
                     return (False, msg, rpms_and_tgzs_to_use)
-                # All good, add file to verified files list
+                # Add file path to verified files list
                 rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
 
-        is_every_package_collected = True
         log.debug(f"rpms_and_tgzs_to_use: {rpms_and_tgzs_to_use}")
-        return (is_every_package_collected, msg, rpms_and_tgzs_to_use)
+        return (True, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
         log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
