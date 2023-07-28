@@ -1032,8 +1032,8 @@ class MainLogic(object):
         packages_to_download: list,
         progress_description,
         progress_percentage,
+        skip_verify = False
     ) -> tuple[bool, str, dict]:
-
         # Preparations
         is_every_package_collected = False
         msg = ""
@@ -1087,25 +1087,59 @@ class MainLogic(object):
         for package in packages_to_download:
             for file in package.real_files:
                 progress_description(f"Downloading {file['name']}")
-                url = file["base_url"] + file["name"]
-                dest = configuration.working_dir.joinpath(file["name"])
-                log.debug(f"url: {url}")
-                log.debug(f"dest: {dest}")
-                status, info = PCLOS.download_file(url, dest, progress_percentage)
-                if status is False:
-                    msg = f"While trying to download {url} an error occured: "
-                    msg = msg + info
+                f_url = file["base_url"] + file["name"]
+                f_dest = configuration.working_dir.joinpath(file["name"])
+                log.debug(f"f_url: {f_url}")
+                log.debug(f"f_dest: {f_dest}")
+                is_downloaded, error_msg = PCLOS.download_file(
+                    f_url, f_dest, progress_percentage
+                )
+                if not is_downloaded:
+                    msg = f"While trying to download {f_url} an error occured: "
+                    msg = msg + error_msg
                     return (False, msg, rpms_and_tgzs_to_use)
-                progress_description("")
-        # for file in [] download -> verify -> rm md5 -> mv to ver_copy_dir
-        # -> add path to {}
-        # return {}
 
+                if file["checksum"] and not skip_verify:
+                    checksum_file = file["name"] + "." + file["checksum"]
+                    csf_url = file["base_url"] + checksum_file
+                    csf_dest = configuration.working_dir.joinpath(checksum_file)
+                    log.debug(f"csf_url: {csf_url}")
+                    log.debug(f"csf_dest: {csf_dest}")
+                    is_downloaded, error_msg = PCLOS.download_file(
+                        csf_url, csf_dest, progress_percentage
+                    )
+                    if not is_downloaded:
+                        msg = f"While trying to download {csf_url} an error occured: "
+                        msg = msg + error_msg
+                        return (False, msg, rpms_and_tgzs_to_use)
+                    if not PCLOS.verify_checksum(f_dest, csf_dest):
+                        msg = f"Verification of {file['name']} failed"
+                        return (False, msg, rpms_and_tgzs_to_use)
+                    if not PCLOS.force_remove_file(csf_dest):
+                        msg = f"Error removing file {csf_dest}"
+                        return (False, msg, rpms_and_tgzs_to_use)
+
+                if package.family == "LibreOffice":
+                    if package.is_langpack():
+                        ending = "-langs"
+                    else:
+                        ending = "-core"
+                    label = package.family + ending
+                    folder_name = label + "_tgzs"
+                else:
+                    label = package.family
+                    folder_name = label + "_rpms"
+                f_verified = configuration.verified_dir.joinpath(folder_name).joinpath(
+                    file["name"]
+                )
+                if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
+                    msg = f"Error moving file {f_dest} to {f_verified}"
+                    return (False, msg, rpms_and_tgzs_to_use)
+                # All good, add file to verified files list
+                rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
 
         is_every_package_collected = True
-        # TODO: This function should return a following dict
-        #       and items in lists should be absolute paths to
-        #       collected rpm(s) or tar.gz(s) (best pathlib.Path not string)
+        log.debug(f"rpms_and_tgzs_to_use: {rpms_and_tgzs_to_use}")
         return (is_every_package_collected, msg, rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):

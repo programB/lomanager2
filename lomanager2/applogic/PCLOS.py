@@ -250,3 +250,21 @@ def download_file(
     is_download_successful = False
     info = "Failed to download file. " + info
     return (is_download_successful, info)
+
+
+def verify_checksum(file: pathlib.Path, checksum_file: pathlib.Path) -> bool:
+    is_correct = True
+    log.debug(f">>PRETENDING<< verifying file: {file}")
+    return is_correct
+
+
+def force_remove_file(file: pathlib.Path) -> bool:
+    is_removed = True
+    log.debug(f">>PRETENDING<< removing file: {file}")
+    return is_removed
+
+
+def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
+    is_moved = True
+    log.debug(f">>PRETENDING<< moving {from_path} to {to_path}")
+    return is_moved
