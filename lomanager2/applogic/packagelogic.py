@@ -544,13 +544,15 @@ class MainLogic(object):
         java_core_vp.real_files = [
             {
                 "name": "task-java-2019-1pclos2019.noarch.rpm",
-                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
                 "estimated_download_size": 2,  # size in kilobytes
                 "checksum": "",
             },
             {
                 "name": "java-sun-16-2pclos2021.x86_64.rpm",
-                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
                 "estimated_download_size": 116736,  # size in kilobytes
                 "checksum": "",
             },
@@ -564,7 +566,9 @@ class MainLogic(object):
         office_core_vp.real_files = [
             {
                 "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm.tar.gz",
-                "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                "base_url": configuration.DocFund_base_url
+                + LO_minor_ver
+                + configuration.DocFund_path_ending,
                 "estimated_download_size": 229376,  # size in kilobytes
                 "checksum": "md5",
             },
@@ -575,14 +579,26 @@ class MainLogic(object):
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
                 {
-                    "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm_helppack_" + lang + ".tar.gz",
-                    "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                    "name": "LibreOffice_"
+                    + LO_minor_ver
+                    + "_Linux_x86-64_rpm_helppack_"
+                    + lang
+                    + ".tar.gz",
+                    "base_url": configuration.DocFund_base_url
+                    + LO_minor_ver
+                    + configuration.DocFund_path_ending,
                     "estimated_download_size": 3277,  # size in kilobytes
                     "checksum": "md5",
                 },
                 {
-                    "name": "LibreOffice_" + LO_minor_ver + "_Linux_x86-64_rpm_langpack_" + lang + ".tar.gz",
-                    "base_url":configuration.DocFund_base_url + LO_minor_ver + configuration.DocFund_path_ending,
+                    "name": "LibreOffice_"
+                    + LO_minor_ver
+                    + "_Linux_x86-64_rpm_langpack_"
+                    + lang
+                    + ".tar.gz",
+                    "base_url": configuration.DocFund_base_url
+                    + LO_minor_ver
+                    + configuration.DocFund_path_ending,
                     "estimated_download_size": 17408,  # size in kilobytes
                     "checksum": "md5",
                 },
@@ -593,14 +609,18 @@ class MainLogic(object):
         clipart_core_vp.is_installed = False
         clipart_core_vp.real_files = [
             {
-                "name": "libreoffice-openclipart-" + clipart_ver + "-1pclos2023.x86_64.rpm",
-                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "name": "libreoffice-openclipart-"
+                + clipart_ver
+                + "-1pclos2023.x86_64.rpm",
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
                 "estimated_download_size": 8704,  # size in kilobytes
                 "checksum": "",
             },
             {
                 "name": "clipart-openclipart-2.0-1pclos2021.x86_64.rpm",
-                "base_url": configuration.PCLOS_repo_base_url + configuration.PCLOS_repo_path,
+                "base_url": configuration.PCLOS_repo_base_url
+                + configuration.PCLOS_repo_path,
                 "estimated_download_size": 877568,  # size in kilobytes
                 "checksum": "",
             },
@@ -867,8 +887,7 @@ class MainLogic(object):
             p
             for p in virtual_packages
             if p.is_marked_for_removal
-            and (p.family == "OpenOffice"
-            or p.family == "LibreOffice")
+            and (p.family == "OpenOffice" or p.family == "LibreOffice")
         ]
         if office_packages_to_remove:
             step.start("Removing selected Office components...")
@@ -1771,7 +1790,7 @@ class ManualSelectionLogic(object):
             )
         elif column == 4:
             # Notion of upgrade logic is deprecated
-            return(False, False, False)
+            return (False, False, False)
         elif column == 5:
             return (
                 package.is_marked_for_install,
@@ -1779,13 +1798,13 @@ class ManualSelectionLogic(object):
                 package.is_install_opt_enabled,
             )
         elif column == 6:
-            return(
+            return (
                 package.is_installed,
                 True,
                 True,
             )
         elif column == 7:
-            return(
+            return (
                 package.is_marked_for_download,
                 True,
                 True,
@@ -1839,17 +1858,13 @@ class ManualSelectionLogic(object):
                 size = 0
                 for file in package.real_files:
                     size += file["estimated_download_size"]
-                    self.package_delta["packages_to_remove"] += [
-                        file["name"]
-                    ]
+                    self.package_delta["packages_to_remove"] += [file["name"]]
                 self.package_delta["space_to_be_freed"] = size
             if package.is_marked_for_install:
                 size = 0
                 for file in package.real_files:
                     size += file["estimated_download_size"]
-                    self.package_delta["packages_to_install"] += [
-                        file["name"]
-                    ]
+                    self.package_delta["packages_to_install"] += [file["name"]]
                 self.package_delta["space_to_be_used"] = size
 
         return is_logic_applied
@@ -1936,7 +1951,9 @@ class ManualSelectionLogic(object):
                 #    accessible again
                 if package.version == self.latest_available_LO_version:
                     family_members = package.get_your_family()
-                    is_any_member_marked_for_install = any([m for m in family_members if m.is_marked_for_install])
+                    is_any_member_marked_for_install = any(
+                        [m for m in family_members if m.is_marked_for_install]
+                    )
                     if not is_any_member_marked_for_install:
                         for office in self.java.children:
                             if office.version != self.latest_available_LO_version:
@@ -1955,7 +1972,7 @@ class ManualSelectionLogic(object):
                 # 3) if installing latest LO mark older versions for removal
                 if package.version == self.latest_available_LO_version:
                     for office in self.java.children:
-                        if office.version !=self.latest_available_LO_version:
+                        if office.version != self.latest_available_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
                             for lang in office.children:
