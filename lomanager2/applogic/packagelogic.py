@@ -1637,39 +1637,49 @@ class MainLogic(object):
             def all_versions_the_same(items):
                 return all(x == items[0] for x in items)
 
-            if (
-                LO_lang_tgzs
-                and LO_help_tgzs
-                and all_versions_the_same(ver_langs + ver_helps)
-            ):
-                if LibreOffice_core_local_copy["isPresent"]:
+            # Only langpacks are required
+            # (helppacks don't exist at all for some languages)
+            # (Condition when a helppack exists without matching langpack
+            #  is not checked - don't do it guys) 
+            if LO_lang_tgzs:
+                if all_versions_the_same(ver_langs + ver_helps):
+                    msg = ""
+                    for filename in LO_lang_tgzs + LO_help_tgzs:
+                        msg = msg + filename + " "
                     # Do additional check to see if lang packs match core pack
-                    if ver_langs[0] == detected_core_ver:
-                        LibreOffice_langs_local_copy["isPresent"] = True
-                        for filename in LO_lang_tgzs + LO_help_tgzs:
-                            abs_file_path = LO_lang_dir.joinpath(filename)
-                            LibreOffice_langs_local_copy["tgz_abs_paths"].append(
-                                abs_file_path
+                    if LibreOffice_core_local_copy["isPresent"]:
+                        if ver_langs[0] == detected_core_ver:
+                            LibreOffice_langs_local_copy["isPresent"] = True
+                            for filename in LO_lang_tgzs + LO_help_tgzs:
+                                abs_file_path = LO_lang_dir.joinpath(filename)
+                                LibreOffice_langs_local_copy["tgz_abs_paths"].append(
+                                    abs_file_path
+                                )
+                            log.info("LibreOffice lang and helppacks found: " + msg)
+                        else:
+                            log.warning(
+                                "LibreOffice langpack(s) found in the local "
+                                "copy directory but their version does not "
+                                "match LibreOffice core packages version. "
+                                "Langpack(s) will not be installed."
+                                "Found: " + msg
                             )
                     else:
-                        log.warning(
-                            "LibreOffice core and langpack(s) found in local "
-                            "copy directory but their versions do not match. "
-                            "Langpack(s) will not be installed."
+                        log.info(
+                            "LibreOffice lang and helppacks found "
+                            "but LibreOffice core was not found. "
+                            "Installation of just the lang/helppacks is not "
+                            "supported. Lang and helppacks found: " + msg
                         )
                 else:
-                    # Core is not in local copy directory but langpacks
-                    # are present so we can use them
-                    # (if the user has LO core installed and tries to install
-                    #  non-matching lang packs from local copy...not my problem)
-                    LibreOffice_langs_local_copy["isPresent"] = True
-                    for filename in LO_lang_tgzs + LO_help_tgzs:
-                        abs_file_path = LO_lang_dir.joinpath(filename)
-                        LibreOffice_langs_local_copy["tgz_abs_paths"].append(
-                            abs_file_path
-                        )
+                    log.warning(
+                        "Found lang and helppacks have inconsistent "
+                        "versions and will not be used."
+                    )
+            else:
+                log.info("No usable lang or helppacks found")
         else:
-            log.info("LibreOffice-langs_tgzs folder not found")
+            log.warning("LibreOffice-langs_tgzs folder not found")
 
         # 4) Clipart directory
         Clipart_dir = pathlib.Path(local_copy_directory)
