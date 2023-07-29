@@ -1626,7 +1626,7 @@ class MainLogic(object):
             ver_langs = []
             LO_help_tgzs = []
             ver_helps = []
-            for file in LO_core_dir.iterdir():
+            for file in LO_lang_dir.iterdir():
                 if match_l := regex_lang.search(file.name):
                     LO_lang_tgzs.append(match_l.string)
                     ver_langs.append(match_l.group("ver_l"))
