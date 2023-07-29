@@ -1,21 +1,21 @@
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QMessageBox,
-    QProgressBar,
-    QPushButton,
-    QTableView,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-    QHeaderView,
+from pysidecompat import (
+    QApplication,  # pyright: ignore
+    QCheckBox,  # pyright: ignore
+    QDialog,  # pyright: ignore
+    QDialogButtonBox,  # pyright: ignore
+    QFileDialog,  # pyright: ignore
+    QHBoxLayout,  # pyright: ignore
+    QLabel,  # pyright: ignore
+    QLineEdit,  # pyright: ignore
+    QMainWindow,  # pyright: ignore
+    QMessageBox,  # pyright: ignore
+    QProgressBar,  # pyright: ignore
+    QPushButton,  # pyright: ignore
+    QTableView,  # pyright: ignore
+    QTextEdit,  # pyright: ignore
+    QVBoxLayout,  # pyright: ignore
+    QWidget,  # pyright: ignore
+    QHeaderView,  # pyright: ignore
 )
 from configuration import logging as log
 

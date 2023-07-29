@@ -1,10 +1,10 @@
 from typing import Any
-from PySide6 import QtGui
 
-from PySide6.QtCore import (
-    QAbstractItemModel,
-    QAbstractTableModel,
-    Qt,
+from pysidecompat import (
+    QtGui,  # pyright: ignore
+    QAbstractItemModel,  # pyright: ignore
+    QAbstractTableModel,  # pyright: ignore
+    Qt,  # pyright: ignore
 )
 
 

@@ -1,13 +1,11 @@
 import sys
 
-from PySide6.QtWidgets import (
-    QApplication,
-    QMessageBox,
-)
-from PySide6.QtCore import (
-    QObject,
-    Signal,
-    Qt,
+from pysidecompat import (
+    QApplication,  # pyright: ignore
+    QMessageBox,  # pyright: ignore
+    QObject,  # pyright: ignore
+    Signal,  # pyright: ignore
+    Qt,  # pyright: ignore
 )
 
 from applogic.packagelogic import MainLogic
@@ -319,7 +317,7 @@ def main():
     adapter.change_GUI_locks()
 
     main_window.show()
-    sys.exit(lomanager2App.exec())
+    sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 
 if __name__ == "__main__":

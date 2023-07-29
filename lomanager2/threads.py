@@ -1,6 +1,6 @@
 import time
 
-from PySide6.QtCore import QThread, Signal, Slot
+from pysidecompat import QThread, Signal, Slot  # pyright: ignore
 
 from configuration import logging as log
 
