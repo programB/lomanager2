@@ -1634,13 +1634,13 @@ class MainLogic(object):
                     LO_help_tgzs.append(match_h.string)
                     ver_helps.append(match_h.group("ver_h"))
 
-            def all_same(items):
+            def all_versions_the_same(items):
                 return all(x == items[0] for x in items)
 
             if (
                 LO_lang_tgzs
                 and LO_help_tgzs
-                and all_same(ver_langs + ver_helps)
+                and all_versions_the_same(ver_langs + ver_helps)
             ):
                 if LibreOffice_core_local_copy["isPresent"]:
                     # Do additional check to see if lang packs match core pack
