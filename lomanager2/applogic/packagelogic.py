@@ -1634,20 +1634,12 @@ class MainLogic(object):
                     LO_help_tgzs.append(match_h.string)
                     ver_helps.append(match_h.group("ver_h"))
 
-            if LO_lang_tgzs and LO_help_tgzs and len(LO_lang_tgzs) != len(LO_help_tgzs):
-                log.warning(
-                    "Number of langpacks and helppacks found in local copy "
-                    "is not the same. Possibly an incomplete copy. "
-                    "Langpack(s) will not be installed."
-                )
-
             def all_same(items):
                 return all(x == items[0] for x in items)
 
             if (
                 LO_lang_tgzs
                 and LO_help_tgzs
-                and len(LO_lang_tgzs) == len(LO_help_tgzs)
                 and all_same(ver_langs + ver_helps)
             ):
                 if LibreOffice_core_local_copy["isPresent"]:
