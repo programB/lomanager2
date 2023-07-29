@@ -1689,25 +1689,34 @@ class MainLogic(object):
             # Files: libreoffice-openclipart-<something>.rpm ,
             # clipart-openclipart-<something>.rpm
             # are inside? (no specific version numbers are assumed or checked)
-            lo_clipart_files = [
-                file.name
-                for file in Clipart_dir.iterdir()
-                if "libreoffice-openclipart" in file.name
-            ]
-            openclipart_files = [
-                file.name
-                for file in Clipart_dir.iterdir()
-                if "clipart-openclipart" in file.name
-            ]
-            # Only if both are present clipart library can be installed
-            # from the local copy directory.
+            ca_regeX = re.compile(
+                r"^clipart-openclipart-(?P<ver_ca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+            lca_regeX = re.compile(
+                r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+
+            openclipart_files = []
+            lo_clipart_files = []
+            for file in Clipart_dir.iterdir():
+                if match := ca_regeX.search(file.name):
+                    openclipart_files.append(match.string)
+                if match := lca_regeX.search(file.name):
+                    lo_clipart_files.append(match.string)
+
+            # Only when both files are present we can use them
             if lo_clipart_files and openclipart_files:
                 Clipart_local_copy["isPresent"] = True
+                msg = ""
                 for filename in lo_clipart_files + openclipart_files:
+                    msg = msg + filename + " "
                     abs_file_path = Java_dir.joinpath(filename)
                     Clipart_local_copy["rpm_abs_paths"].append(abs_file_path)
+                log.info("Found Openclipart rpm packages: " + msg)
+            else:
+                log.info("No usable Openclipart rpm packages found")
         else:
-            log.info("Clipart_rpms folder not found")
+            log.warning("Clipart_rpms folder not found")
 
         log.debug(f"Java is present: {Java_local_copy['isPresent']}")
         log.debug(f"LO core is present: {LibreOffice_core_local_copy['isPresent']}")
