@@ -1558,24 +1558,30 @@ class MainLogic(object):
         Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_rpms")
         log.info(f"Checking {Java_dir} for Java rpm files.")
         if Java_dir.is_dir():
-            # Files: task-java-<something>.rpm ,  java-sun-<something>.rpm
-            # are inside? (no specific version numbers are assumed or checked)
-            task_java_files = [
-                file.name for file in Java_dir.iterdir() if "task-java" in file.name
-            ]
-            is_task_java_present = True if task_java_files else False
+            # Search for: task-java-<something>.rpm ,  java-sun-<something>.rpm
+            tj_regX = re.compile(
+                r"^task-java-20[0-9][0-9]-[0-9]+pclos20[0-9][0-9]\.noarch\.rpm$"
+            )
+            js_regX = re.compile(
+                r"^java-sun-(?P<ver_js>[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+            task_java_files = []
+            java_sun_files = []
+            for file in Java_dir.iterdir():
+                if match := tj_regX.search(file.name):
+                    task_java_files.append(match.string)
+                if match := js_regX.search(file.name):
+                    java_sun_files.append(match.string)
 
-            java_sun_files = [
-                file.name for file in Java_dir.iterdir() if "java-sun" in file.name
-            ]
-            is_java_sun_present = True if java_sun_files else False
-            # Only if both are present we conclude that Java can be installed
-            # from the local copy directory.
-            if is_task_java_present and is_java_sun_present:
+            # Only when both files are present we can use them
+            if task_java_files and java_sun_files:
                 Java_local_copy["isPresent"] = True
+                msg = ""
                 for filename in task_java_files + java_sun_files:
+                    msg = msg + filename + " "
                     abs_file_path = Java_dir.joinpath(filename)
                     Java_local_copy["rpm_abs_paths"].append(abs_file_path)
+                log.info("Found Java rpm packages: " + msg)
         else:
             log.info("Java_rpms folder not found")
 
