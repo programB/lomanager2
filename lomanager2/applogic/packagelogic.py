@@ -1371,14 +1371,14 @@ class MainLogic(object):
 
         # STEP
         # Perform verification of local copy directory
-        step.start("Verifying local copy...")
+        step.start("Scanning local copy directory for packages...")
         (
             Java_local_copy,
             LibreOffice_core_local_copy,
             LibreOffice_langs_local_copy,
             Clipart_local_copy,
         ) = self._verify_local_copy(local_copy_directory)
-        step.end("Done")
+        step.end("...finished local copy directory scanning")
 
         # STEP
         step.start("Deciding what to install/remove...")
@@ -1392,8 +1392,7 @@ class MainLogic(object):
             package.is_marked_for_download = False
 
         if LibreOffice_core_local_copy["isPresent"]:
-            log.info("Found LibreOffice core package in local copy directory")
-            # Assuming user wants to install it.
+            # We are assuming the user wants to install it.
             # This is possible only if Java is present in the OS or
             # can be installed from local_copy_directory
             # TODO: change this to detect .is_installed flag of Java virtual
@@ -1413,7 +1412,7 @@ class MainLogic(object):
                 PCLOS.is_java_installed() is False
                 and Java_local_copy["isPresent"] is True
             ):
-                log.info("Found Java rpms in local copy directory")
+                log.info("Java packages found will be installed.")
                 rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
                     "rpm_abs_paths"
                 ]
@@ -1430,7 +1429,7 @@ class MainLogic(object):
                 pass
 
             # Reaching this point means Java is or will be installed
-
+            log.info("LibreOffice packages found will be installed.")
             # No complex checks/comparisons for Office. To make sure
             # nothing gets messed up simply remove every Office package
             # that is installed.
@@ -1444,14 +1443,13 @@ class MainLogic(object):
                 ):
                     package.is_marked_for_removal = True
 
-            log.debug("Adding LibreOffice core files to the install list.")
             rpms_and_tgzs_to_use["files_to_install"][
                 "LibreOffice-core"
             ] = LibreOffice_core_local_copy["tgz_abs_paths"]
 
             if LibreOffice_langs_local_copy["isPresent"]:
                 # There are also some language packs that can be installed
-                log.debug("Adding LibreOffice langpack(s) to the install list.")
+                log.info("LibreOffice langpack(s) found will be installed too.")
                 rpms_and_tgzs_to_use["files_to_install"][
                     "LibreOffice-langs"
                 ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
@@ -1462,13 +1460,13 @@ class MainLogic(object):
             log.info(
                 "LibreOffice core package wasn't found in the local copy "
                 "directory and so LibreOffice will not be installed."
-                "LibreOffice langpacks or Java won't be installed "
-                "either even if present in the local copy directory."
+                "(LibreOffice langpacks or Java won't be installed "
+                "either even if present in the local copy directory)."
             )
             is_modification_needed = is_modification_needed or False
 
         if Clipart_local_copy["isPresent"]:
-            # A copy of Openclipart library found check if it is installed
+            log.info("Openclipart packages found will be installed.")
             for package in virtual_packages:
                 if package.family == "Clipart" and package.is_installed:
                     log.debug("Installed Clipart installation marked for removal")
@@ -1476,14 +1474,13 @@ class MainLogic(object):
                     # Simply remove it and install the one from local copy
                     package.is_marked_for_removal = True
 
-            log.debug("Adding Clipart to the install list.")
             rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
                 "rpm_abs_paths"
             ]
             is_modification_needed = is_modification_needed or True
         else:
-            log.debug(
-                "Clipart packages were not found in the local copy "
+            log.info(
+                "Openclipart packages were not found in the local copy "
                 "directory so Openclipart will not be installed."
             )
             is_modification_needed = is_modification_needed or False
@@ -1503,26 +1500,22 @@ class MainLogic(object):
             )
             return output
         else:
-            return statusfunc(isOK=False, msg="No usable packages found. Check log.")
+            return statusfunc(isOK=False, msg="Nothing to install. Check logs.")
 
     def _verify_local_copy(
         self,
         local_copy_directory: str,
     ) -> tuple:
-        # ) -> tuple[
-        # dict[bool, list[pathlib.PurePath|None]],
-        # dict[bool, list[pathlib.PurePath|None]],
-        # dict[bool, list[pathlib.PurePath|None]],
-        # dict[bool, list[pathlib.PurePath|None]],
-        # ]:
         """Checks for presence of saved packages based on file name convention
 
         Based on expected files names this function checks
         the directory passed for the presence of:
-            - 2 Java rpm packages (in Java_RPMS subdir)
-            - any LibreOffice core tar.gz archive (in LO_core_TGZS subdir)
-            - LibreOffice langs/help tar.gz archives (in LO_lang_TGZS subdir)
-            - 2 clipart rpm packages (in Clipart_RPMS subdir)
+            - 2 Java rpm packages (in Java_rpms subdir)
+            - any LibreOffice core tar.gz archive
+              (in LibreOffice-core_tgzs subdir)
+            - LibreOffice langs/help tar.gz archives
+              (in LibreOffice-langs_tgzs subdir)
+            - 2 clipart rpm packages (in Clipart_rpms subdir)
 
         No specific LibreOffice version is enforced but version consistency
         among LibreOffice core and lang packages is checked.
@@ -1551,33 +1544,43 @@ class MainLogic(object):
         LibreOffice_langs_local_copy = {"isPresent": False, "tgz_abs_paths": []}
         Clipart_local_copy = {"isPresent": False, "rpm_abs_paths": []}
 
-        log.debug("Verifying local copy ...")
-        # 1) Directory for Java rpms exist inside?
-        # (Java_RPMS as a directory name is hardcoded here)
-        Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_RPMS")
-        log.debug(f"Java RPMS dir: {Java_dir}")
+        # 1) Java rpms directory
+        Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_rpms")
+        log.info(f"Checking {Java_dir}")
         if Java_dir.is_dir():
-            # Files: task-java-<something>.rpm ,  java-sun-<something>.rpm
-            # are inside? (no specific version numbers are assumed or checked)
-            task_java_files = [
-                file.name for file in Java_dir.iterdir() if "task-java" in file.name
-            ]
-            is_task_java_present = True if task_java_files else False
+            # Search for: task-java-<something>.rpm ,  java-sun-<something>.rpm
+            tj_regX = re.compile(
+                r"^task-java-20[0-9][0-9]-[0-9]+pclos20[0-9][0-9]\.noarch\.rpm$"
+            )
+            js_regX = re.compile(
+                r"^java-sun-(?P<ver_js>[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+            task_java_files = []
+            java_sun_files = []
+            for file in Java_dir.iterdir():
+                if match := tj_regX.search(file.name):
+                    task_java_files.append(match.string)
+                if match := js_regX.search(file.name):
+                    java_sun_files.append(match.string)
 
-            java_sun_files = [
-                file.name for file in Java_dir.iterdir() if "java-sun" in file.name
-            ]
-            is_java_sun_present = True if java_sun_files else False
-            # Only if both are present we conclude that Java can be installed
-            # from the local copy directory.
-            if is_task_java_present and is_java_sun_present:
+            # Only when both files are present we can use them
+            if task_java_files and java_sun_files:
                 Java_local_copy["isPresent"] = True
+                msg = ""
                 for filename in task_java_files + java_sun_files:
+                    msg = msg + filename + " "
                     abs_file_path = Java_dir.joinpath(filename)
                     Java_local_copy["rpm_abs_paths"].append(abs_file_path)
+                log.info("Found Java rpm packages: " + msg)
+            else:
+                log.info("No usable Java rpm packages found")
+        else:
+            log.info("Java_rpms folder not found")
 
-        # 2) LibreOffice core packages folder
-        LO_core_dir = pathlib.Path(local_copy_directory).joinpath("LO_core_TGZS")
+        # 2) LibreOffice core packages directory
+        LO_core_dir = pathlib.Path(local_copy_directory)
+        LO_core_dir = LO_core_dir.joinpath("LibreOffice-core_tgzs")
+        log.info(f"Checking {LO_core_dir}")
         if LO_core_dir.is_dir():
             # Check for tar.gz archive with core packages
             regex_core = re.compile(
@@ -1594,11 +1597,18 @@ class MainLogic(object):
                 # pick only the first one.
                 abs_file_path = LO_core_dir.joinpath(LO_core_tgzs[0])
                 LibreOffice_core_local_copy["tgz_abs_paths"].append(abs_file_path)
+                log.info("Found LibreOffice archive: " + LO_core_tgzs[0])
+            else:
+                log.info("No usable LibreOffice archive found")
+        else:
+            log.info("LibreOffice-core_tgzs folder not found")
 
-        # 3) LibreOffice lang and help packages folder
+        # 3) LibreOffice lang and help packages directory
         #    (its content is not critical for the decision procedure
         #     so just check if it exists and is non empty)
-        LO_lang_dir = pathlib.Path(local_copy_directory).joinpath("LO_lang_TGZS")
+        LO_lang_dir = pathlib.Path(local_copy_directory)
+        LO_lang_dir = LO_lang_dir.joinpath("LibreOffice-langs_tgzs")
+        log.info(f"Checking {LO_lang_dir}")
         if LO_lang_dir.is_dir():
             # Check for any tar.gz archives with lang and help packages
             regex_lang = re.compile(
@@ -1611,7 +1621,7 @@ class MainLogic(object):
             ver_langs = []
             LO_help_tgzs = []
             ver_helps = []
-            for file in LO_core_dir.iterdir():
+            for file in LO_lang_dir.iterdir():
                 if match_l := regex_lang.search(file.name):
                     LO_lang_tgzs.append(match_l.string)
                     ver_langs.append(match_l.group("ver_l"))
@@ -1619,72 +1629,88 @@ class MainLogic(object):
                     LO_help_tgzs.append(match_h.string)
                     ver_helps.append(match_h.group("ver_h"))
 
-            if LO_lang_tgzs and LO_help_tgzs and len(LO_lang_tgzs) != len(LO_help_tgzs):
-                log.warning(
-                    "Number of langpacks and helppacks found in local copy "
-                    "is not the same. Possibly an incomplete copy. "
-                    "Langpack(s) will not be installed."
-                )
-
-            def all_same(items):
+            def all_versions_the_same(items):
                 return all(x == items[0] for x in items)
 
-            if (
-                LO_lang_tgzs
-                and LO_help_tgzs
-                and len(LO_lang_tgzs) == len(LO_help_tgzs)
-                and all_same(ver_langs + ver_helps)
-            ):
-                if LibreOffice_core_local_copy["isPresent"]:
+            # Only langpacks are required
+            # (helppacks don't exist at all for some languages)
+            # (Condition when a helppack exists without matching langpack
+            #  is not checked - don't do it guys)
+            if LO_lang_tgzs:
+                if all_versions_the_same(ver_langs + ver_helps):
+                    msg = ""
+                    for filename in LO_lang_tgzs + LO_help_tgzs:
+                        msg = msg + filename + " "
                     # Do additional check to see if lang packs match core pack
-                    if ver_langs[0] == detected_core_ver:
-                        LibreOffice_langs_local_copy["isPresent"] = True
-                        for filename in LO_lang_tgzs + LO_help_tgzs:
-                            abs_file_path = LO_lang_dir.joinpath(filename)
-                            LibreOffice_langs_local_copy["tgz_abs_paths"].append(
-                                abs_file_path
+                    if LibreOffice_core_local_copy["isPresent"]:
+                        if ver_langs[0] == detected_core_ver:
+                            LibreOffice_langs_local_copy["isPresent"] = True
+                            for filename in LO_lang_tgzs + LO_help_tgzs:
+                                abs_file_path = LO_lang_dir.joinpath(filename)
+                                LibreOffice_langs_local_copy["tgz_abs_paths"].append(
+                                    abs_file_path
+                                )
+                            log.info("LibreOffice lang and helppacks found: " + msg)
+                        else:
+                            log.warning(
+                                "LibreOffice langpack(s) found in the local "
+                                "copy directory but their version does not "
+                                "match LibreOffice core packages version. "
+                                "Langpack(s) will not be installed."
+                                "Found: " + msg
                             )
                     else:
-                        log.warning(
-                            "LibreOffice core and langpack(s) found in local "
-                            "copy directory but their versions do not match. "
-                            "Langpack(s) will not be installed."
+                        log.info(
+                            "LibreOffice lang and helppacks found "
+                            "but LibreOffice core was not found. "
+                            "Installation of just the lang/helppacks is not "
+                            "supported. Lang and helppacks found: " + msg
                         )
                 else:
-                    # Core is not in local copy directory but langpacks
-                    # are present so we can use them
-                    # (if the user has LO core installed and tries to install
-                    #  non-matching lang packs from local copy...not my problem)
-                    LibreOffice_langs_local_copy["isPresent"] = True
-                    for filename in LO_lang_tgzs + LO_help_tgzs:
-                        abs_file_path = LO_lang_dir.joinpath(filename)
-                        LibreOffice_langs_local_copy["tgz_abs_paths"].append(
-                            abs_file_path
-                        )
+                    log.warning(
+                        "Found lang and helppacks have inconsistent "
+                        "versions and will not be used."
+                    )
+            else:
+                log.info("No usable lang or helppacks found")
+        else:
+            log.warning("LibreOffice-langs_tgzs folder not found")
 
         # 4) Clipart directory
-        Clipart_dir = pathlib.Path(local_copy_directory).joinpath("Clipart_RPMS")
+        Clipart_dir = pathlib.Path(local_copy_directory)
+        Clipart_dir = Clipart_dir.joinpath("Clipart_rpms")
+        log.info(f"Checking {Clipart_dir}")
         if Clipart_dir.is_dir():
-            # Files: libreoffice-openclipart-<something>.rpm ,
+            # Search for: libreoffice-openclipart-<something>.rpm ,
             # clipart-openclipart-<something>.rpm
-            # are inside? (no specific version numbers are assumed or checked)
-            lo_clipart_files = [
-                file.name
-                for file in Clipart_dir.iterdir()
-                if "libreoffice-openclipart" in file.name
-            ]
-            openclipart_files = [
-                file.name
-                for file in Clipart_dir.iterdir()
-                if "clipart-openclipart" in file.name
-            ]
-            # Only if both are present clipart library can be installed
-            # from the local copy directory.
+            ca_regeX = re.compile(
+                r"^clipart-openclipart-(?P<ver_ca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+            lca_regeX = re.compile(
+                r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            )
+
+            openclipart_files = []
+            lo_clipart_files = []
+            for file in Clipart_dir.iterdir():
+                if match := ca_regeX.search(file.name):
+                    openclipart_files.append(match.string)
+                if match := lca_regeX.search(file.name):
+                    lo_clipart_files.append(match.string)
+
+            # Only when both files are present we can use them
             if lo_clipart_files and openclipart_files:
                 Clipart_local_copy["isPresent"] = True
+                msg = ""
                 for filename in lo_clipart_files + openclipart_files:
+                    msg = msg + filename + " "
                     abs_file_path = Java_dir.joinpath(filename)
                     Clipart_local_copy["rpm_abs_paths"].append(abs_file_path)
+                log.info("Found Openclipart rpm packages: " + msg)
+            else:
+                log.info("No usable Openclipart rpm packages found")
+        else:
+            log.warning("Clipart_rpms folder not found")
 
         log.debug(f"Java is present: {Java_local_copy['isPresent']}")
         log.debug(f"LO core is present: {LibreOffice_core_local_copy['isPresent']}")
