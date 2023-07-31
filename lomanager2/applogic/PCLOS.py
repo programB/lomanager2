@@ -282,9 +282,26 @@ def verify_checksum(
     return is_correct
 
 
-def force_remove_file(file: pathlib.Path) -> bool:
-    is_removed = True
-    log.debug(f">>PRETENDING<< removing file: {file}")
+def remove_file(path: pathlib.Path) -> bool:
+    allowed_dirs = [
+        pathlib.Path("/tmp"),
+    ]
+    path = path.expanduser()
+
+    if not any(map(path.is_relative_to, allowed_dirs)):
+        log.error(
+            f"This program should not be trying to remove files from this "
+            f"location! Refusing to remove: {path}"
+        )
+        is_removed = False
+    else:
+        try:
+            os.remove(path)
+            is_removed = True
+        except Exception as error:
+            msg = f"Error when removing {path}: "
+            log.error(msg + str(error))
+            is_removed = False
     return is_removed
 
 

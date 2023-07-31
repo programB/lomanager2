@@ -1136,7 +1136,7 @@ class MainLogic(object):
                         msg = f"Verification of the {file['name']} failed"
                         return (False, msg, rpms_and_tgzs_to_use)
 
-                    if not PCLOS.force_remove_file(csf_dest):
+                    if not PCLOS.remove_file(csf_dest):
                         msg = f"Error removing file {csf_dest}"
                         return (False, msg, rpms_and_tgzs_to_use)
 
