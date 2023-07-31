@@ -89,13 +89,6 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
     return free_space
 
 
-def is_java_installed() -> bool:
-    # TODO: Implement
-    is_java_installed = False
-    log.debug(f">>PRETENDING<< is_java_installed: {is_java_installed}")
-    return is_java_installed
-
-
 def detect_installed_java() -> tuple[bool, str]:
     # if pathlib.Path("/usr/bin/java").exists():
     #     java_version = ""

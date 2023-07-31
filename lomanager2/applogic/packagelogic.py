@@ -1378,6 +1378,7 @@ class MainLogic(object):
         # may have set manually in the menu before changing mind and
         # choosing to install from local copy.
         # The logic of what should be installed/removed follows
+        java = [c for c in self._package_tree.children if "Java" in c.family][0]
         for package in virtual_packages:
             package.is_marked_for_removal = False
             package.is_marked_for_install = False
@@ -1387,38 +1388,24 @@ class MainLogic(object):
             # We are assuming the user wants to install it.
             # This is possible only if Java is present in the OS or
             # can be installed from local_copy_directory
-            # TODO: change this to detect .is_installed flag of Java virtual
-            #       package once it is guaranteed it can be found in virtual_packages
-            if (
-                PCLOS.is_java_installed() is False
-                and Java_local_copy["isPresent"] is False
-            ):
+            if not java.is_installed and not Java_local_copy["isPresent"]:
                 return statusfunc(
                     isOK=False,
                     msg="Java is not installed in the system and was not "
                     "found in the directory provided.",
                 )
-            # TODO: change this to detect .is_installed flag of Java virtual
-            #       package once it is guaranteed it can be found in virtual_packages
-            elif (
-                PCLOS.is_java_installed() is False
-                and Java_local_copy["isPresent"] is True
-            ):
+            elif not java.is_installed and Java_local_copy["isPresent"]:
                 log.info("Java packages found will be installed.")
                 rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
                     "rpm_abs_paths"
                 ]
-            elif (
-                PCLOS.is_java_installed() is True
-                and Java_local_copy["isPresent"] is False
-            ):
+            elif java.is_installed and not Java_local_copy["isPresent"]:
                 log.debug("Java already installed.")
             else:
-                # TODO: Java is installed AND is present in local_copy_directory
-                #       what should be done it such a case? Reinstall?
-                #       Try using rpm -Uvh which will update it if package is newer?
-                #       Skipping for now.
-                pass
+                log.debug(
+                    "Java was found in the local copy directory but Java is "
+                    "already installed so it won't be reinstalled."
+                )
 
             # Reaching this point means Java is or will be installed
             log.info("LibreOffice packages found will be installed.")
