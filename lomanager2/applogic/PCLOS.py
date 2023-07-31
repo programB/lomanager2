@@ -289,6 +289,11 @@ def force_remove_file(file: pathlib.Path) -> bool:
 
 
 def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
-    is_moved = True
-    log.debug(f">>PRETENDING<< moving {from_path} to {to_path}")
+    try:
+        shutil.move(src=from_path, dst=to_path)
+        is_moved = True
+    except Exception as error:
+        msg = f"Error when moving {from_path} to {to_path}: "
+        log.error(msg + str(error))
+        is_moved = False
     return is_moved
