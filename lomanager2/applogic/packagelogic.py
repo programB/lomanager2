@@ -25,10 +25,8 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        # TODO: Implement
-        # 1) Create working folder at PATH obtained from configuration.
-        #    Something along the lines:
-        #    PCLOS.create_folder(configuration.temp_folder_path)
+        # 1) Create needed directories
+        PCLOS.create_directories()
 
         # 2) Create state objects
         self._warnings = [""]

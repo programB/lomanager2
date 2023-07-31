@@ -18,6 +18,7 @@ import shutil
 import pathlib
 from typing import Callable
 from configuration import logging as log
+import configuration
 import urllib.request, urllib.error
 import hashlib
 
@@ -314,3 +315,16 @@ def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
         log.error(msg + str(error))
         is_moved = False
     return is_moved
+
+
+def create_directories():
+    directories = [
+        configuration.working_dir,
+        configuration.verified_dir.joinpath("Java_rpms"),
+        configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+        configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+        configuration.verified_dir.joinpath("Clipart_rpms"),
+    ]
+    for directory in directories:
+        log.debug(f"Creating: {directory}")
+        os.makedirs(directory, exist_ok=True)
