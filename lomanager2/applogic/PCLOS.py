@@ -119,11 +119,51 @@ def is_live_session_active() -> bool:
     return pathlib.Path("/union").exists()
 
 
-def get_system_update_status() -> tuple[bool, bool, str]:
-    # TODO: Implement
-    check_successful = True
-    system_updated = False
-    explanation = "System not updated"
+def check_system_update_status() -> tuple[bool, bool, str]:
+    # Update package index
+    # Since the apt-get update command fetches data from
+    # repo server it make take a while hence setting timeout to 45 sek.
+    status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
+    if status:
+        status, output = run_shell_command(
+            "apt-get dist-upgrade --fix-broken --simulate", timeout=15, err_check=True
+        )
+        if status:
+            check_successful = True
+            system_updated = False
+            explanation = "Unexpected output of apt-get command: " + output
+            regex_update = re.compile(
+                r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+            )
+            # If OS is fully updated the summary line in the output should be:
+            # "0 upgraded, 0 newly installed, 0 removed and 0 not upgraded."
+            for line in output.split("\n"):
+                if match := regex_update.search(line):
+                    n_upgraded = match.group("n_upgraded")
+                    n_installed = match.group("n_installed")
+                    n_removed = match.group("n_removed")
+                    n_not_upgraded = match.group("n_not_upgraded")
+                    if not (
+                        n_upgraded == n_installed == n_removed == n_not_upgraded == "0"
+                    ):
+                        system_updated = False
+                        explanation = "System not fully updated"
+                        break
+                    else:
+                        system_updated = True
+                        explanation = "System updated"
+                        break
+        else:
+            check_successful = False
+            system_updated = False
+            explanation = output
+            log.error(output)
+
+    else:
+        check_successful = False
+        system_updated = False
+        explanation = output
+        log.error(output)
     return (check_successful, system_updated, explanation)
 
 

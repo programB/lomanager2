@@ -725,7 +725,7 @@ class MainLogic(object):
                 check_successfull,
                 is_updated,
                 explanation,
-            ) = PCLOS.get_system_update_status()
+            ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_network_install = True
