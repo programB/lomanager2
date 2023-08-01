@@ -21,16 +21,45 @@ from configuration import logging as log
 import configuration
 import urllib.request, urllib.error
 import hashlib
+import subprocess
 
 
 def has_root_privileges() -> bool:
     return os.geteuid == 0
 
 
-def run_shell_command(command: str, shell="bash", timeout=1) -> str:
-    # TODO: Implement
-    stdout_stderr = ""
-    return stdout_stderr
+def run_shell_command(
+    cmd: str, shell="bash", timeout=1, err_check=True
+) -> tuple[bool, str]:
+    if cmd:
+        full_command = [shell] + ["-c"] + [cmd]
+
+        try:
+            shellcommand = subprocess.run(
+                full_command,
+                check=err_check,  # some commads return non-zero exit code if successful
+                timeout=timeout,  # fail on command taking to long to exec.
+                capture_output=True,  # capture output (both stdout and stderr)
+                text=True,  # give the output as a string not bytes
+                encoding="utf-8",  # explicitly set the encoding for the text
+            )
+            return (True, shellcommand.stdout.strip())
+        except FileNotFoundError as exc:
+            msg = "Executable not be found. " + str(exc)
+            log.error(msg)
+            return (False, msg)
+        except subprocess.CalledProcessError as exc:
+            msg = "Error: " + str(exc)
+            log.error(msg)
+            return (False, msg)
+        except subprocess.TimeoutExpired as exc:
+            msg = str(exc)
+            log.error(msg)
+            return (False, msg)
+    else:
+        msg = "An empty string passed as a command to be executed!"
+        log.error(msg)
+        return (False, msg)
 
 
 def get_PID_by_name(names: list[str]) -> dict[str, str]:
