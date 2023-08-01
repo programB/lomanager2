@@ -95,10 +95,17 @@ def get_running_package_managers() -> tuple[bool, dict]:
     return (is_succesful, running_managers)
 
 
-def get_running_Office_processes() -> dict[str, str]:
+def get_running_Office_processes() -> tuple[bool, dict]:
     binaries_to_check = ["soffice.bin"]
-    # return get_PID_by_name(binaries_to_check)
-    return {"soffice.bin": "3333"}
+    running_office_suits = {}
+    returned_pids = get_PIDs_by_name(binaries_to_check)
+    is_succesful = True if not "Error" in running_office_suits.keys() else False
+    if is_succesful:
+        for key, item in returned_pids.items():
+            if item:
+                log.debug(f"ITEM: {item}, {type(item)}")
+                running_office_suits[key] = ", ".join(item)
+    return (is_succesful, running_office_suits)
 
 
 def get_system_users() -> list[str]:

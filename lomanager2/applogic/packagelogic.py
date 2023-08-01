@@ -697,7 +697,11 @@ class MainLogic(object):
                 msg = msg + manager + ": " + str(pids) + "  "
             info_list.append(msg)
 
-        running_office_suits = PCLOS.get_running_Office_processes()
+        status, running_office_suits = PCLOS.get_running_Office_processes()
+        if status is False:
+            any_limitations = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -711,8 +715,8 @@ class MainLogic(object):
                 "this program.\n"
                 "Office: PID\n"
             )
-            for office, pid in running_office_suits.items():
-                msg = msg + office + ": " + pid + "  "
+            for office, pids in running_office_suits.items():
+                msg = msg + office + ": " + str(pids) + "  "
             info_list.append(msg)
 
         # no running manager prevents access to system rpm database
