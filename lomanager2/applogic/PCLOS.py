@@ -146,28 +146,12 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
 
 
 def detect_installed_java() -> tuple[bool, str]:
-    # if pathlib.Path("/usr/bin/java").exists():
-    #     java_version = ""
-    #     found = True
-    #     try:
-    #         # get version
-    #         pass
-    #     except:
-    #         # could not determine java version
-    #         java_version = ""
-    #         pass
-    #     else:
-    #         pass
-    #     log.debug(f">>PRETENDING<< Found Java version: {java_version}")
-    #     return (found, java_version)
-    # return (False, "")
-    # return(False, "")  # Test 1
-    return(True, "")  # Test 2
-    # return(True, "")  # Test 3
-    # return(False, "")  # Test 4
-    # return(False, "")  # Test 5
-    # return(True, "")  # Test 6
-    # return(True, "")  # Test 7
+    found = pathlib.Path("/usr/bin/java").exists()
+    # Since this program is not meant to update Java,
+    # Java version is not being detected.
+    java_version = ""
+    log.debug(f"Is Java installed?: {found}")
+    return (found, java_version)
 
 
 def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
