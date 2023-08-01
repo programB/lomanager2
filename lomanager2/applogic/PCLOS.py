@@ -22,6 +22,7 @@ import configuration
 import urllib.request, urllib.error
 import hashlib
 import subprocess
+import re
 
 
 def has_root_privileges() -> bool:
@@ -155,88 +156,154 @@ def detect_installed_java() -> tuple[bool, str]:
 
 
 def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
-    # # Test 1
-    # det_soft = []
+    list_of_detected_suits = []
 
-    # Test 2
-    det_soft = [
-        (
-            "LibreOffice",
-            "7.4",
-            (),
-        ),
+    # Look for OpenOffice 2.x (was on 2007 CD)
+    if list(pathlib.Path("/usr/bin/").glob("ooffice2*")):
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 2.0 should be assumed.
+        version = "2.0"
+        config_files = list(pathlib.Path("/usr/bin/").glob("ooconfig*"))
+        if config_files:
+            # get version from the file name:
+            # - the way original lomanager does it
+            # - take the first file in the list if more then one detected
+            version = (str(config_files[0]))[17 : 17 + 3]
+        dbg_message = ("Detected OpenOffice series 2 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", version, ()))
+
+    # Look for OpenOffice 3.0.0 (was on 2009.1 CD)
+    if pathlib.Path("/usr/bin/ooffice3.0").exists():
+        dbg_message = ("Detected OpenOffice ver.: {}").format("3.0.0")
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", "3.0.0", ()))
+
+    # Look for OpenOffice 3.0.1 and later
+    if pathlib.Path("/usr/bin/openoffice.org3").exists():
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 3.1 should be assumed.
+        version = "3.1"
+        # Parse version_file to find version
+        # TODO: If 'configparser' module gets included for other purposes
+        #       this should get refactored to:
+        #       cfg = configparser.ConfigParser()
+        #       cfg.read(version_file)
+        #       version = cfg.get('Version', 'OOOBaseVersion')
+        version_file = "/opt/openoffice.org3/program/versionrc"
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = ("Detected OpenOffice series 3 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", version, ()))
+
+    # Look for LibreOffice 3.3 (it is intentionally treated separately)
+    if pathlib.Path("/usr/bin/libreoffice").exists():
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 3.3 should be assumed.
+        version = "3.3"
+        version_file = "/opt/libreoffice/program/versionrc"  # different then↑
+        # The version extracted from the configuration file should
+        # always be 3.3 but the original lomanager script checks that anyways,
+        # so this is why it is done here as well.
+        # (Perhaps there were some subvariants like 3.3.1 etc.)
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = ("Detected LibreOffice series 3.3 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("LibreOffice", version, ()))
+
+    # Look for LibreOffice 3.4 and above (including latest)
+    # TODO: Move this list to some configuration section or configuration file.
+    #       Every time new LibreOffice version is added this list
+    #       needs to be updated. (the list has non-continues version numbers)
+    LO_versionS = [
+        "3.4",
+        "3.5",
+        "3.6",
+        "4.0",
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "5.0",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.0",
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "7.0",
+        "7.1",
+        "7.2",
+        "7.3",
+        "7.4",
+        "7.5",
     ]
+    for version in LO_versionS:
+        if pathlib.Path("/usr/bin/libreoffice" + version).exists():
+            dbg_message = ("Detected LibreOffice ver.: {}").format(version)
+            log.debug(dbg_message)
 
-    # Test 3
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.4",
-    #         (
-    #             "pl",
-    #             "fr",
-    #         ),
-    #     ),
-    # ]
+            # Try to detect language packs installed but only for
+            # for series 7.0 and above
+            if int(version.split(".")[0]) < 7:
+                list_of_detected_suits.append(("LibreOffice", version, ()))
+            else:
+                success, reply = run_shell_command(
+                    f"rpm -qa | grep libreoffice{version}", err_check=False
+                )
+                if success and reply:
+                    regex_lang = re.compile(
+                        rf"^libreoffice{version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{version}[0-9\-\.]*[0-9]$"
+                    )
+                    # example matches:
+                    # libreoffice7.5-fr-7.5.4.2-2
+                    # #  det_lang = "fr" det_regio = ""
+                    # libreoffice7.4-ca-valencia-7.4.4.2-2
+                    # #  det_lang = "ca" det_regio = "-valencia"
+                    # libreoffice7.4-en-GB-7.4.4.2-2
+                    # #  det_lang = "en" det_regio = "-GB"
+                    langs_found = []
+                    for package in reply.split("\n"):
+                        if match := regex_lang.search(package):
+                            det_lang = match.group("det_lang")
+                            det_regio = match.group("det_regio")
+                            if det_regio:
+                                det_lang = det_lang + det_regio
+                            langs_found.append(det_lang)
+                    list_of_detected_suits.append(
+                        (
+                            "LibreOffice",
+                            version,
+                            tuple(langs_found),
+                        )
+                    )
+                else:
+                    list_of_detected_suits.append(("LibreOffice", version, ()))
 
-    # Test 4
-    # det_soft = [
-    #     ("OpenOffice", "2.0", ()),
-    # ]
-
-    # Test 5
-    # det_soft = []
-
-    # Test 6
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.5",
-    #          (),
-    #     ),
-    # ]
-
-    # Test 7
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.4",
-    #         (
-    #             "de",
-    #         ),
-    #     ),
-    # ]
-
-    # Test X
-    # det_soft = [
-    #     ("OpenOffice", "2.0", ()),
-    #     (
-    #         "OpenOffice",
-    #         "2.4",
-    #         (
-    #             "pl",
-    #             "gr",
-    #         ),
-    #     ),
-    #     (
-    #         "LibreOffice",
-    #         "3.0.0",
-    #         (
-    #             "fr",
-    #             "de",
-    #         ),
-    #     ),
-    #     (
-    #         "LibreOffice",
-    #         "7.5",
-    #         (
-    #             "jp",
-    #             "pl",
-    #         ),
-    #     ),
-    # ]
-    log.debug(f">>PRETENDING<< Found Office software: {det_soft}")
-    return det_soft
+    inf_message = ("All detected office suits (and langs): {}").format(
+        list_of_detected_suits
+    )
+    log.info(inf_message)
+    return list_of_detected_suits
 
 
 def detect_installed_clipart() -> tuple[bool, str]:
