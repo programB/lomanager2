@@ -675,7 +675,11 @@ class MainLogic(object):
         any_limitations = False
         info_list = []
 
-        running_managers = PCLOS.get_running_package_managers()
+        status, running_managers = PCLOS.get_running_package_managers()
+        if status is False:
+            any_limitations = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -689,8 +693,8 @@ class MainLogic(object):
                 "Close the managers listed and restart this program.\n"
                 "manager: PID\n"
             )
-            for manager, pid in running_managers.items():
-                msg = msg + manager + ": " + pid + "  "
+            for manager, pids in running_managers.items():
+                msg = msg + manager + ": " + str(pids) + "  "
             info_list.append(msg)
 
         running_office_suits = PCLOS.get_running_Office_processes()

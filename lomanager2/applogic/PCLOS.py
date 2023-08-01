@@ -76,11 +76,23 @@ def get_PIDs_by_name(names: list[str]) -> dict:
     return running_processes
 
 
-def get_running_package_managers() -> dict[str, str]:
-    # TODO: Implement
-    package_managers = {"fake_pacman": "9999", "fake_synaptic": "7777"}
-    log.debug(f">>PRETENDING<< running package manager: {package_managers}")
-    return package_managers
+def get_running_package_managers() -> tuple[bool, dict]:
+    package_managers = [
+        "synaptic",
+        "smart",
+        "ksmarttray",
+        "kpackage",
+        "apt-get",
+    ]
+    running_managers = {}
+    returned_pids = get_PIDs_by_name(package_managers)
+    is_succesful = True if not "Error" in returned_pids.keys() else False
+    if is_succesful:
+        for key, item in returned_pids.items():
+            if item:
+                running_managers[key] = ", ".join(item)
+    log.debug(f"running managers: {running_managers}")
+    return (is_succesful, running_managers)
 
 
 def get_running_Office_processes() -> dict[str, str]:
