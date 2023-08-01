@@ -307,9 +307,23 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 
 
 def detect_installed_clipart() -> tuple[bool, str]:
-    clipart_version = "5.3"
-    found = True
-    log.debug(f">>PRETENDING<< Found clipart library: {(found, clipart_version)}")
+    success, reply = run_shell_command(
+        "rpm -qa | grep libreoffice-openclipart", err_check=False
+    )
+    if success and reply:
+        lca_regeX = re.compile(
+            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+        )
+        if match := lca_regeX.search(reply.split("\n")[0]):
+            found = True
+            clipart_version = match.group("ver_lca")
+            log.debug(f"Openclipart library version {clipart_version} is installed")
+        else:
+            found = False
+            clipart_version = ""
+    else:
+        found = False
+        clipart_version = ""
     return (found, clipart_version)
 
 
