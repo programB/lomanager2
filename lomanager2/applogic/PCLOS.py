@@ -62,10 +62,18 @@ def run_shell_command(
         return (False, msg)
 
 
-def get_PID_by_name(names: list[str]) -> dict[str, str]:
+def get_PIDs_by_name(names: list[str]) -> dict:
     """Checks PIDs of any running processes passed by executable names."""
-    # TODO: Implement
-    pass
+
+    running_processes = {}
+    for name in names:
+        status, pids = run_shell_command("pidof " + name, err_check=False)
+        if status:
+            running_processes[name] = pids.split()
+        else:
+            return {"Error": [pids]}
+    log.debug(running_processes)
+    return running_processes
 
 
 def get_running_package_managers() -> dict[str, str]:
