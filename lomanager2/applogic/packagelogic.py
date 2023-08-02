@@ -25,10 +25,8 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        # TODO: Implement
-        # 1) Create working folder at PATH obtained from configuration.
-        #    Something along the lines:
-        #    PCLOS.create_folder(configuration.temp_folder_path)
+        # 1) Create needed directories
+        PCLOS.create_directories()
 
         # 2) Create state objects
         self._warnings = [""]
@@ -140,17 +138,11 @@ class MainLogic(object):
         if force_java_download is True:
             java_package.is_marked_for_download = True
 
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
         status = self._install(
-            virtual_packages=virtual_packages,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
             progress_description=progress_description,
@@ -185,17 +177,11 @@ class MainLogic(object):
         progress_description = progress_description_closure(callbacks=kwargs)
         step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
         status = self._local_copy_install_procedure(
-            virtual_packages=virtual_packages,
             local_copy_directory=local_copy_directory,
             statusfunc=statusfunc,
             progress_description=progress_description,
@@ -689,7 +675,11 @@ class MainLogic(object):
         any_limitations = False
         info_list = []
 
-        running_managers = PCLOS.get_running_package_managers()
+        status, running_managers = PCLOS.get_running_package_managers()
+        if status is False:
+            any_limitations = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -703,11 +693,15 @@ class MainLogic(object):
                 "Close the managers listed and restart this program.\n"
                 "manager: PID\n"
             )
-            for manager, pid in running_managers.items():
-                msg = msg + manager + ": " + pid + "  "
+            for manager, pids in running_managers.items():
+                msg = msg + manager + ": " + str(pids) + "  "
             info_list.append(msg)
 
-        running_office_suits = PCLOS.get_running_Office_processes()
+        status, running_office_suits = PCLOS.get_running_Office_processes()
+        if status is False:
+            any_limitations = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -721,8 +715,8 @@ class MainLogic(object):
                 "this program.\n"
                 "Office: PID\n"
             )
-            for office, pid in running_office_suits.items():
-                msg = msg + office + ": " + pid + "  "
+            for office, pids in running_office_suits.items():
+                msg = msg + office + ": " + str(pids) + "  "
             info_list.append(msg)
 
         # no running manager prevents access to system rpm database
@@ -731,7 +725,7 @@ class MainLogic(object):
                 check_successfull,
                 is_updated,
                 explanation,
-            ) = PCLOS.get_system_update_status()
+            ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_network_install = True
@@ -774,17 +768,17 @@ class MainLogic(object):
 
     def _install(
         self,
-        virtual_packages,
         keep_packages,
         statusfunc,
         progress_description,
         progress_percentage,
         step,
     ) -> dict:
-        # STEP
-        # Any files need to be downloaded?
-        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        human_readable_p = [(p.family, p.version, p.kind) for p in packages_to_download]
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
         collected_files = {
             "files_to_install": {
                 "Java": [],
@@ -794,6 +788,8 @@ class MainLogic(object):
             },
         }
 
+        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
+        # STEP
         # Some packages need to be downloaded
         if packages_to_download:
             step.start("Collecting packages...")
@@ -1136,7 +1132,7 @@ class MainLogic(object):
                         msg = f"Verification of the {file['name']} failed"
                         return (False, msg, rpms_and_tgzs_to_use)
 
-                    if not PCLOS.force_remove_file(csf_dest):
+                    if not PCLOS.remove_file(csf_dest):
                         msg = f"Error removing file {csf_dest}"
                         return (False, msg, rpms_and_tgzs_to_use)
 
@@ -1345,7 +1341,6 @@ class MainLogic(object):
 
     def _local_copy_install_procedure(
         self,
-        virtual_packages,
         local_copy_directory,
         statusfunc,
         progress_description,
@@ -1361,6 +1356,11 @@ class MainLogic(object):
                 "Clipart": [],
             },
         }
+
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
 
         # local_copy_directory exists?
         if not pathlib.Path(local_copy_directory).is_dir():
@@ -1386,6 +1386,7 @@ class MainLogic(object):
         # may have set manually in the menu before changing mind and
         # choosing to install from local copy.
         # The logic of what should be installed/removed follows
+        java = [c for c in self._package_tree.children if "Java" in c.family][0]
         for package in virtual_packages:
             package.is_marked_for_removal = False
             package.is_marked_for_install = False
@@ -1395,38 +1396,24 @@ class MainLogic(object):
             # We are assuming the user wants to install it.
             # This is possible only if Java is present in the OS or
             # can be installed from local_copy_directory
-            # TODO: change this to detect .is_installed flag of Java virtual
-            #       package once it is guaranteed it can be found in virtual_packages
-            if (
-                PCLOS.is_java_installed() is False
-                and Java_local_copy["isPresent"] is False
-            ):
+            if not java.is_installed and not Java_local_copy["isPresent"]:
                 return statusfunc(
                     isOK=False,
                     msg="Java is not installed in the system and was not "
                     "found in the directory provided.",
                 )
-            # TODO: change this to detect .is_installed flag of Java virtual
-            #       package once it is guaranteed it can be found in virtual_packages
-            elif (
-                PCLOS.is_java_installed() is False
-                and Java_local_copy["isPresent"] is True
-            ):
+            elif not java.is_installed and Java_local_copy["isPresent"]:
                 log.info("Java packages found will be installed.")
                 rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
                     "rpm_abs_paths"
                 ]
-            elif (
-                PCLOS.is_java_installed() is True
-                and Java_local_copy["isPresent"] is False
-            ):
+            elif java.is_installed and not Java_local_copy["isPresent"]:
                 log.debug("Java already installed.")
             else:
-                # TODO: Java is installed AND is present in local_copy_directory
-                #       what should be done it such a case? Reinstall?
-                #       Try using rpm -Uvh which will update it if package is newer?
-                #       Skipping for now.
-                pass
+                log.debug(
+                    "Java was found in the local copy directory but Java is "
+                    "already installed so it won't be reinstalled."
+                )
 
             # Reaching this point means Java is or will be installed
             log.info("LibreOffice packages found will be installed.")

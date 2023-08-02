@@ -18,37 +18,95 @@ import shutil
 import pathlib
 from typing import Callable
 from configuration import logging as log
+import configuration
 import urllib.request, urllib.error
 import hashlib
+import subprocess
+import re
 
 
 def has_root_privileges() -> bool:
     return os.geteuid == 0
 
 
-def run_shell_command(command: str, shell="bash", timeout=1) -> str:
-    # TODO: Implement
-    stdout_stderr = ""
-    return stdout_stderr
+def run_shell_command(
+    cmd: str, shell="bash", timeout=1, err_check=True
+) -> tuple[bool, str]:
+    if cmd:
+        full_command = [shell] + ["-c"] + [cmd]
+
+        try:
+            shellcommand = subprocess.run(
+                full_command,
+                check=err_check,  # some commads return non-zero exit code if successful
+                timeout=timeout,  # fail on command taking to long to exec.
+                capture_output=True,  # capture output (both stdout and stderr)
+                text=True,  # give the output as a string not bytes
+                encoding="utf-8",  # explicitly set the encoding for the text
+            )
+            return (True, shellcommand.stdout.strip())
+        except FileNotFoundError as exc:
+            msg = "Executable not be found. " + str(exc)
+            log.error(msg)
+            return (False, msg)
+        except subprocess.CalledProcessError as exc:
+            msg = "Error: " + str(exc)
+            log.error(msg)
+            return (False, msg)
+        except subprocess.TimeoutExpired as exc:
+            msg = str(exc)
+            log.error(msg)
+            return (False, msg)
+    else:
+        msg = "An empty string passed as a command to be executed!"
+        log.error(msg)
+        return (False, msg)
 
 
-def get_PID_by_name(names: list[str]) -> dict[str, str]:
+def get_PIDs_by_name(names: list[str]) -> dict:
     """Checks PIDs of any running processes passed by executable names."""
-    # TODO: Implement
-    pass
+
+    running_processes = {}
+    for name in names:
+        status, pids = run_shell_command("pidof " + name, err_check=False)
+        if status:
+            running_processes[name] = pids.split()
+        else:
+            return {"Error": [pids]}
+    log.debug(running_processes)
+    return running_processes
 
 
-def get_running_package_managers() -> dict[str, str]:
-    # TODO: Implement
-    package_managers = {"fake_pacman": "9999", "fake_synaptic": "7777"}
-    log.debug(f">>PRETENDING<< running package manager: {package_managers}")
-    return package_managers
+def get_running_package_managers() -> tuple[bool, dict]:
+    package_managers = [
+        "synaptic",
+        "smart",
+        "ksmarttray",
+        "kpackage",
+        "apt-get",
+    ]
+    running_managers = {}
+    returned_pids = get_PIDs_by_name(package_managers)
+    is_succesful = True if not "Error" in returned_pids.keys() else False
+    if is_succesful:
+        for key, item in returned_pids.items():
+            if item:
+                running_managers[key] = ", ".join(item)
+    log.debug(f"running managers: {running_managers}")
+    return (is_succesful, running_managers)
 
 
-def get_running_Office_processes() -> dict[str, str]:
+def get_running_Office_processes() -> tuple[bool, dict]:
     binaries_to_check = ["soffice.bin"]
-    # return get_PID_by_name(binaries_to_check)
-    return {"soffice.bin": "3333"}
+    running_office_suits = {}
+    returned_pids = get_PIDs_by_name(binaries_to_check)
+    is_succesful = True if not "Error" in running_office_suits.keys() else False
+    if is_succesful:
+        for key, item in returned_pids.items():
+            if item:
+                log.debug(f"ITEM: {item}, {type(item)}")
+                running_office_suits[key] = ", ".join(item)
+    return (is_succesful, running_office_suits)
 
 
 def get_system_users() -> list[str]:
@@ -61,11 +119,51 @@ def is_live_session_active() -> bool:
     return pathlib.Path("/union").exists()
 
 
-def get_system_update_status() -> tuple[bool, bool, str]:
-    # TODO: Implement
-    check_successful = True
-    system_updated = False
-    explanation = "System not updated"
+def check_system_update_status() -> tuple[bool, bool, str]:
+    # Update package index
+    # Since the apt-get update command fetches data from
+    # repo server it make take a while hence setting timeout to 45 sek.
+    status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
+    if status:
+        status, output = run_shell_command(
+            "apt-get dist-upgrade --fix-broken --simulate", timeout=15, err_check=True
+        )
+        if status:
+            check_successful = True
+            system_updated = False
+            explanation = "Unexpected output of apt-get command: " + output
+            regex_update = re.compile(
+                r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+            )
+            # If OS is fully updated the summary line in the output should be:
+            # "0 upgraded, 0 newly installed, 0 removed and 0 not upgraded."
+            for line in output.split("\n"):
+                if match := regex_update.search(line):
+                    n_upgraded = match.group("n_upgraded")
+                    n_installed = match.group("n_installed")
+                    n_removed = match.group("n_removed")
+                    n_not_upgraded = match.group("n_not_upgraded")
+                    if not (
+                        n_upgraded == n_installed == n_removed == n_not_upgraded == "0"
+                    ):
+                        system_updated = False
+                        explanation = "System not fully updated"
+                        break
+                    else:
+                        system_updated = True
+                        explanation = "System updated"
+                        break
+        else:
+            check_successful = False
+            system_updated = False
+            explanation = output
+            log.error(output)
+
+    else:
+        check_successful = False
+        system_updated = False
+        explanation = output
+        log.error(output)
     return (check_successful, system_updated, explanation)
 
 
@@ -88,127 +186,184 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
     return free_space
 
 
-def is_java_installed() -> bool:
-    # TODO: Implement
-    is_java_installed = False
-    log.debug(f">>PRETENDING<< is_java_installed: {is_java_installed}")
-    return is_java_installed
-
-
 def detect_installed_java() -> tuple[bool, str]:
-    # if pathlib.Path("/usr/bin/java").exists():
-    #     java_version = ""
-    #     found = True
-    #     try:
-    #         # get version
-    #         pass
-    #     except:
-    #         # could not determine java version
-    #         java_version = ""
-    #         pass
-    #     else:
-    #         pass
-    #     log.debug(f">>PRETENDING<< Found Java version: {java_version}")
-    #     return (found, java_version)
-    # return (False, "")
-    # return(False, "")  # Test 1
-    return(True, "")  # Test 2
-    # return(True, "")  # Test 3
-    # return(False, "")  # Test 4
-    # return(False, "")  # Test 5
-    # return(True, "")  # Test 6
-    # return(True, "")  # Test 7
+    found = pathlib.Path("/usr/bin/java").exists()
+    # Since this program is not meant to update Java,
+    # Java version is not being detected.
+    java_version = ""
+    log.debug(f"Is Java installed?: {found}")
+    return (found, java_version)
 
 
 def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
-    # # Test 1
-    # det_soft = []
+    list_of_detected_suits = []
 
-    # Test 2
-    det_soft = [
-        (
-            "LibreOffice",
-            "7.4",
-            (),
-        ),
+    # Look for OpenOffice 2.x (was on 2007 CD)
+    if list(pathlib.Path("/usr/bin/").glob("ooffice2*")):
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 2.0 should be assumed.
+        version = "2.0"
+        config_files = list(pathlib.Path("/usr/bin/").glob("ooconfig*"))
+        if config_files:
+            # get version from the file name:
+            # - the way original lomanager does it
+            # - take the first file in the list if more then one detected
+            version = (str(config_files[0]))[17 : 17 + 3]
+        dbg_message = ("Detected OpenOffice series 2 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", version, ()))
+
+    # Look for OpenOffice 3.0.0 (was on 2009.1 CD)
+    if pathlib.Path("/usr/bin/ooffice3.0").exists():
+        dbg_message = ("Detected OpenOffice ver.: {}").format("3.0.0")
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", "3.0.0", ()))
+
+    # Look for OpenOffice 3.0.1 and later
+    if pathlib.Path("/usr/bin/openoffice.org3").exists():
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 3.1 should be assumed.
+        version = "3.1"
+        # Parse version_file to find version
+        # TODO: If 'configparser' module gets included for other purposes
+        #       this should get refactored to:
+        #       cfg = configparser.ConfigParser()
+        #       cfg.read(version_file)
+        #       version = cfg.get('Version', 'OOOBaseVersion')
+        version_file = "/opt/openoffice.org3/program/versionrc"
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = ("Detected OpenOffice series 3 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("OpenOffice", version, ()))
+
+    # Look for LibreOffice 3.3 (it is intentionally treated separately)
+    if pathlib.Path("/usr/bin/libreoffice").exists():
+        # Executable detected but if the version can't be determined
+        # by parsing version_file version 3.3 should be assumed.
+        version = "3.3"
+        version_file = "/opt/libreoffice/program/versionrc"  # different then↑
+        # The version extracted from the configuration file should
+        # always be 3.3 but the original lomanager script checks that anyways,
+        # so this is why it is done here as well.
+        # (Perhaps there were some subvariants like 3.3.1 etc.)
+        if pathlib.Path(version_file).exists():
+            with open(version_file, "r") as f:
+                lines = f.readlines()
+            for line in lines:
+                if "OOOBaseVersion=" in line:
+                    version = line.strip().split("=")[-1]
+                    break
+        dbg_message = ("Detected LibreOffice series 3.3 ver.: {}").format(version)
+        log.debug(dbg_message)
+        # No attempt will be made to detect language packs -> ()
+        list_of_detected_suits.append(("LibreOffice", version, ()))
+
+    # Look for LibreOffice 3.4 and above (including latest)
+    # TODO: Move this list to some configuration section or configuration file.
+    #       Every time new LibreOffice version is added this list
+    #       needs to be updated. (the list has non-continues version numbers)
+    LO_versionS = [
+        "3.4",
+        "3.5",
+        "3.6",
+        "4.0",
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "5.0",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.0",
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "7.0",
+        "7.1",
+        "7.2",
+        "7.3",
+        "7.4",
+        "7.5",
     ]
+    for version in LO_versionS:
+        if pathlib.Path("/usr/bin/libreoffice" + version).exists():
+            dbg_message = ("Detected LibreOffice ver.: {}").format(version)
+            log.debug(dbg_message)
 
-    # Test 3
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.4",
-    #         (
-    #             "pl",
-    #             "fr",
-    #         ),
-    #     ),
-    # ]
+            # Try to detect language packs installed but only for
+            # for series 7.0 and above
+            if int(version.split(".")[0]) < 7:
+                list_of_detected_suits.append(("LibreOffice", version, ()))
+            else:
+                success, reply = run_shell_command(
+                    f"rpm -qa | grep libreoffice{version}", err_check=False
+                )
+                if success and reply:
+                    regex_lang = re.compile(
+                        rf"^libreoffice{version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{version}[0-9\-\.]*[0-9]$"
+                    )
+                    # example matches:
+                    # libreoffice7.5-fr-7.5.4.2-2
+                    # #  det_lang = "fr" det_regio = ""
+                    # libreoffice7.4-ca-valencia-7.4.4.2-2
+                    # #  det_lang = "ca" det_regio = "-valencia"
+                    # libreoffice7.4-en-GB-7.4.4.2-2
+                    # #  det_lang = "en" det_regio = "-GB"
+                    langs_found = []
+                    for package in reply.split("\n"):
+                        if match := regex_lang.search(package):
+                            det_lang = match.group("det_lang")
+                            det_regio = match.group("det_regio")
+                            if det_regio:
+                                det_lang = det_lang + det_regio
+                            langs_found.append(det_lang)
+                    list_of_detected_suits.append(
+                        (
+                            "LibreOffice",
+                            version,
+                            tuple(langs_found),
+                        )
+                    )
+                else:
+                    list_of_detected_suits.append(("LibreOffice", version, ()))
 
-    # Test 4
-    # det_soft = [
-    #     ("OpenOffice", "2.0", ()),
-    # ]
-
-    # Test 5
-    # det_soft = []
-
-    # Test 6
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.5",
-    #          (),
-    #     ),
-    # ]
-
-    # Test 7
-    # det_soft = [
-    #     (
-    #         "LibreOffice",
-    #         "7.4",
-    #         (
-    #             "de",
-    #         ),
-    #     ),
-    # ]
-
-    # Test X
-    # det_soft = [
-    #     ("OpenOffice", "2.0", ()),
-    #     (
-    #         "OpenOffice",
-    #         "2.4",
-    #         (
-    #             "pl",
-    #             "gr",
-    #         ),
-    #     ),
-    #     (
-    #         "LibreOffice",
-    #         "3.0.0",
-    #         (
-    #             "fr",
-    #             "de",
-    #         ),
-    #     ),
-    #     (
-    #         "LibreOffice",
-    #         "7.5",
-    #         (
-    #             "jp",
-    #             "pl",
-    #         ),
-    #     ),
-    # ]
-    log.debug(f">>PRETENDING<< Found Office software: {det_soft}")
-    return det_soft
+    inf_message = ("All detected office suits (and langs): {}").format(
+        list_of_detected_suits
+    )
+    log.info(inf_message)
+    return list_of_detected_suits
 
 
 def detect_installed_clipart() -> tuple[bool, str]:
-    clipart_version = "5.3"
-    found = True
-    log.debug(f">>PRETENDING<< Found clipart library: {(found, clipart_version)}")
+    success, reply = run_shell_command(
+        "rpm -qa | grep libreoffice-openclipart", err_check=False
+    )
+    if success and reply:
+        lca_regeX = re.compile(
+            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+        )
+        if match := lca_regeX.search(reply.split("\n")[0]):
+            found = True
+            clipart_version = match.group("ver_lca")
+            log.debug(f"Openclipart library version {clipart_version} is installed")
+        else:
+            found = False
+            clipart_version = ""
+    else:
+        found = False
+        clipart_version = ""
     return (found, clipart_version)
 
 
@@ -282,13 +437,48 @@ def verify_checksum(
     return is_correct
 
 
-def force_remove_file(file: pathlib.Path) -> bool:
-    is_removed = True
-    log.debug(f">>PRETENDING<< removing file: {file}")
+def remove_file(path: pathlib.Path) -> bool:
+    allowed_dirs = [
+        pathlib.Path("/tmp"),
+    ]
+    path = path.expanduser()
+
+    if not any(map(path.is_relative_to, allowed_dirs)):
+        log.error(
+            f"This program should not be trying to remove files from this "
+            f"location! Refusing to remove: {path}"
+        )
+        is_removed = False
+    else:
+        try:
+            os.remove(path)
+            is_removed = True
+        except Exception as error:
+            msg = f"Error when removing {path}: "
+            log.error(msg + str(error))
+            is_removed = False
     return is_removed
 
 
 def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
-    is_moved = True
-    log.debug(f">>PRETENDING<< moving {from_path} to {to_path}")
+    try:
+        shutil.move(src=from_path, dst=to_path)
+        is_moved = True
+    except Exception as error:
+        msg = f"Error when moving {from_path} to {to_path}: "
+        log.error(msg + str(error))
+        is_moved = False
     return is_moved
+
+
+def create_directories():
+    directories = [
+        configuration.working_dir,
+        configuration.verified_dir.joinpath("Java_rpms"),
+        configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+        configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+        configuration.verified_dir.joinpath("Clipart_rpms"),
+    ]
+    for directory in directories:
+        log.debug(f"Creating: {directory}")
+        os.makedirs(directory, exist_ok=True)
