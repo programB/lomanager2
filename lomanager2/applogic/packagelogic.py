@@ -856,16 +856,50 @@ class MainLogic(object):
         if rpms_and_tgzs_to_use["files_to_install"]["Java"]:
             step.start("Installing Java...")
 
-            is_installed, msg = self._install_Java(
-                rpms_and_tgzs_to_use,
-                progress_description,
-                progress_percentage,
+            # 1) Move files (task-java and java-sun) from
+            #    verified copy directory to /var/cache/apt/archives
+            cache_dir = pathlib.Path("/var/cache/apt/archives/")
+            package_names = []
+            for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+                if not PCLOS.move_file(from_path=file, to_path=cache_dir):
+                    return statusfunc(
+                        isOK=False,
+                        msg="Failed to install Java.\n" + "Error moving file",
+                    )
+                package_names.append(file.stem)
+
+            # 2) Use apt-get to install those 2 files
+            #    (it will handle order by itself)
+            #    If any of the files is missing
+            #    (at this point it really shouldn't) apt-get will try to get
+            #    it from remote repo server by itself.
+            #    If there is no connection apt-get will throw an error
+            # TODO: add error handling
+            msg = ""
+            is_installed = True
+            PCLOS.install_using_apt_get(
+                package_nameS=package_names,
+                progress_description=progress_description,
+                progress_percentage=progress_percentage,
             )
             if is_installed is False:
                 return statusfunc(
                     isOK=False,
                     msg="Failed to install Java.\n" + msg,
                 )
+
+            # 3) move rpm files back to verified storage
+            # TODO: What if the user doesn't want to be keeping the files?
+            #       Is it a good place to remove them?
+            verified_dir = configuration.verified_dir.joinpath("Java_rpms")
+            for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+                if not PCLOS.move_file(
+                    from_path=cache_dir.joinpath(file.name), to_path=verified_dir
+                ):
+                    return statusfunc(
+                        isOK=False,
+                        msg="Java installed\n" + "but there was an error moving file",
+                    )
             step.end("...done installing Java")
         # No Java install requested
         else:
@@ -1149,9 +1183,12 @@ class MainLogic(object):
                     folder_name = label + "_rpms"
                 f_verified = configuration.verified_dir.joinpath(folder_name)
                 f_verified = f_verified.joinpath(file["name"])
-                if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
-                    msg = f"Error moving file {f_dest} to {f_verified}"
-                    return (False, msg, rpms_and_tgzs_to_use)
+                # TODO: remove when done testing
+                log.debug("MOVING FILES TO VERIFIED STORAGE WAS TURNED OFF FOR TESTS")
+                # TODO: remove when done testing
+                # if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
+                #     msg = f"Error moving file {f_dest} to {f_verified}"
+                #     return (False, msg, rpms_and_tgzs_to_use)
                 # Add file path to verified files list
                 rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
 
@@ -1163,44 +1200,6 @@ class MainLogic(object):
         log.debug(">>PRETENDING<< Terminating LibreOffice quickstarter...")
         time.sleep(2)
         log.debug(">>PRETENDING<< ...done.")
-
-    def _install_Java(
-        self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
-    ) -> tuple[bool, str]:
-        is_install_successful = False
-        install_msg = ""
-
-        log.debug(">>PRETENDING<< to be installing Java...")
-        log.info("Starting Java install procedure...")
-        if "files_to_install" in downloaded_files.keys():
-            if rpms := downloaded_files["files_to_install"]["Java"]:
-                log.debug(f"Java rpms to install {rpms}")
-                progress_description("Installing java rpms ....")
-                total_time_sek = 5
-                steps = 30
-                for i in range(steps):
-                    progress = int((i / (steps - 1)) * 100)
-                    progress_percentage(progress)
-                    time.sleep(total_time_sek / steps)
-                progress_description("...done installing java rpms")
-                log.debug("...done")
-                is_install_successful = True
-                install_msg = ""
-            else:
-                is_install_successful = False
-                install_msg = "Java install requested but list of files is empty."
-                log.error(install_msg)
-        else:
-            is_install_successful = False
-            install_msg = "Java install requested but no files_to_install dict passed."
-            log.error(install_msg)
-
-        is_install_successful = True
-        log.info("Java successfully installed.")
-        return (is_install_successful, install_msg)
 
     def _uninstall_office_components(
         self,
