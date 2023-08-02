@@ -482,3 +482,29 @@ def create_directories():
     for directory in directories:
         log.debug(f"Creating: {directory}")
         os.makedirs(directory, exist_ok=True)
+
+
+def run_shell_command_with_progress(
+    cmd: str,
+    progress: Callable,
+    progress_description: Callable,
+    parser: Callable,
+    shell="bash",
+) -> tuple[bool, str]:
+    full_command = [shell] + ["-c"] + [cmd]
+    fulloutput = []
+    with subprocess.Popen(
+        full_command,
+        bufsize=1,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+    ) as proc:
+        while proc.poll() is None:
+            outputline = proc.stdout.readline()
+            fulloutput.append(outputline)
+            if parser:
+                label, percentage = parser(outputline)
+                progress_description(label)
+                progress(percentage)
+    return (True, "".join(fulloutput))
