@@ -1030,17 +1030,50 @@ class MainLogic(object):
         if rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
             step.start("Installing Clipart library...")
 
-            is_installed, msg = self._install_clipart(
-                rpms_and_tgzs_to_use,
-                progress_description,
-                progress_percentage,
-            )
+            # 1) Move files (clipart-openclipart- and libreoffice-openclipart-)
+            #    from verified copy directory to /var/cache/apt/archives
+            cache_dir = pathlib.Path("/var/cache/apt/archives/")
+            package_names = []
+            for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
+                if not PCLOS.move_file(from_path=file, to_path=cache_dir):
+                    return statusfunc(
+                        isOK=False,
+                        msg="Failed to install Openclipart.\n" + "Error moving file",
+                    )
+                package_names.append(file.stem)
 
+            # 2) Use apt-get to install those 2 files
+            #    (it will handle order by itself)
+            #    If any of the files is missing
+            #    (at this point it really shouldn't) apt-get will try to get
+            #    it from remote repo server by itself.
+            #    If there is no connection apt-get will throw an error
+            # TODO: add error handling
+            msg = ""
+            is_installed = True
+            PCLOS.install_using_apt_get(
+                package_nameS=package_names,
+                progress_description=progress_description,
+                progress_percentage=progress_percentage,
+            )
             if is_installed is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to install Clipart library.\n" + msg,
+                    msg="Failed to install Openclipart.\n" + msg,
                 )
+
+            # 3) move rpm files back to verified storage
+            # TODO: What if the user doesn't want to be keeping the files?
+            #       Is it a good place to remove them?
+            verified_dir = configuration.verified_dir.joinpath("Clipart_rpms")
+            for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
+                if not PCLOS.move_file(
+                    from_path=cache_dir.joinpath(file.name), to_path=verified_dir
+                ):
+                    return statusfunc(
+                        isOK=False,
+                        msg="Openclipart installed\n" + "but there was an error moving file",
+                    )
             step.end("...done installing Clipart library")
         # Clipart was not marked for install
         else:
