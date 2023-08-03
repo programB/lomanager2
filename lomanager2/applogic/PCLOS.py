@@ -23,6 +23,7 @@ import urllib.request, urllib.error
 import hashlib
 import subprocess
 import re
+import tarfile
 
 
 def has_root_privileges() -> bool:
@@ -537,3 +538,71 @@ def install_using_apt_get(
         progress_description=progress_description,
         parser=progress_parser,
     )
+
+
+def clean_working_dir() -> bool:
+    # remove and recreate working_dir to make sure it is empty
+    target_dir = configuration.working_dir
+    try:
+        shutil.rmtree(target_dir)
+        os.makedirs(target_dir, exist_ok=False)
+        return True
+    except Exception as error:
+        log.error(f"Could not recreate working directory: {error}")
+        return False
+
+
+def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
+    target_dir = configuration.working_dir
+
+    # Inspect the archive
+    resulting_dir_name = ""
+    try:
+        with tarfile.open(archive_path) as targz:
+            # Assume that it will always be the case
+            # that the first name in the archive is the top level
+            # directory name to which the rest of the files will be extracted
+            resulting_dir_name = targz.getnames()[0]
+    except Exception as error:
+        log.error(f"Could not inspect archive: {error}")
+        return []
+    log.debug(f"Top level dir name in the archive: {resulting_dir_name}")
+    unpacked_folder = pathlib.Path(target_dir).joinpath(resulting_dir_name)
+
+    # Unpack the archive
+    try:
+        shutil.unpack_archive(archive_path, target_dir, format="gztar")
+        log.debug(f"Was archive extracted?: {unpacked_folder.exists()}")
+    except Exception as error:
+        log.error(f"Could not extract archive: {error}")
+        return []
+
+    # Gather rpm filenames (strings)
+    RPMS_folder = unpacked_folder.joinpath("RPMS")
+    success, output = run_shell_command("ls " + str(RPMS_folder))
+    rpm_files_names = []
+    if success:
+        for item in output.split():
+            rpm_files_names.append(item)
+    else:
+        log.error(f"Could not list directory contetnt")
+        return []
+
+    # Move all files from the unpackaged /target_dir/resulting_dir_name/RPMS
+    # directly to /target_dir
+    for rpm_file in RPMS_folder.iterdir():
+        move_file(from_path=rpm_file, to_path=target_dir)
+
+    # Remove the remanent of unpacked_folder
+    try:
+        shutil.rmtree(unpacked_folder)
+    except Exception as error:
+        log.error(f"Could not delete directory: {error}")
+        return []
+
+    # Build final list of absolute path to rpm files sitting in target_dir
+    rpm_files = []
+    for filename in rpm_files_names:
+        rpm_files.append(target_dir.joinpath(filename))
+
+    return rpm_files
