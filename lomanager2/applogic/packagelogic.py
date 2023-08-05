@@ -953,18 +953,50 @@ class MainLogic(object):
             or rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
         ):
             step.start("Installing selected Office components...")
+            PCLOS.clean_working_dir()
+            rpms_c = []
+            rpms_l = []
+            if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
+                tgz = rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"][0]
+                log.debug("Core tar.gz found")
+                rpms_c = PCLOS.extract_tgz(tgz)
+            if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]:
+                tgzS = rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
+                for tgz in tgzS:
+                    log.debug("Lang/Help pack tar.gz found")
+                    rpms_l += PCLOS.extract_tgz(tgz)
 
-            office_install_status, msg = self._install_LibreOffice_components(
-                rpms_and_tgzs_to_use,
-                progress_description,
-                progress_percentage,
-            )
+            rpms = rpms_c + rpms_l
+            # rpms = [configuration.working_dir.joinpath("abacus-8.2.7-1pclos2020.noarch.rpm")]
+            if rpms:
+                good_rpms = [rpm for rpm in rpms if "-kde-integration-" not in str(rpm)]
 
-            if office_install_status is False:
+                log.debug("Extracted rpm files")
+                for rpm in good_rpms:
+                    log.debug(rpm)
+
+                kde_rpms = [rpm for rpm in rpms if "-kde-integration-" in str(rpm)]
+                for rpm in kde_rpms:
+                    PCLOS.remove_file(rpm)
+
+                is_installed, msg = PCLOS.install_using_rpm(
+                    good_rpms,
+                    progress_description=progress_description,
+                    progress_percentage=progress_percentage,
+                )
+                if not is_installed:
+                    return statusfunc(
+                        isOK=False,
+                        msg="Failed to install Office components.\n" + msg,
+                    )
+            else:
+                msg = "No rpms extracted"
+                log.error(msg)
                 return statusfunc(
                     isOK=False,
                     msg="Failed to install Office components.\n" + msg,
                 )
+
             step.end("...done installing selected Office components")
         # No Office packages marked for install
         else:
@@ -1216,12 +1248,9 @@ class MainLogic(object):
                     folder_name = label + "_rpms"
                 f_verified = configuration.verified_dir.joinpath(folder_name)
                 f_verified = f_verified.joinpath(file["name"])
-                # TODO: remove when done testing
-                log.debug("MOVING FILES TO VERIFIED STORAGE WAS TURNED OFF FOR TESTS")
-                # TODO: remove when done testing
-                # if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
-                #     msg = f"Error moving file {f_dest} to {f_verified}"
-                #     return (False, msg, rpms_and_tgzs_to_use)
+                if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
+                    msg = f"Error moving file {f_dest} to {f_verified}"
+                    return (False, msg, rpms_and_tgzs_to_use)
                 # Add file path to verified files list
                 rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
 
@@ -1254,31 +1283,6 @@ class MainLogic(object):
         log.info(">>PRETENDING<< ...done removing packages.")
 
         return (is_uninstall_successful, uninstall_msg)
-
-    def _install_LibreOffice_components(
-        self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
-    ) -> tuple[bool, str]:
-        is_install_successful = False
-        install_msg = ""
-
-        # TODO: There should be a .tar.gz file(s) in downloaded_files
-        #       Unziping it takes place in this function
-        log.info(">>PRETENDING<< to be installing files...")
-
-        total_time_sek = 5
-        steps = 30
-        for i in range(steps):
-            progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-            progress_percentage(progress)
-            time.sleep(total_time_sek / steps)
-
-        is_install_successful = True
-        log.info(">>PRETENDING<< ...done installing packages.")
-
-        return (is_install_successful, install_msg)
 
     def _disable_LO_update_checks(self):
         log.debug(
