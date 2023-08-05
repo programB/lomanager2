@@ -486,28 +486,49 @@ def create_directories():
 
 
 def run_shell_command_with_progress(
-    cmd: str,
+    cmd,
     progress: Callable,
     progress_description: Callable,
     parser: Callable,
-    shell="bash",
+    byte_output=False,
 ) -> tuple[bool, str]:
-    full_command = [shell] + ["-c"] + [cmd]
+    full_command = cmd
     fulloutput = []
+    ctrl_chars = list(map(chr, range(0, 32))) + list(map(chr, range(127, 160)))
+
     with subprocess.Popen(
         full_command,
         bufsize=1,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        universal_newlines=True,
+        shell=False,
+        universal_newlines=not byte_output,
     ) as proc:
+        concatenated_b = b""
         while proc.poll() is None:
-            outputline = proc.stdout.readline()
-            fulloutput.append(outputline)
+            if bytes:
+                output = proc.stdout.read(1)
+                concatenated_b += output
+                fulloutput.append(output.decode("utf-8"))
+            else:  # strings
+                output = proc.stdout.readline()
+                fulloutput.append(output)
             if parser:
-                label, percentage = parser(outputline)
-                progress_description(label)
-                progress(percentage)
+                if bytes:
+                    string_to_parse = concatenated_b
+                    # Don't bother reporting progress and spamming
+                    # log if only a control char was read
+                    if output.decode("utf-8") not in ctrl_chars:
+                        label, percentage = parser(string_to_parse)
+                        progress_description(label)
+                        progress(percentage)
+                    else:
+                        pass
+                else:
+                    string_to_parse = output
+                    label, percentage = parser(string_to_parse)
+                    progress_description(label)
+                    progress(percentage)
     return (True, "".join(fulloutput))
 
 
@@ -606,3 +627,89 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
         rpm_files.append(target_dir.joinpath(filename))
 
     return rpm_files
+
+
+def install_using_rpm(
+    rpm_fileS: list,
+    progress_description: Callable,
+    progress_percentage: Callable,
+) -> tuple[bool, str]:
+    files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
+
+    # Before going ahead with actual installation, test for potential problems
+    log.debug("Trying dry-run install to check for errors...")
+    status, output = run_shell_command(
+        "rpm -Uvh --test " + files_to_install,
+        timeout=5,
+        err_check=False,
+    )
+    if status:
+        if "error" in output:
+            msg = "Dry-run install failed. Packages where not installed: " + output
+            log.debug(msg)
+            return (False, msg)
+        else:
+            msg = "Dry-run install successful. Proceeding with actual install..."
+            log.debug(msg)
+
+            # It seems rpm is manipulating TTY directly :(
+            # Although TTY can be captured the method below relies
+            # on up 40 # symbols being written to stodout when rpm is making
+            # progress installing rpm. Counting them to calculate percentage.
+            def progress_parser(input: bytes) -> tuple[str, int]:
+                # regex for stdout output
+                regex_name_and_progress = re.compile(
+                    r"^(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
+                )
+                last_string = input.decode("utf-8").split("\n")[-1]
+                # Unfortunately rpm outputs 40 backspace control chars
+                # to do its progress reporting which
+                # means some long rpm names can get trimmed.
+                # To try to deal with that we save the name the first time
+                # regex match is successful and we retain it (and return it)
+                # until we gather 40 # symbols then we reset for next
+                # package name.
+                first = True
+                p_name = ""
+                p_progress = 0
+                if match := regex_name_and_progress.search(last_string):
+                    # log.debug("match found")
+                    if first:
+                        p_name = match.group("p_name")
+                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        first = False
+                    else:
+                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        if len(match.group("p_progress")) == 40:
+                            first = True
+                    return (p_name, p_progress)
+                else:
+                    if last_string == b"":
+                        return ("", 0)
+                    else:
+                        return ("Working...", 0)
+
+            cmd_list = ["bash", "-c"]
+            rpm_cmd = ["rpm -Uvh " + files_to_install]
+            status, msg = run_shell_command_with_progress(
+                cmd_list + rpm_cmd,
+                # Example
+                # [
+                #     "bash",
+                #     "-c",
+                #     "rpm -Uvh /tmp/lomanager2-tmp/working_directory/tanglet-1.6.1.1-1pclos2022.x86_64.rpm",
+                # ],
+                progress=progress_percentage,
+                progress_description=progress_description,
+                parser=progress_parser,
+                byte_output=True,
+            )
+            log.debug(f"final msg is: {msg}")
+            if "error" in msg:
+                return (False, "Failed to install packages")
+            else:
+                return (True, "All packages successfully installed")
+    else:
+        msg = "Failed to execute command: " + output
+        log.debug(msg)
+        return (False, msg)
