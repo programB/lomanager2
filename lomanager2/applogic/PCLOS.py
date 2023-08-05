@@ -35,6 +35,7 @@ def run_shell_command(
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
+        log.debug(f"Attempting to execute command: {full_command}")
 
         try:
             shellcommand = subprocess.run(
@@ -45,7 +46,16 @@ def run_shell_command(
                 text=True,  # give the output as a string not bytes
                 encoding="utf-8",  # explicitly set the encoding for the text
             )
-            return (True, shellcommand.stdout.strip())
+            answer = (shellcommand.stdout + shellcommand.stderr).strip()
+            if err_check:
+                log.debug(
+                    f"(error checking is ON) Received answer (stdout+stderr): {answer}"
+                )
+            else:
+                log.debug(
+                    f"(error checking is OFF) Received answer (stdout+stderr): {answer}"
+                )
+            return (True, answer)
         except FileNotFoundError as exc:
             msg = "Executable not be found. " + str(exc)
             log.error(msg)
