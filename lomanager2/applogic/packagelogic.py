@@ -1266,23 +1266,200 @@ class MainLogic(object):
     def _uninstall_office_components(
         self,
         packages_to_remove: list,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_uninstall_successful = False
-        uninstall_msg = ""
+        # rpms_to_rm is always a minimal subset of rpms that once
+        # marked for removal will cause all dependencies to be removed too.
 
         log.debug(f"Packages to remove:")
         for p in packages_to_remove:
             log.debug(f"                  * {p}")
-        log.info(">>PRETENDING<< to be removing packages...")
 
-        time.sleep(2)
+        users = PCLOS.get_system_users()
 
-        is_uninstall_successful = True
-        log.info(">>PRETENDING<< ...done removing packages.")
+        # First get rid of any OpenOffice installation
+        OpenOfficeS = [p for p in packages_to_remove if p.family == "OpenOffice"]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for oo in OpenOfficeS:
+            # OpenOffice removal procedures
+            if oo.version.find("2.") == 0:  # any series 2.x
+                rpms_to_rm.extend(["openoffice.org", "openoffice.org-mimelnk"])
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo-2.0"))
+                    dirs_to_rm.append(user.home_dir.joinpath(f".ooo-{oo.version}"))
+            if oo.version == "3.0.0":  # ver. 3.0.0 only
+                rpms_to_rm.extend(["openoffice.org-core"])
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo3"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
+                for leftover_dir in pathlib.Path("/opt").glob("openoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+            if oo.version.find("3.") == 0 and oo.version != "3.0.0":  # any later
+                rpms_to_rm.append("openoffice.org-ure")
+                rpms_to_rm.append(f"openoffice.org{oo.version}-mandriva-menus")
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo3"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("OpenOffice_Info.txt")
+                    )
+                    files_to_remove.append(
+                        user.home_dir.joinpath("getopenoffice.desktop")
+                    )
+                s_files = [
+                    pathlib.Path("/etc/skel/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel_fm/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel_default/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel-orig/").joinpath("OpenOffice_Info.txt"),
+                ]
+                files_to_remove.extend(s_files)
+                dirs_to_rm.extend(pathlib.Path("/opt").glob("openoffice*"))
+        if OpenOfficeS:
+            # Remove
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
+            # Do post-removal cleanup
+            log.debug(f"Dirs to remove: {dirs_to_rm}")
+            map(PCLOS.force_rm_directory, dirs_to_rm)
+            log.debug(f"Files to remove: {files_to_remove}")
+            map(PCLOS.remove_file, files_to_remove)
+            # update menus
+            PCLOS.update_menus()
 
-        return (is_uninstall_successful, uninstall_msg)
+        # Now let's deal with LibreOffice's the language packs.
+        # User may want to remove just that (no core package uninstall)
+        # in which case we are going to be done.
+        # Alternatively core package is also marked for removal and will be
+        # uninstalled in the later step.
+        # Such ordering will not interfere with dependencies,
+        # as language packs are optional additions anyway.
+        LibreOfficeLANGS = [
+            p
+            for p in packages_to_remove
+            if (p.family == "LibreOffice" and p.is_langpack())
+        ]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for lang in LibreOfficeLANGS:
+            # LibreOffice langs removal procedures
+            if lang.kind != "en-US":  # never remove en-US language pack
+                expected_rpm_names = [
+                    f"libreoffice{lang.version}-{lang.kind}-",
+                    f"libreoffice{lang.version}-dict-{lang.kind}-",
+                    f"libobasis{lang.version}-{lang.kind}-",
+                    f"libobasis{lang.version}-{lang.kind}-help-",
+                ]
+                for candidate in expected_rpm_names:
+                    success, reply = PCLOS.run_shell_command(
+                        f"rpm -qa | grep {candidate}", err_check=False
+                    )
+                    if not success:
+                        return (False, "Failed to run shell command")
+                    else:
+                        if reply:
+                            rpms_to_rm.append(candidate[:-1])
+
+                # log.debug(f"LANG to Remove: {lang.kind}")
+                # log.debug(f"rpms_to_remove: {rpms_to_remove}")
+        if LibreOfficeLANGS:
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
+
+        # Finaly remove LibreOffice core if mareked for removal
+        LibreOfficeCORE = [
+            p
+            for p in packages_to_remove
+            if (p.family == "LibreOffice" and p.is_corepack())
+        ]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for core in LibreOfficeCORE:
+            # Removal procedures for LibreOffice core.
+            if core.version.find("3.3") == 0:  # 3.3 and its subvariants
+                rpms_to_rm.append(f"libreoffice3-ure")
+                rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/libreoffice"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("Desktop/lomanager.desktop")
+                    )
+                    kdedir = user.home_dir.joinpath(".kde4/vdt/2/2a")
+                    if kdedir.exists():
+                        files_to_remove.extend(kdedir.glob("LO*"))
+                skel_fm_dir = pathlib.Path("/etc/skel_fm").joinpath(".kde4/vdt/2/2a")
+                if skel_fm_dir.exists():
+                    files_to_remove.extend(skel_fm_dir.glob("LO*"))
+                for leftover_dir in pathlib.Path("/opt").glob("libreoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+                for icon in pathlib.Path("/usr/share/icons").glob("libreoffice-*"):
+                    files_to_remove.append(icon)
+
+            if core.version in configuration.LO_versionS:
+                # All if-s in case (extremely unlikely) someone managed to
+                # install more then one version
+                if core.version == "3.4":
+                    # if [ "$bv" == "3.4" ]
+                    # then
+                    #   apt-get remove libreoffice$bv-ure libreoffice$bv-mandriva-menus -y
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if (
+                    core.version == "3.5"
+                    or core.version == "3.6"
+                    or core.version == "4.0"
+                ):
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-stdlibs")
+                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if (
+                    core.version != "3.4"
+                    and core.version != "3.5"
+                    and core.version != "3.6"
+                    and core.version != "4.0"
+                ):
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-freedesktop-menus")
+                    rpms_to_rm.append(f"libobasis{core.version}-ooofonts")
+                # Leftover files and directories to remove (common for all vers.)
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/libreoffice"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("Desktop/lomanager.desktop")
+                    )
+                for dir in pathlib.Path("/etc/skel/.config").glob("libreoffice*"):
+                    dirs_to_rm.append(dir)
+                for leftover_dir in pathlib.Path("/opt").glob("libreoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+                for icon in pathlib.Path("/usr/share/icons").glob("libreoffice*"):
+                    files_to_remove.append(icon)
+        if LibreOfficeCORE:
+            # Remove
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
+            # Do post-removal cleanup
+            log.debug(f"Dirs to remove: {dirs_to_rm}")
+            map(PCLOS.force_rm_directory, dirs_to_rm)
+            log.debug(f"Files to remove: {files_to_remove}")
+            map(PCLOS.remove_file, files_to_remove)
+            # update menus
+            PCLOS.update_menus()
+
+        uninstall_msg = "Packages successfully uninstalled"
+        return (True, uninstall_msg)
 
     def _disable_LO_update_checks(self):
         log.debug(
