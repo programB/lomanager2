@@ -757,12 +757,16 @@ def uninstall_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
-    run_shell_command_with_progress(
+    _, msg = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
     )
+    if "error" in msg or "Error" in msg:
+        return (False, "Removal of rpm packages failed. Check logs.")
+    else:
+        return (True, "Rpm packages successfully removed.")
 
 
 def force_rm_directory(path):
