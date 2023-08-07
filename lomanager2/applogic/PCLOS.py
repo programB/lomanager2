@@ -516,7 +516,7 @@ def run_shell_command_with_progress(
     ) as proc:
         concatenated_b = b""
         while proc.poll() is None:
-            if bytes:
+            if byte_output:
                 output = proc.stdout.read(1)
                 concatenated_b += output
                 fulloutput.append(output.decode("utf-8"))
@@ -524,7 +524,7 @@ def run_shell_command_with_progress(
                 output = proc.stdout.readline()
                 fulloutput.append(output)
             if parser:
-                if bytes:
+                if byte_output:
                     string_to_parse = concatenated_b
                     # Don't bother reporting progress and spamming
                     # log if only a control char was read
