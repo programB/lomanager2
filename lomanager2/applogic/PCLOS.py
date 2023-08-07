@@ -24,6 +24,7 @@ import hashlib
 import subprocess
 import re
 import tarfile
+import pwd
 
 
 def has_root_privileges() -> bool:
@@ -120,9 +121,37 @@ def get_running_Office_processes() -> tuple[bool, dict]:
     return (is_succesful, running_office_suits)
 
 
-def get_system_users() -> list[str]:
-    # TODO: Implement
-    pass
+class HumanUser:
+    def __init__(self, name, home_dir) -> None:
+        self.name = name
+        self.home_dir = pathlib.Path(home_dir)
+
+
+def get_system_users() -> list[HumanUser]:
+    """Looks for regular (not services) system users.
+
+    The criteria are that the user has a login shell that is one
+    of the shells listed in /etc/shells and has a home folder in /home.
+    Additioanly root user is included.
+    """
+    system_shells = []
+    with open("/etc/shells", "r") as f:
+        for line in f:
+            line = line.strip()
+            if line and line.startswith("/"):
+                system_shells.append(line)
+
+    human_users = []
+    for user in pwd.getpwall():
+        if (user.pw_shell in system_shells) and ("home" in user.pw_dir):
+            human_users.append(HumanUser(user.pw_name, user.pw_dir))
+    try:
+        root_user = pwd.getpwuid(0)  # assuming root has uid 0
+    except Exception as error:
+        log.error("No root user found " + str(error))
+    else:
+        human_users.append(HumanUser(root_user.pw_name, root_user.pw_dir))
+    return human_users
 
 
 def is_live_session_active() -> bool:
