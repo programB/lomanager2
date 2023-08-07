@@ -308,36 +308,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
-    # TODO: Move this list to some configuration section or configuration file.
-    #       Every time new LibreOffice version is added this list
-    #       needs to be updated. (the list has non-continues version numbers)
-    LO_versionS = [
-        "3.4",
-        "3.5",
-        "3.6",
-        "4.0",
-        "4.1",
-        "4.2",
-        "4.3",
-        "4.4",
-        "5.0",
-        "5.1",
-        "5.2",
-        "5.3",
-        "5.4",
-        "6.0",
-        "6.1",
-        "6.2",
-        "6.3",
-        "6.4",
-        "7.0",
-        "7.1",
-        "7.2",
-        "7.3",
-        "7.4",
-        "7.5",
-    ]
-    for version in LO_versionS:
+    for version in configuration.LO_versionS:
         if pathlib.Path("/usr/bin/libreoffice" + version).exists():
             dbg_message = ("Detected LibreOffice ver.: {}").format(version)
             log.debug(dbg_message)
