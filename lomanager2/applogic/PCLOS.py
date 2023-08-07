@@ -480,7 +480,21 @@ def verify_checksum(
 def remove_file(path: pathlib.Path) -> bool:
     allowed_dirs = [
         pathlib.Path("/tmp"),
+        pathlib.Path("/opt").glob("openoffice*"),
+        pathlib.Path("/opt").glob("libreoffice*"),
+        pathlib.Path("/etc/skel"),
+        pathlib.Path("/etc/skel_fm"),
+        pathlib.Path("/etc/skel_default"),
+        pathlib.Path("/etc/skel-orig"),
+        pathlib.Path("/usr/share/icons"),
+        pathlib.Path("user_home/Desktop"),
+        pathlib.Path("user_home/.config"),
+        pathlib.Path("user_home/.kde4"),
+        pathlib.Path("user_home/.libreoffice"),
     ]
+    for user in get_system_users():
+        allowed_dirs.append(user.home_dir.glob(".ooo*"))
+
     path = path.expanduser()
 
     if not any(map(path.is_relative_to, allowed_dirs)):
