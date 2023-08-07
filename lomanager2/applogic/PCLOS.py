@@ -799,3 +799,8 @@ def force_rm_directory(path):
         shutil.rmtree(path)
     except Exception as error:
         log.error("Failed to remove folder" + str(error))
+
+
+def update_menus():
+    log.debug("updating menus")
+    run_shell_command("update-menus -v")
