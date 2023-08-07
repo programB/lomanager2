@@ -752,3 +752,29 @@ def install_using_rpm(
         msg = "Failed to execute command: " + output
         log.debug(msg)
         return (False, msg)
+
+
+def uninstall_using_apt_get(
+    package_nameS: list,
+    progress_description: Callable,
+    progress_percentage: Callable,
+):
+    package_nameS_string = " ".join(package_nameS)
+    #   apt-get reports install progress to stdout like this:
+    # "  <package_name>  ###(changing numeber of spaces and #) [ 30%]"
+    # NOTE: package_name != filename (filename=abc.rpm, package_name=abc)
+    new_regex = re.compile(
+        rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
+    )
+
+    def progress_parser(input: str) -> tuple[str, int]:
+        if match := new_regex.search(input):
+            return (match.group("p_name"), int(match.group("progress")))
+        return ("", 0)
+
+    run_shell_command_with_progress(
+        ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
+        progress=progress_percentage,
+        progress_description=progress_description,
+        parser=progress_parser,
+    )
