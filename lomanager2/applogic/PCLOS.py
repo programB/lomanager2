@@ -792,3 +792,10 @@ def uninstall_using_apt_get(
         progress_description=progress_description,
         parser=progress_parser,
     )
+
+
+def force_rm_directory(path):
+    try:
+        shutil.rmtree(path)
+    except Exception as error:
+        log.error("Failed to remove folder" + str(error))
