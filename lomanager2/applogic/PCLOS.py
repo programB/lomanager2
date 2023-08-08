@@ -561,6 +561,7 @@ def install_using_apt_get(
     progress_description: Callable,
     progress_percentage: Callable,
 ):
+    package_nameS_string = " ".join(package_nameS)
     #   apt-get reports install progress to stdout like this:
     # "  <packages_name>  ###(changing numeber of spaces and #) [ 30%]"
     #   Build some reg. expressions to capture this
@@ -578,7 +579,8 @@ def install_using_apt_get(
         return ("", 0)
 
     run_shell_command_with_progress(
-        ["apt-get install --reinstall task-java -y"],
+        ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
+        # ["apt-get install --reinstall task-java -y"],
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
