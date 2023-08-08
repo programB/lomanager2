@@ -561,30 +561,30 @@ def install_using_apt_get(
     progress_description: Callable,
     progress_percentage: Callable,
 ):
-    package_nameS_string = " ".join(package_nameS)
-    #   apt-get reports install progress to stdout like this:
-    # "  <packages_name>  ###(changing numeber of spaces and #) [ 30%]"
-    #   Build some reg. expressions to capture this
-    # NOTE: package_name != filename (filename=abc.rpm, package_name=abc)
-    regeXs = []
-    for p_name in package_nameS:
-        regeXs.append(
-            re.compile(rf"^\s*(?P<p_name>{p_name})[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$")
-        )
+    # apt-get reports progress to stdout like this:
+    # "  <package name>  ###(changing number of spaces and #) [ 30%]"
+    # - 100 % is indicated with 40 # characters
+    # - package name != filename (eg. filename=abc.rpm, package name=abc)
 
     def progress_parser(input: str) -> tuple[str, int]:
-        for regex in regeXs:
-            if match := regex.search(input):
-                return (match.group("p_name"), int(match.group("progress")))
+        new_regex = re.compile(
+            rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
+        )
+        if match := new_regex.search(input):
+            return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
-    run_shell_command_with_progress(
+    package_nameS_string = " ".join(package_nameS)
+    _, msg = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
-        # ["apt-get install --reinstall task-java -y"],
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
     )
+    if "error" in msg or "Error" in msg:
+        return (False, "Installation of rpm packages failed. Check logs.")
+    else:
+        return (True, "Rpm packages successfully installed.")
 
 
 def clean_working_dir() -> bool:
