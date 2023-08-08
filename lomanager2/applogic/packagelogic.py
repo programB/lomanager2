@@ -1170,7 +1170,8 @@ class MainLogic(object):
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
                 try:
-                    resp = urllib.request.urlopen(url)
+                    log.debug(f"Attempting to open: {url}")
+                    resp = urllib.request.urlopen(url, timeout=7)
                 except urllib.error.HTTPError as error:
                     msg = f"While trying to open {url} an error occurred: "
                     msg = msg + f"HTTP error {error.code}: {error.reason}"
