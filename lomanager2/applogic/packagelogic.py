@@ -1068,7 +1068,11 @@ class MainLogic(object):
             cache_dir = pathlib.Path("/var/cache/apt/archives/")
             package_names = []
             for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-                if not PCLOS.move_file(from_path=file, to_path=cache_dir):
+                # Full name in to_path (including file.name) causes
+                # move_file to overwrite destination if it exists
+                if not PCLOS.move_file(
+                    from_path=file, to_path=cache_dir.joinpath(file.name)
+                ):
                     return statusfunc(
                         isOK=False,
                         msg="Failed to install Openclipart.\n" + "Error moving file",
