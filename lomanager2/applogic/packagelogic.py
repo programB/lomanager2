@@ -1077,7 +1077,10 @@ class MainLogic(object):
                         isOK=False,
                         msg="Failed to install Openclipart.\n" + "Error moving file",
                     )
-                package_names.append(file.stem)
+                # rpm name != rpm filename
+                rpm_name = "-".join(file.name.split("-")[:2])
+                package_names.append(rpm_name)
+            log.debug(f"clipart package_names: {package_names}")
 
             # 2) Use apt-get to install those 2 files
             #    (it will handle order by itself)
