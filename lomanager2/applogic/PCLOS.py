@@ -779,3 +779,7 @@ def force_rm_directory(path):
 def update_menus():
     log.debug("updating menus")
     run_shell_command("update-menus -v")
+
+
+def make_dir_tree(target_dir: pathlib.Path):
+    os.makedirs(target_dir, exist_ok=True)

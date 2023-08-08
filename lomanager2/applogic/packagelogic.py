@@ -3,6 +3,7 @@ import re
 import pathlib
 import urllib.request, urllib.error
 from copy import deepcopy
+import xml.etree.ElementTree as ET
 import configuration
 from configuration import logging as log
 from typing import Any, Tuple, Callable
@@ -989,6 +990,9 @@ class MainLogic(object):
                         isOK=False,
                         msg="Failed to install Office components.\n" + msg,
                     )
+
+                self._disable_LO_update_checks()
+
             else:
                 msg = "No rpms extracted"
                 log.error(msg)
@@ -1008,9 +1012,6 @@ class MainLogic(object):
         #       Return something from steps above?
         if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
             step.start("Running postintall procedures...")
-
-            self._disable_LO_update_checks()
-            self._add_templates_to_etcskel()
 
             step.end("...done running postintall procedures")
         else:
@@ -1462,19 +1463,88 @@ class MainLogic(object):
         return (True, uninstall_msg)
 
     def _disable_LO_update_checks(self):
-        log.debug(
-            ">>PRETENDING<< Preventing LibreOffice from looking for updates on its own..."
-        )
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
+        log.debug("Preventing LibreOffice from checking for updates on its own")
 
-    def _add_templates_to_etcskel(self):
-        # TODO: This function should put a file (smth.xcu) to /etc/skel
-        #       in order to have LO properly set up for any new user
-        #       accounts created in the OS
-        log.debug(">>PRETENDING<< Adding files to /etc/skel ...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
+        # -- helper functions --
+        def register_all_namespaces(f_name):
+            namespaces = dict(
+                [node for _, node in ET.iterparse(f_name, events=["start-ns"])]
+            )
+            for ns in namespaces:
+                ET.register_namespace(ns, namespaces[ns])
+
+        def add_disabled_autocheck(root):
+            uc_item = ET.SubElement(root, "item")
+            uc_item.set(
+                "oor:path",
+                r"/org.openoffice.Office.Jobs/Jobs/org.openoffice.Office.Jobs:Job['UpdateCheck']/Arguments",
+            )
+            uc_prop = ET.SubElement(uc_item, "prop")
+            uc_prop.set("oor:name", "AutoCheckEnabled")
+            uc_prop.set("oor:op", "fuse")
+            uc_prop.set("oor:type", "xs:boolean")
+            uc_val = ET.SubElement(uc_prop, "value")
+            uc_val.text = "false"
+
+        def create_xcu_file_w_disabled_autocheck(file: pathlib.Path):
+            ET.register_namespace("oor", "https://openoffice.org/2001/registry")
+            xml_root = ET.Element("{https://openoffice.org/2001/registry}items")
+            add_disabled_autocheck(root=xml_root)
+            xml_tree = ET.ElementTree(xml_root)
+            xml_tree.write(
+                file,
+                xml_declaration=True,
+                method="xml",
+                encoding="UTF-8",
+            )
+
+        def find_autocheck_prop(root):
+            value = ET.Element("value")
+            for property in root.iter("prop"):
+                if "AutoCheckEnabled" in property.attrib.values():
+                    return property.find("value")
+            return value
+
+        # -- end helper functions --
+
+        # Disable checks for every existing user
+        for user in PCLOS.get_system_users():
+            conf_dir = user.home_dir.joinpath(".config/libreoffice/4/user")
+            xcu_file = conf_dir.joinpath("registrymodifications.xcu")
+            if xcu_file.exists():
+                # modify existing file
+                register_all_namespaces(xcu_file)
+                xml_tree = ET.parse(xcu_file)
+                xml_root = xml_tree.getroot()
+                value = find_autocheck_prop(root=xml_root)
+                if value is None or value.text is None:
+                    # property does not exist, add it
+                    add_disabled_autocheck(root=xml_root)
+                else:
+                    # property exists.
+                    # set its value to false (even if it's false already)
+                    value.text = "false"
+
+                xml_tree.write(
+                    xcu_file,
+                    xml_declaration=True,
+                    method="xml",
+                    encoding="UTF-8",
+                )
+            else:
+                # LibreOffice was never started by this user
+                # Create new xcu_file with auto checks disabled
+                if not conf_dir.exists():
+                    PCLOS.make_dir_tree(target_dir=conf_dir)
+                create_xcu_file_w_disabled_autocheck(file=xcu_file)
+
+        # Disable checking for new users (if ever created)
+        skel_dir = pathlib.Path("/etc/skel/.config/libreoffice/4/user")
+        skel_xcu_file = skel_dir.joinpath("registrymodifications.xcu")
+        if not skel_xcu_file.exists():
+            if not skel_dir.exists():
+                PCLOS.make_dir_tree(target_dir=skel_dir)
+            create_xcu_file_w_disabled_autocheck(file=skel_xcu_file)
 
     def _clean_dot_desktop_files(self):
         # TODO: This function should remove association between LibreOffice
