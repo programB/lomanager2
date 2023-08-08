@@ -363,7 +363,7 @@ def detect_installed_clipart() -> tuple[bool, str]:
     )
     if success and reply:
         lca_regeX = re.compile(
-            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]"
         )
         if match := lca_regeX.search(reply.split("\n")[0]):
             found = True
