@@ -857,50 +857,16 @@ class MainLogic(object):
         if rpms_and_tgzs_to_use["files_to_install"]["Java"]:
             step.start("Installing Java...")
 
-            # 1) Move files (task-java and java-sun) from
-            #    verified copy directory to /var/cache/apt/archives
-            cache_dir = pathlib.Path("/var/cache/apt/archives/")
-            package_names = []
-            for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
-                if not PCLOS.move_file(from_path=file, to_path=cache_dir):
-                    return statusfunc(
-                        isOK=False,
-                        msg="Failed to install Java.\n" + "Error moving file",
-                    )
-                package_names.append(file.stem)
-
-            # 2) Use apt-get to install those 2 files
-            #    (it will handle order by itself)
-            #    If any of the files is missing
-            #    (at this point it really shouldn't) apt-get will try to get
-            #    it from remote repo server by itself.
-            #    If there is no connection apt-get will throw an error
-            # TODO: add error handling
-            msg = ""
-            is_installed = True
-            PCLOS.install_using_apt_get(
-                package_nameS=package_names,
-                progress_description=progress_description,
-                progress_percentage=progress_percentage,
+            is_installed, msg = self._install_Java(
+                rpms_and_tgzs_to_use["files_to_install"]["Java"],
+                progress_description,
+                progress_percentage,
             )
             if is_installed is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to install Java.\n" + msg,
+                    msg="Java installation failed. " + msg,
                 )
-
-            # 3) move rpm files back to verified storage
-            # TODO: What if the user doesn't want to be keeping the files?
-            #       Is it a good place to remove them?
-            verified_dir = configuration.verified_dir.joinpath("Java_rpms")
-            for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
-                if not PCLOS.move_file(
-                    from_path=cache_dir.joinpath(file.name), to_path=verified_dir
-                ):
-                    return statusfunc(
-                        isOK=False,
-                        msg="Java installed\n" + "but there was an error moving file",
-                    )
             step.end("...done installing Java")
         # No Java install requested
         else:
@@ -1271,6 +1237,47 @@ class MainLogic(object):
         log.debug(">>PRETENDING<< Terminating LibreOffice quickstarter...")
         time.sleep(2)
         log.debug(">>PRETENDING<< ...done.")
+
+    def _install_Java(
+        self,
+        java_rpms: dict,
+        progress_msg: Callable,
+        progress: Callable,
+    ) -> tuple[bool, str]:
+        # 1) Move files (task-java and java-sun) from
+        #    verified copy directory to /var/cache/apt/archives
+        cache_dir = pathlib.Path("/var/cache/apt/archives/")
+        package_names = []
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        for file in java_rpms:
+            if not PCLOS.move_file(
+                from_path=file, to_path=cache_dir.joinpath(file.name)
+            ):
+                return (False, "Java not installed, error moving file")
+            # rpm name != rpm filename
+            rpm_name = "-".join(file.name.split("-")[:2])
+            package_names.append(rpm_name)
+
+        # 2) Use apt-get to install those 2 files
+        s, _ = PCLOS.install_using_apt_get(
+            package_nameS=package_names,
+            progress_description=progress_msg,
+            progress_percentage=progress,
+        )
+        if s is False:
+            return (False, "Error installing rpm packages")
+
+        # 3) move rpm files back to storage
+        # TODO: What if the user doesn't want to be keeping the files?
+        #       Is it a good place to remove them?
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        for file in java_rpms:
+            if not PCLOS.move_file(
+                from_path=cache_dir.joinpath(file.name), to_path=file
+            ):
+                return (False, "Java installed but there was error moving file")
+
+        return (True, "Java successfully installed")
 
     def _uninstall_office_components(
         self,
