@@ -746,19 +746,20 @@ def uninstall_using_apt_get(
     progress_description: Callable,
     progress_percentage: Callable,
 ):
-    package_nameS_string = " ".join(package_nameS)
-    #   apt-get reports install progress to stdout like this:
-    # "  <package_name>  ###(changing numeber of spaces and #) [ 30%]"
-    # NOTE: package_name != filename (filename=abc.rpm, package_name=abc)
-    new_regex = re.compile(
-        rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
-    )
+    # apt-get reports progress to stdout like this:
+    # "  <package name>  ###(changing number of spaces and #) [ 30%]"
+    # - 100 % is indicated with 40 # characters
+    # - package name != filename (eg. filename=abc.rpm, package name=abc)
 
     def progress_parser(input: str) -> tuple[str, int]:
+        new_regex = re.compile(
+            rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
+        )
         if match := new_regex.search(input):
             return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
+    package_nameS_string = " ".join(package_nameS)
     _, msg = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
         progress=progress_percentage,
