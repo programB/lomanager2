@@ -1564,24 +1564,28 @@ class MainLogic(object):
 
     def _uninstall_clipart(
         self,
-        packages_to_remove: list,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        c_art_pkgs_to_rm: list,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_uninstall_successful = False
-        uninstall_msg = ""
-
-        log.debug(f"Packages to remove:")
-        for p in packages_to_remove:
-            log.debug(f"                  * {p}")
-        log.info(">>PRETENDING<< to be removing packages...")
-
-        time.sleep(2)
-
-        is_uninstall_successful = True
-        log.info(">>PRETENDING<< ...done removing packages.")
-
-        return (is_uninstall_successful, uninstall_msg)
+        # For now it doesn't seem that openclipart rpm package name
+        # includes version number so getting this information
+        # from c_art_pkgs_to_rm is not necessary.
+        rpms_to_rm = []
+        expected_rpm_names = ["libreoffice-openclipart", "clipart-openclipart"]
+        for candidate in expected_rpm_names:
+            success, reply = PCLOS.run_shell_command(
+                f"rpm -qa | grep {candidate}", err_check=False
+            )
+            if not success:
+                return (False, "Failed to run shell command")
+            else:
+                if reply:
+                    rpms_to_rm.append(candidate)
+        s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+        if not s:
+            return (False, msg)
+        return (True, "Clipart successfully uninstalled")
 
     def _install_clipart(
         self,
