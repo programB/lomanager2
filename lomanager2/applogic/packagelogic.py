@@ -939,17 +939,6 @@ class MainLogic(object):
             step.skip()
 
         # STEP
-        # Any Office base package was affected ?
-        # TODO: Can this be done better ?
-        #       Return something from steps above?
-        if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
-            step.start("Running postintall procedures...")
-
-            step.end("...done running postintall procedures")
-        else:
-            step.skip()
-
-        # STEP
         for package in office_packages_to_remove:
             if (
                 package.kind == "core-packages"
