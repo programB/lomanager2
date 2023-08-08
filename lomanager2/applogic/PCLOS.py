@@ -600,6 +600,18 @@ def clean_working_dir() -> bool:
 
 
 def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
+    """Extracts rpm files from LO tar.gz archive to working directory
+
+    Parameters
+    ----------
+    archive_path : pathlib.Path
+
+    Returns
+    -------
+    list[pathlib.Path]
+      list of absolute paths to extracted rpm files
+    """
+
     target_dir = configuration.working_dir
 
     # Inspect the archive

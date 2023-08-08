@@ -920,48 +920,14 @@ class MainLogic(object):
             or rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
         ):
             step.start("Installing selected Office components...")
-            PCLOS.clean_working_dir()
-            rpms_c = []
-            rpms_l = []
-            if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
-                tgz = rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"][0]
-                log.debug("Core tar.gz found")
-                rpms_c = PCLOS.extract_tgz(tgz)
-            if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]:
-                tgzS = rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
-                for tgz in tgzS:
-                    log.debug("Lang/Help pack tar.gz found")
-                    rpms_l += PCLOS.extract_tgz(tgz)
 
-            rpms = rpms_c + rpms_l
-            # rpms = [configuration.working_dir.joinpath("abacus-8.2.7-1pclos2020.noarch.rpm")]
-            if rpms:
-                good_rpms = [rpm for rpm in rpms if "-kde-integration-" not in str(rpm)]
-
-                log.debug("Extracted rpm files")
-                for rpm in good_rpms:
-                    log.debug(rpm)
-
-                kde_rpms = [rpm for rpm in rpms if "-kde-integration-" in str(rpm)]
-                for rpm in kde_rpms:
-                    PCLOS.remove_file(rpm)
-
-                is_installed, msg = PCLOS.install_using_rpm(
-                    good_rpms,
-                    progress_description=progress_description,
-                    progress_percentage=progress_percentage,
-                )
-                if not is_installed:
-                    return statusfunc(
-                        isOK=False,
-                        msg="Failed to install Office components.\n" + msg,
-                    )
-
-                self._disable_LO_update_checks()
-
-            else:
-                msg = "No rpms extracted"
-                log.error(msg)
+            is_installed, msg = self._install_office_components(
+                rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"],
+                rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"],
+                progress_description,
+                progress_percentage,
+            )
+            if is_installed is False:
                 return statusfunc(
                     isOK=False,
                     msg="Failed to install Office components.\n" + msg,
@@ -1476,6 +1442,58 @@ class MainLogic(object):
 
         uninstall_msg = "Packages successfully uninstalled"
         return (True, uninstall_msg)
+
+    def _install_office_components(
+        self,
+        LO_core_tgzS: dict,
+        LO_langs_tgzS: dict,
+        progress_msg: Callable,
+        progress: Callable,
+    ) -> tuple[bool, str]:
+        PCLOS.clean_working_dir()
+
+        rpms_c = []
+        rpms_l = []
+        if LO_core_tgzS:
+            tgz = LO_core_tgzS[0]
+            log.debug("Core tar.gz found")
+            rpms_c = PCLOS.extract_tgz(tgz)
+        if LO_langs_tgzS:
+            for tgz in LO_langs_tgzS:
+                log.debug("Lang/Help pack tar.gz found")
+                rpms_l += PCLOS.extract_tgz(tgz)
+
+        rpms = rpms_c + rpms_l
+        if rpms:
+            # Some rpm should be installed
+
+            rpms_to_install = [r for r in rpms if "-kde-integration-" not in str(r)]
+            kde_rpms = [r for r in rpms if "-kde-integration-" in str(r)]
+            for rpm in kde_rpms:
+                PCLOS.remove_file(rpm)
+
+            log.debug("Extracted rpm files to install")
+            for rpm in rpms_to_install:
+                log.debug(rpm)
+
+            is_installed, msg = PCLOS.install_using_rpm(
+                rpms_to_install,
+                progress_msg,
+                progress,
+            )
+            if is_installed is False:
+                return (False, msg)
+
+            # Postinstall stuff
+            self._disable_LO_update_checks()
+
+            # Finaly return success
+            return (True, "LibreOffice packages successfully installed")
+
+        else:
+            msg = "No rpms extracted"
+            log.error(msg)
+            return (False, msg)
 
     def _disable_LO_update_checks(self):
         log.debug("Preventing LibreOffice from checking for updates on its own")
