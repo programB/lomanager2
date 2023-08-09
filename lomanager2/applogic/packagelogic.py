@@ -138,6 +138,30 @@ class MainLogic(object):
         java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
         if force_java_download is True:
             java_package.is_marked_for_download = True
+            # TODO: If force_java_download is set by the user it most likely
+            #       means Java is already installed and only
+            #       download is wanted. In that case java package definition
+            #       from _get_available_software will not be used
+            #       and real_files list will be empty. This causes crash
+            #       in download in _collect_packages.
+            #       Adding missing information here fixes the problem
+            #       but this is hacky.
+            java_package.real_files = [
+                {
+                    "name": "task-java-2019-1pclos2019.noarch.rpm",
+                    "base_url": configuration.PCLOS_repo_base_url
+                    + configuration.PCLOS_repo_path,
+                    "estimated_download_size": 2,  # size in kilobytes
+                    "checksum": "",
+                },
+                {
+                    "name": "java-sun-16-2pclos2021.x86_64.rpm",
+                    "base_url": configuration.PCLOS_repo_base_url
+                    + configuration.PCLOS_repo_path,
+                    "estimated_download_size": 116736,  # size in kilobytes
+                    "checksum": "",
+                },
+            ]
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
@@ -854,7 +878,13 @@ class MainLogic(object):
 
         # STEP
         # Java needs to be installed?
-        if rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        # (Nonte that Java may have been downloaded as a result of
+        #  force_java_download but not actually marked for install)
+        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        if (
+            java_package.is_marked_for_install
+            and rpms_and_tgzs_to_use["files_to_install"]["Java"]
+        ):
             step.start("Installing Java...")
 
             is_installed, msg = self._install_Java(
