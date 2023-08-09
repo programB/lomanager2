@@ -1132,10 +1132,20 @@ class MainLogic(object):
         return (True, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
-        log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
-        log.debug(">>PRETENDING<< Terminating LibreOffice quickstarter...")
-        time.sleep(2)
-        log.debug(">>PRETENDING<< ...done.")
+        LO_PIDs = PCLOS.get_PIDs_by_name(["libreoffice"]).get("libreoffice")
+        OO_PIDs = PCLOS.get_PIDs_by_name(["OpenOffice"]).get("OpenOffice")
+        if LO_PIDs:
+            for pid in LO_PIDs:
+                if int(pid) > 1500:  # pseudo safety
+                    log.info(f"Terminating LibreOffice quickstarter (PID: {pid})")
+                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+        if OO_PIDs:
+            for pid in OO_PIDs:
+                if int(pid) > 1500:
+                    log.info(f"Terminating OpenOffice quickstarter (PID: {pid})")
+                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+        if (not LO_PIDs) and (not OO_PIDs):
+            log.info("No runnig quickstarter found")
 
     def _install_Java(
         self,
