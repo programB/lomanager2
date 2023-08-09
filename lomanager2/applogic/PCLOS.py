@@ -789,12 +789,42 @@ def uninstall_using_apt_get(
     progress_description: Callable,
     progress_percentage: Callable,
 ):
-    # apt-get reports progress to stdout like this:
-    # "  <package name>  ###(changing number of spaces and #) [ 30%]"
-    # - 100 % is indicated with 40 # characters
-    # - package name != filename (eg. filename=abc.rpm, package name=abc)
+    package_nameS_string = " ".join(package_nameS)
+
+    log.debug("Trying dry-run removal to check for errors...")
+    status, output = run_shell_command(
+        f"apt-get remove --simulate  {package_nameS_string} -y",
+        timeout=15,
+        err_check=False,
+    )
+    if status:
+        regex_install = re.compile(
+            r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+        )
+        for line in output.split("\n"):
+            if match := regex_install.search(line):
+                n_upgraded = match.group("n_upgraded")
+                n_installed = match.group("n_installed")
+                n_removed = match.group("n_removed")
+                n_not_upgraded = match.group("n_not_upgraded")
+                if not (
+                    (n_upgraded == n_installed == n_not_upgraded == "0")
+                    and n_removed != "0"
+                ):
+                    msg = (
+                        "Dry-run removal failed. Packages where not removed: " + output
+                    )
+                    log.debug(msg)
+                    return (False, msg)
+
+    msg = "Dry-run removal successful. Proceeding with actual uninstall..."
+    log.debug(msg)
 
     def progress_parser(input: str) -> tuple[str, int]:
+        # apt-get reports progress to stdout like this:
+        # "  <package name>  ###(changing number of spaces and #) [ 30%]"
+        # - 100 % is indicated with 40 # characters
+        # - package name != filename (eg. filename=abc.rpm, package name=abc)
         new_regex = re.compile(
             rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
         )
@@ -802,7 +832,6 @@ def uninstall_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
-    package_nameS_string = " ".join(package_nameS)
     _, msg = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
         progress=progress_percentage,
