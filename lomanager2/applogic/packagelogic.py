@@ -1532,10 +1532,10 @@ class MainLogic(object):
             for file in fileS:
                 fp = dir.joinpath("share/xdg").joinpath(file)
                 if fp.exists():
-                    with open(file, "r") as infile:
+                    with open(fp, "r") as infile:
                         config_lineS = infile.readlines()
 
-                    with open(file, "w") as outfile:
+                    with open(fp, "w") as outfile:
                         for line in config_lineS:
                             if line.startswith("Categories="):
                                 outfile.write("Categories=Office;\n")
