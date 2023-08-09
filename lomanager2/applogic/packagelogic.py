@@ -1420,6 +1420,7 @@ class MainLogic(object):
             # Postinstall stuff
             self._disable_LO_update_checks()
             self._modify_dot_desktop_files()
+            self._fix_LXDE_icons()
 
             # Finaly return success
             return (True, "LibreOffice packages successfully installed")
@@ -1544,6 +1545,20 @@ class MainLogic(object):
         PCLOS.run_shell_command(
             f"xdg-desktop-menu forceupdate --mode system", err_check=False
         )
+
+    def _fix_LXDE_icons(self):
+        iconS = pathlib.Path("/usr/share/icons/hicolor/32x32/apps").glob(
+            "libreoffice7*"
+        )
+        for icon in iconS:
+            PCLOS.run_shell_command(f"ln -fs {icon} /usr/share/icons/", err_check=False)
+        if pathlib.Path("/usr/bin/lxpanelctl").exists():
+            PCLOS.run_shell_command(f"/usr/bin/lxpanelctl restart", err_check=False)
+
+        PCLOS.run_shell_command(
+            f"xdg-desktop-menu forceupdate --mode system", err_check=False
+        )
+        PCLOS.run_shell_command(f"update-menus -n", err_check=False)
 
     def _uninstall_clipart(
         self,
