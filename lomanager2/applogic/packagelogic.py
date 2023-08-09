@@ -939,21 +939,6 @@ class MainLogic(object):
             step.skip()
 
         # STEP
-        for package in office_packages_to_remove:
-            if (
-                package.kind == "core-packages"
-                and package.family == "LibreOffice"
-                and package.is_marked_for_removal
-            ):
-                step.start("Changing file association...")
-
-                self._clean_dot_desktop_files()
-
-                step.end("...done")
-            else:
-                step.skip()
-
-        # STEP
         # Clipart library is to be removed?
         clipart_packages_to_remove = [
             p
@@ -1434,6 +1419,7 @@ class MainLogic(object):
 
             # Postinstall stuff
             self._disable_LO_update_checks()
+            self._modify_dot_desktop_files()
 
             # Finaly return success
             return (True, "LibreOffice packages successfully installed")
@@ -1527,13 +1513,37 @@ class MainLogic(object):
                 PCLOS.make_dir_tree(target_dir=skel_dir)
             create_xcu_file_w_disabled_autocheck(file=skel_xcu_file)
 
-    def _clean_dot_desktop_files(self):
-        # TODO: This function should remove association between LibreOffice
-        #       and Open Document file formats (odt, odf, etc.) from the
-        #       global .desktop file (and user files too?)
-        log.debug(">>PRETENDING<< Rebuilding menu entries...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
+    def _modify_dot_desktop_files(self):
+        # .desktop files shipped with LibreOffice contain the line:
+        # Categories=Office;Spreadsheet;X-Red-Hat-Base;
+        # Change it to:
+        # Categories=Office;
+        base_dirS = pathlib.Path("/opt").glob("libreoffice*")
+        fileS = [
+            "base.desktop",
+            "calc.desktop",
+            "draw.desktop",
+            "impress.desktop",
+            "math.desktop",
+            "writer.desktop",
+        ]
+        for dir in base_dirS:
+            for file in fileS:
+                fp = dir.joinpath("share/xdg").joinpath(file)
+                if fp.exists():
+                    with open(file, "r") as infile:
+                        config_lineS = infile.readlines()
+
+                    with open(file, "w") as outfile:
+                        for line in config_lineS:
+                            if line.startswith("Categories="):
+                                outfile.write("Categories=Office;\n")
+                            else:
+                                outfile.write(line)
+        # Refresh menus
+        PCLOS.run_shell_command(
+            f"xdg-desktop-menu forceupdate --mode system", err_check=False
+        )
 
     def _uninstall_clipart(
         self,
