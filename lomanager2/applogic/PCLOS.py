@@ -793,7 +793,9 @@ def force_rm_directory(path):
 
 def update_menus():
     log.debug("updating menus")
-    run_shell_command("update-menus -v")
+    run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
+    run_shell_command("update-menus -n", err_check=False)
+    run_shell_command("update-menus -v", err_check=False)
 
 
 def make_dir_tree(target_dir: pathlib.Path):

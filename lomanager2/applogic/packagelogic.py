@@ -1542,9 +1542,7 @@ class MainLogic(object):
                             else:
                                 outfile.write(line)
         # Refresh menus
-        PCLOS.run_shell_command(
-            f"xdg-desktop-menu forceupdate --mode system", err_check=False
-        )
+        PCLOS.update_menus()
 
     def _fix_LXDE_icons(self):
         iconS = pathlib.Path("/usr/share/icons/hicolor/32x32/apps").glob(
@@ -1554,11 +1552,7 @@ class MainLogic(object):
             PCLOS.run_shell_command(f"ln -fs {icon} /usr/share/icons/", err_check=False)
         if pathlib.Path("/usr/bin/lxpanelctl").exists():
             PCLOS.run_shell_command(f"/usr/bin/lxpanelctl restart", err_check=False)
-
-        PCLOS.run_shell_command(
-            f"xdg-desktop-menu forceupdate --mode system", err_check=False
-        )
-        PCLOS.run_shell_command(f"update-menus -n", err_check=False)
+        PCLOS.update_menus()
 
     def _uninstall_clipart(
         self,
