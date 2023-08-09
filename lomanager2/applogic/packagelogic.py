@@ -1424,6 +1424,9 @@ class MainLogic(object):
                 progress_msg,
                 progress,
             )
+
+            PCLOS.clean_working_dir()
+
             if is_installed is False:
                 return (False, msg)
 
