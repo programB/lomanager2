@@ -1247,6 +1247,7 @@ class MainLogic(object):
                 dirs_to_rm.extend(pathlib.Path("/opt").glob("openoffice*"))
         if OpenOfficeS:
             # Remove
+            log.debug(f"OO rpms_to_rm: {rpms_to_rm}")
             s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
             if not s:
                 return (False, msg)
@@ -1265,36 +1266,34 @@ class MainLogic(object):
         # uninstalled in the later step.
         # Such ordering will not interfere with dependencies,
         # as language packs are optional additions anyway.
+        # Never remove en-US language pack
         LibreOfficeLANGS = [
             p
             for p in packages_to_remove
-            if (p.family == "LibreOffice" and p.is_langpack())
+            if ((p.family == "LibreOffice") and p.is_langpack() and (p.kind != "en-US"))
         ]
         dirs_to_rm = []
         files_to_remove = []
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
             # LibreOffice langs removal procedures
-            if lang.kind != "en-US":  # never remove en-US language pack
-                expected_rpm_names = [
-                    f"libreoffice{lang.version}-{lang.kind}-",
-                    f"libreoffice{lang.version}-dict-{lang.kind}-",
-                    f"libobasis{lang.version}-{lang.kind}-",
-                    f"libobasis{lang.version}-{lang.kind}-help-",
-                ]
-                for candidate in expected_rpm_names:
-                    success, reply = PCLOS.run_shell_command(
-                        f"rpm -qa | grep {candidate}", err_check=False
-                    )
-                    if not success:
-                        return (False, "Failed to run shell command")
-                    else:
-                        if reply:
-                            rpms_to_rm.append(candidate[:-1])
-
-                # log.debug(f"LANG to Remove: {lang.kind}")
-                # log.debug(f"rpms_to_remove: {rpms_to_remove}")
+            expected_rpm_names = [
+                f"libreoffice{lang.version}-{lang.kind}-",
+                f"libreoffice{lang.version}-dict-{lang.kind}-",
+                f"libobasis{lang.version}-{lang.kind}-",
+                f"libobasis{lang.version}-{lang.kind}-help-",
+            ]
+            for candidate in expected_rpm_names:
+                success, reply = PCLOS.run_shell_command(
+                    f"rpm -qa | grep {candidate}", err_check=False
+                )
+                if not success:
+                    return (False, "Failed to run shell command")
+                else:
+                    if reply:
+                        rpms_to_rm.append(candidate[:-1])
         if LibreOfficeLANGS:
+            log.debug(f"LO langs rpms_to_rm: {rpms_to_rm}")
             s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
             if not s:
                 return (False, msg)
@@ -1372,6 +1371,7 @@ class MainLogic(object):
                     files_to_remove.append(icon)
         if LibreOfficeCORE:
             # Remove
+            log.debug(f"LO core rpms_to_rm: {rpms_to_rm}")
             s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
             if not s:
                 return (False, msg)
