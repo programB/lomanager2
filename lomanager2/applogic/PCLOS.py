@@ -23,6 +23,8 @@ import urllib.request, urllib.error
 import hashlib
 import subprocess
 import re
+import tarfile
+import pwd
 
 
 def has_root_privileges() -> bool:
@@ -34,6 +36,7 @@ def run_shell_command(
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
+        log.debug(f"Attempting to execute command: {full_command}")
 
         try:
             shellcommand = subprocess.run(
@@ -44,7 +47,16 @@ def run_shell_command(
                 text=True,  # give the output as a string not bytes
                 encoding="utf-8",  # explicitly set the encoding for the text
             )
-            return (True, shellcommand.stdout.strip())
+            answer = (shellcommand.stdout + shellcommand.stderr).strip()
+            if err_check:
+                log.debug(
+                    f"(error checking is ON) Received answer (stdout+stderr): {answer}"
+                )
+            else:
+                log.debug(
+                    f"(error checking is OFF) Received answer (stdout+stderr): {answer}"
+                )
+            return (True, answer)
         except FileNotFoundError as exc:
             msg = "Executable not be found. " + str(exc)
             log.error(msg)
@@ -109,9 +121,37 @@ def get_running_Office_processes() -> tuple[bool, dict]:
     return (is_succesful, running_office_suits)
 
 
-def get_system_users() -> list[str]:
-    # TODO: Implement
-    pass
+class HumanUser:
+    def __init__(self, name, home_dir) -> None:
+        self.name = name
+        self.home_dir = pathlib.Path(home_dir)
+
+
+def get_system_users() -> list[HumanUser]:
+    """Looks for regular (not services) system users.
+
+    The criteria are that the user has a login shell that is one
+    of the shells listed in /etc/shells and has a home folder in /home.
+    Additioanly root user is included.
+    """
+    system_shells = []
+    with open("/etc/shells", "r") as f:
+        for line in f:
+            line = line.strip()
+            if line and line.startswith("/"):
+                system_shells.append(line)
+
+    human_users = []
+    for user in pwd.getpwall():
+        if (user.pw_shell in system_shells) and ("home" in user.pw_dir):
+            human_users.append(HumanUser(user.pw_name, user.pw_dir))
+    try:
+        root_user = pwd.getpwuid(0)  # assuming root has uid 0
+    except Exception as error:
+        log.error("No root user found " + str(error))
+    else:
+        human_users.append(HumanUser(root_user.pw_name, root_user.pw_dir))
+    return human_users
 
 
 def is_live_session_active() -> bool:
@@ -268,36 +308,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
-    # TODO: Move this list to some configuration section or configuration file.
-    #       Every time new LibreOffice version is added this list
-    #       needs to be updated. (the list has non-continues version numbers)
-    LO_versionS = [
-        "3.4",
-        "3.5",
-        "3.6",
-        "4.0",
-        "4.1",
-        "4.2",
-        "4.3",
-        "4.4",
-        "5.0",
-        "5.1",
-        "5.2",
-        "5.3",
-        "5.4",
-        "6.0",
-        "6.1",
-        "6.2",
-        "6.3",
-        "6.4",
-        "7.0",
-        "7.1",
-        "7.2",
-        "7.3",
-        "7.4",
-        "7.5",
-    ]
-    for version in LO_versionS:
+    for version in configuration.LO_versionS:
         if pathlib.Path("/usr/bin/libreoffice" + version).exists():
             dbg_message = ("Detected LibreOffice ver.: {}").format(version)
             log.debug(dbg_message)
@@ -352,7 +363,7 @@ def detect_installed_clipart() -> tuple[bool, str]:
     )
     if success and reply:
         lca_regeX = re.compile(
-            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]\.x86_64\.rpm$"
+            r"^libreoffice-openclipart-(?P<ver_lca>[0-9]+\.[0-9]+)-[0-9]+pclos20[0-9][0-9]"
         )
         if match := lca_regeX.search(reply.split("\n")[0]):
             found = True
@@ -440,7 +451,21 @@ def verify_checksum(
 def remove_file(path: pathlib.Path) -> bool:
     allowed_dirs = [
         pathlib.Path("/tmp"),
+        pathlib.Path("/opt").glob("openoffice*"),
+        pathlib.Path("/opt").glob("libreoffice*"),
+        pathlib.Path("/etc/skel"),
+        pathlib.Path("/etc/skel_fm"),
+        pathlib.Path("/etc/skel_default"),
+        pathlib.Path("/etc/skel-orig"),
+        pathlib.Path("/usr/share/icons"),
+        pathlib.Path("user_home/Desktop"),
+        pathlib.Path("user_home/.config"),
+        pathlib.Path("user_home/.kde4"),
+        pathlib.Path("user_home/.libreoffice"),
     ]
+    for user in get_system_users():
+        allowed_dirs.append(user.home_dir.glob(".ooo*"))
+
     path = path.expanduser()
 
     if not any(map(path.is_relative_to, allowed_dirs)):
@@ -482,3 +507,356 @@ def create_directories():
     for directory in directories:
         log.debug(f"Creating: {directory}")
         os.makedirs(directory, exist_ok=True)
+
+
+def run_shell_command_with_progress(
+    cmd,
+    progress: Callable,
+    progress_description: Callable,
+    parser: Callable,
+    byte_output=False,
+) -> tuple[bool, str]:
+    full_command = cmd
+    fulloutput = []
+    ctrl_chars = list(map(chr, range(0, 32))) + list(map(chr, range(127, 160)))
+
+    with subprocess.Popen(
+        full_command,
+        bufsize=1,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=False,
+        universal_newlines=not byte_output,
+    ) as proc:
+        concatenated_b = b""
+        while proc.poll() is None:
+            if byte_output:
+                output = proc.stdout.read(1)
+                concatenated_b += output
+                fulloutput.append(output.decode("utf-8"))
+            else:  # strings
+                output = proc.stdout.readline()
+                fulloutput.append(output)
+            if parser:
+                if byte_output:
+                    string_to_parse = concatenated_b
+                    # Don't bother reporting progress and spamming
+                    # log if only a control char was read
+                    if output.decode("utf-8") not in ctrl_chars:
+                        label, percentage = parser(string_to_parse)
+                        progress_description(label)
+                        progress(percentage)
+                    else:
+                        pass
+                else:
+                    string_to_parse = output
+                    label, percentage = parser(string_to_parse)
+                    progress_description(label)
+                    progress(percentage)
+    return (True, "".join(fulloutput))
+
+
+def install_using_apt_get(
+    package_nameS: list,
+    progress_description: Callable,
+    progress_percentage: Callable,
+):
+    package_nameS_string = " ".join(package_nameS)
+
+    log.debug("Trying dry-run install to check for errors...")
+    status, output = run_shell_command(
+        f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
+        timeout=15,
+        err_check=False,
+    )
+    if status:
+        regex_install = re.compile(
+            r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_reinstalled>[0-9]+) reinstalled, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+        )
+        for line in output.split("\n"):
+            if match := regex_install.search(line):
+                n_upgraded = match.group("n_upgraded")
+                n_installed = match.group("n_installed")
+                n_reinstalled = match.group("n_reinstalled")
+                n_removed = match.group("n_removed")
+                n_not_upgraded = match.group("n_not_upgraded")
+                if not (
+                    (n_upgraded == n_removed == n_not_upgraded == "0")
+                    and n_installed != "0"
+                ):
+                    msg = (
+                        "Dry-run install failed. Packages where not installed: "
+                        + output
+                    )
+                    log.debug(msg)
+                    return (False, msg)
+
+    msg = "Dry-run install successful. Proceeding with actual install..."
+    log.debug(msg)
+
+    def progress_parser(input: str) -> tuple[str, int]:
+        # apt-get reports progress to stdout like this:
+        # "  <package name>  ###(changing number of spaces and #) [ 30%]"
+        # - 100 % is indicated with 40 # characters
+        # - package name != filename (eg. filename=abc.rpm, package name=abc)
+        new_regex = re.compile(
+            rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
+        )
+        if match := new_regex.search(input):
+            return (match.group("p_name"), int(match.group("progress")))
+        return ("", 0)
+
+    _, msg = run_shell_command_with_progress(
+        ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
+        progress=progress_percentage,
+        progress_description=progress_description,
+        parser=progress_parser,
+    )
+    if "error" in msg or "Error" in msg:
+        return (False, "Installation of rpm packages failed. Check logs.")
+    else:
+        return (True, "Rpm packages successfully installed.")
+
+
+def clean_working_dir() -> bool:
+    # remove and recreate working_dir to make sure it is empty
+    target_dir = configuration.working_dir
+    try:
+        shutil.rmtree(target_dir)
+        os.makedirs(target_dir, exist_ok=False)
+        return True
+    except Exception as error:
+        log.error(f"Could not recreate working directory: {error}")
+        return False
+
+
+def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
+    """Extracts rpm files from LO tar.gz archive to working directory
+
+    Parameters
+    ----------
+    archive_path : pathlib.Path
+
+    Returns
+    -------
+    list[pathlib.Path]
+      list of absolute paths to extracted rpm files
+    """
+
+    target_dir = configuration.working_dir
+
+    # Inspect the archive
+    resulting_dir_name = ""
+    try:
+        with tarfile.open(archive_path) as targz:
+            # Assume that it will always be the case
+            # that the first name in the archive is the top level
+            # directory name to which the rest of the files will be extracted
+            resulting_dir_name = targz.getnames()[0]
+    except Exception as error:
+        log.error(f"Could not inspect archive: {error}")
+        return []
+    log.debug(f"Top level dir name in the archive: {resulting_dir_name}")
+    unpacked_folder = pathlib.Path(target_dir).joinpath(resulting_dir_name)
+
+    # Unpack the archive
+    try:
+        shutil.unpack_archive(archive_path, target_dir, format="gztar")
+        log.debug(f"Was archive extracted?: {unpacked_folder.exists()}")
+    except Exception as error:
+        log.error(f"Could not extract archive: {error}")
+        return []
+
+    # Gather rpm filenames (strings)
+    RPMS_folder = unpacked_folder.joinpath("RPMS")
+    success, output = run_shell_command("ls " + str(RPMS_folder))
+    rpm_files_names = []
+    if success:
+        for item in output.split():
+            rpm_files_names.append(item)
+    else:
+        log.error(f"Could not list directory contetnt")
+        return []
+
+    # Move all files from the unpackaged /target_dir/resulting_dir_name/RPMS
+    # directly to /target_dir
+    for rpm_file in RPMS_folder.iterdir():
+        move_file(from_path=rpm_file, to_path=target_dir)
+
+    # Remove the remanent of unpacked_folder
+    try:
+        shutil.rmtree(unpacked_folder)
+    except Exception as error:
+        log.error(f"Could not delete directory: {error}")
+        return []
+
+    # Build final list of absolute path to rpm files sitting in target_dir
+    rpm_files = []
+    for filename in rpm_files_names:
+        rpm_files.append(target_dir.joinpath(filename))
+
+    return rpm_files
+
+
+def install_using_rpm(
+    rpm_fileS: list,
+    progress_description: Callable,
+    progress_percentage: Callable,
+) -> tuple[bool, str]:
+    files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
+
+    # Before going ahead with actual installation, test for potential problems
+    log.debug("Trying dry-run install to check for errors...")
+    status, output = run_shell_command(
+        "rpm -Uvh --test " + files_to_install,
+        timeout=5,
+        err_check=False,
+    )
+    if status:
+        if "error" in output:
+            msg = "Dry-run install failed. Packages where not installed: " + output
+            log.debug(msg)
+            return (False, msg)
+        else:
+            msg = "Dry-run install successful. Proceeding with actual install..."
+            log.debug(msg)
+
+            # It seems rpm is manipulating TTY directly :(
+            # Although TTY can be captured the method below relies
+            # on up 40 # symbols being written to stodout when rpm is making
+            # progress installing rpm. Counting them to calculate percentage.
+            def progress_parser(input: bytes) -> tuple[str, int]:
+                # regex for stdout output
+                regex_name_and_progress = re.compile(
+                    r"^(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
+                )
+                last_string = input.decode("utf-8").split("\n")[-1]
+                # Unfortunately rpm outputs 40 backspace control chars
+                # to do its progress reporting which
+                # means some long rpm names can get trimmed.
+                # To try to deal with that we save the name the first time
+                # regex match is successful and we retain it (and return it)
+                # until we gather 40 # symbols then we reset for next
+                # package name.
+                first = True
+                p_name = ""
+                p_progress = 0
+                if match := regex_name_and_progress.search(last_string):
+                    # log.debug("match found")
+                    if first:
+                        p_name = match.group("p_name")
+                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        first = False
+                    else:
+                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        if len(match.group("p_progress")) == 40:
+                            first = True
+                    return (p_name, p_progress)
+                else:
+                    if last_string == b"":
+                        return ("", 0)
+                    else:
+                        return ("Working...", 0)
+
+            cmd_list = ["bash", "-c"]
+            rpm_cmd = ["rpm -Uvh " + files_to_install]
+            status, msg = run_shell_command_with_progress(
+                cmd_list + rpm_cmd,
+                # Example
+                # [
+                #     "bash",
+                #     "-c",
+                #     "rpm -Uvh /tmp/lomanager2-tmp/working_directory/tanglet-1.6.1.1-1pclos2022.x86_64.rpm",
+                # ],
+                progress=progress_percentage,
+                progress_description=progress_description,
+                parser=progress_parser,
+                byte_output=True,
+            )
+            log.debug(f"final msg is: {msg}")
+            if "error" in msg:
+                return (False, "Failed to install packages")
+            else:
+                return (True, "All packages successfully installed")
+    else:
+        msg = "Failed to execute command: " + output
+        log.debug(msg)
+        return (False, msg)
+
+
+def uninstall_using_apt_get(
+    package_nameS: list,
+    progress_description: Callable,
+    progress_percentage: Callable,
+):
+    package_nameS_string = " ".join(package_nameS)
+
+    log.debug("Trying dry-run removal to check for errors...")
+    status, output = run_shell_command(
+        f"apt-get remove --simulate  {package_nameS_string} -y",
+        timeout=15,
+        err_check=False,
+    )
+    if status:
+        regex_install = re.compile(
+            r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+        )
+        for line in output.split("\n"):
+            if match := regex_install.search(line):
+                n_upgraded = match.group("n_upgraded")
+                n_installed = match.group("n_installed")
+                n_removed = match.group("n_removed")
+                n_not_upgraded = match.group("n_not_upgraded")
+                if not (
+                    (n_upgraded == n_installed == n_not_upgraded == "0")
+                    and n_removed != "0"
+                ):
+                    msg = (
+                        "Dry-run removal failed. Packages where not removed: " + output
+                    )
+                    log.debug(msg)
+                    return (False, msg)
+
+    msg = "Dry-run removal successful. Proceeding with actual uninstall..."
+    log.debug(msg)
+
+    def progress_parser(input: str) -> tuple[str, int]:
+        # apt-get reports progress to stdout like this:
+        # "  <package name>  ###(changing number of spaces and #) [ 30%]"
+        # - 100 % is indicated with 40 # characters
+        # - package name != filename (eg. filename=abc.rpm, package name=abc)
+        new_regex = re.compile(
+            rf"^\s*(?P<p_name>[\w\.\-]+)\s[\s\#]*\[\s*(?P<progress>[0-9]+)%\]$"
+        )
+        if match := new_regex.search(input):
+            return (match.group("p_name"), int(match.group("progress")))
+        return ("", 0)
+
+    _, msg = run_shell_command_with_progress(
+        ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
+        progress=progress_percentage,
+        progress_description=progress_description,
+        parser=progress_parser,
+    )
+    if "error" in msg or "Error" in msg:
+        return (False, "Removal of rpm packages failed. Check logs.")
+    else:
+        return (True, "Rpm packages successfully removed.")
+
+
+def force_rm_directory(path):
+    try:
+        shutil.rmtree(path)
+    except Exception as error:
+        log.error("Failed to remove folder" + str(error))
+
+
+def update_menus():
+    log.debug("updating menus")
+    run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
+    run_shell_command("update-menus -n", err_check=False)
+    run_shell_command("update-menus -v", err_check=False)
+
+
+def make_dir_tree(target_dir: pathlib.Path):
+    os.makedirs(target_dir, exist_ok=True)

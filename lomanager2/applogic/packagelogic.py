@@ -3,6 +3,7 @@ import re
 import pathlib
 import urllib.request, urllib.error
 from copy import deepcopy
+import xml.etree.ElementTree as ET
 import configuration
 from configuration import logging as log
 from typing import Any, Tuple, Callable
@@ -137,6 +138,30 @@ class MainLogic(object):
         java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
         if force_java_download is True:
             java_package.is_marked_for_download = True
+            # TODO: If force_java_download is set by the user it most likely
+            #       means Java is already installed and only
+            #       download is wanted. In that case java package definition
+            #       from _get_available_software will not be used
+            #       and real_files list will be empty. This causes crash
+            #       in download in _collect_packages.
+            #       Adding missing information here fixes the problem
+            #       but this is hacky.
+            java_package.real_files = [
+                {
+                    "name": "task-java-2019-1pclos2019.noarch.rpm",
+                    "base_url": configuration.PCLOS_repo_base_url
+                    + configuration.PCLOS_repo_path,
+                    "estimated_download_size": 2,  # size in kilobytes
+                    "checksum": "",
+                },
+                {
+                    "name": "java-sun-16-2pclos2021.x86_64.rpm",
+                    "base_url": configuration.PCLOS_repo_base_url
+                    + configuration.PCLOS_repo_path,
+                    "estimated_download_size": 116736,  # size in kilobytes
+                    "checksum": "",
+                },
+            ]
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
@@ -853,18 +878,24 @@ class MainLogic(object):
 
         # STEP
         # Java needs to be installed?
-        if rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        # (Nonte that Java may have been downloaded as a result of
+        #  force_java_download but not actually marked for install)
+        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        if (
+            java_package.is_marked_for_install
+            and rpms_and_tgzs_to_use["files_to_install"]["Java"]
+        ):
             step.start("Installing Java...")
 
             is_installed, msg = self._install_Java(
-                rpms_and_tgzs_to_use,
+                rpms_and_tgzs_to_use["files_to_install"]["Java"],
                 progress_description,
                 progress_percentage,
             )
             if is_installed is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to install Java.\n" + msg,
+                    msg="Java installation failed. " + msg,
                 )
             step.end("...done installing Java")
         # No Java install requested
@@ -920,50 +951,22 @@ class MainLogic(object):
         ):
             step.start("Installing selected Office components...")
 
-            office_install_status, msg = self._install_LibreOffice_components(
-                rpms_and_tgzs_to_use,
+            is_installed, msg = self._install_office_components(
+                rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"],
+                rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"],
                 progress_description,
                 progress_percentage,
             )
-
-            if office_install_status is False:
+            if is_installed is False:
                 return statusfunc(
                     isOK=False,
                     msg="Failed to install Office components.\n" + msg,
                 )
+
             step.end("...done installing selected Office components")
         # No Office packages marked for install
         else:
             step.skip()
-
-        # STEP
-        # Any Office base package was affected ?
-        # TODO: Can this be done better ?
-        #       Return something from steps above?
-        if rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]:
-            step.start("Running postintall procedures...")
-
-            self._disable_LO_update_checks()
-            self._add_templates_to_etcskel()
-
-            step.end("...done running postintall procedures")
-        else:
-            step.skip()
-
-        # STEP
-        for package in office_packages_to_remove:
-            if (
-                package.kind == "core-packages"
-                and package.family == "LibreOffice"
-                and package.is_marked_for_removal
-            ):
-                step.start("Changing file association...")
-
-                self._clean_dot_desktop_files()
-
-                step.end("...done")
-            else:
-                step.skip()
 
         # STEP
         # Clipart library is to be removed?
@@ -997,15 +1000,14 @@ class MainLogic(object):
             step.start("Installing Clipart library...")
 
             is_installed, msg = self._install_clipart(
-                rpms_and_tgzs_to_use,
+                rpms_and_tgzs_to_use["files_to_install"]["Clipart"],
                 progress_description,
                 progress_percentage,
             )
-
             if is_installed is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed to install Clipart library.\n" + msg,
+                    msg="Openclipart installation failed. " + msg,
                 )
             step.end("...done installing Clipart library")
         # Clipart was not marked for install
@@ -1070,7 +1072,8 @@ class MainLogic(object):
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
                 try:
-                    resp = urllib.request.urlopen(url)
+                    log.debug(f"Attempting to open: {url}")
+                    resp = urllib.request.urlopen(url, timeout=7)
                 except urllib.error.HTTPError as error:
                     msg = f"While trying to open {url} an error occurred: "
                     msg = msg + f"HTTP error {error.code}: {error.reason}"
@@ -1159,161 +1162,509 @@ class MainLogic(object):
         return (True, "", rpms_and_tgzs_to_use)
 
     def _terminate_LO_quickstarter(self):
-        log.debug(">>PRETENDING<< Checking for LibreOffice quickstarter process...")
-        log.debug(">>PRETENDING<< Terminating LibreOffice quickstarter...")
-        time.sleep(2)
-        log.debug(">>PRETENDING<< ...done.")
+        LO_PIDs = PCLOS.get_PIDs_by_name(["libreoffice"]).get("libreoffice")
+        OO_PIDs = PCLOS.get_PIDs_by_name(["OpenOffice"]).get("OpenOffice")
+        if LO_PIDs:
+            for pid in LO_PIDs:
+                if int(pid) > 1500:  # pseudo safety
+                    log.info(f"Terminating LibreOffice quickstarter (PID: {pid})")
+                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+        if OO_PIDs:
+            for pid in OO_PIDs:
+                if int(pid) > 1500:
+                    log.info(f"Terminating OpenOffice quickstarter (PID: {pid})")
+                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+        if (not LO_PIDs) and (not OO_PIDs):
+            log.info("No runnig quickstarter found")
 
     def _install_Java(
         self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        java_rpms: dict,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_install_successful = False
-        install_msg = ""
+        # 1) Move files (task-java and java-sun) from
+        #    verified copy directory to /var/cache/apt/archives
+        cache_dir = pathlib.Path("/var/cache/apt/archives/")
+        package_names = []
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        for file in java_rpms:
+            if not PCLOS.move_file(
+                from_path=file, to_path=cache_dir.joinpath(file.name)
+            ):
+                return (False, "Java not installed, error moving file")
+            # rpm name != rpm filename
+            rpm_name = "-".join(file.name.split("-")[:2])
+            package_names.append(rpm_name)
 
-        log.debug(">>PRETENDING<< to be installing Java...")
-        log.info("Starting Java install procedure...")
-        if "files_to_install" in downloaded_files.keys():
-            if rpms := downloaded_files["files_to_install"]["Java"]:
-                log.debug(f"Java rpms to install {rpms}")
-                progress_description("Installing java rpms ....")
-                total_time_sek = 5
-                steps = 30
-                for i in range(steps):
-                    progress = int((i / (steps - 1)) * 100)
-                    progress_percentage(progress)
-                    time.sleep(total_time_sek / steps)
-                progress_description("...done installing java rpms")
-                log.debug("...done")
-                is_install_successful = True
-                install_msg = ""
-            else:
-                is_install_successful = False
-                install_msg = "Java install requested but list of files is empty."
-                log.error(install_msg)
-        else:
-            is_install_successful = False
-            install_msg = "Java install requested but no files_to_install dict passed."
-            log.error(install_msg)
+        # 2) Use apt-get to install those 2 files
+        s, _ = PCLOS.install_using_apt_get(
+            package_nameS=package_names,
+            progress_description=progress_msg,
+            progress_percentage=progress,
+        )
+        if s is False:
+            return (False, "Error installing rpm packages")
 
-        is_install_successful = True
-        log.info("Java successfully installed.")
-        return (is_install_successful, install_msg)
+        # 3) move rpm files back to storage
+        # TODO: What if the user doesn't want to be keeping the files?
+        #       Is it a good place to remove them?
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
+        for file in java_rpms:
+            if not PCLOS.move_file(
+                from_path=cache_dir.joinpath(file.name), to_path=file
+            ):
+                return (False, "Java installed but there was error moving file")
+
+        return (True, "Java successfully installed")
 
     def _uninstall_office_components(
         self,
         packages_to_remove: list,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_uninstall_successful = False
-        uninstall_msg = ""
+        # rpms_to_rm is always a minimal subset of rpms that once
+        # marked for removal will cause all dependencies to be removed too.
 
         log.debug(f"Packages to remove:")
         for p in packages_to_remove:
             log.debug(f"                  * {p}")
-        log.info(">>PRETENDING<< to be removing packages...")
 
-        time.sleep(2)
+        users = PCLOS.get_system_users()
 
-        is_uninstall_successful = True
-        log.info(">>PRETENDING<< ...done removing packages.")
+        # First get rid of any OpenOffice installation
+        OpenOfficeS = [p for p in packages_to_remove if p.family == "OpenOffice"]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for oo in OpenOfficeS:
+            # OpenOffice removal procedures
+            if oo.version.find("2.") == 0:  # any series 2.x
+                rpms_to_rm.extend(["openoffice.org", "openoffice.org-mimelnk"])
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo-2.0"))
+                    dirs_to_rm.append(user.home_dir.joinpath(f".ooo-{oo.version}"))
+            if oo.version == "3.0.0":  # ver. 3.0.0 only
+                rpms_to_rm.extend(["openoffice.org-core"])
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo3"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
+                for leftover_dir in pathlib.Path("/opt").glob("openoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+            if oo.version.find("3.") == 0 and oo.version != "3.0.0":  # any later
+                rpms_to_rm.append("openoffice.org-ure")
+                rpms_to_rm.append(f"openoffice.org{oo.version}-mandriva-menus")
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".ooo3"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("OpenOffice_Info.txt")
+                    )
+                    files_to_remove.append(
+                        user.home_dir.joinpath("getopenoffice.desktop")
+                    )
+                s_files = [
+                    pathlib.Path("/etc/skel/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel_fm/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel_default/").joinpath("OpenOffice_Info.txt"),
+                    pathlib.Path("/etc/skel-orig/").joinpath("OpenOffice_Info.txt"),
+                ]
+                files_to_remove.extend(s_files)
+                dirs_to_rm.extend(pathlib.Path("/opt").glob("openoffice*"))
+        if OpenOfficeS:
+            # Remove
+            log.debug(f"OO rpms_to_rm: {rpms_to_rm}")
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
+            # Do post-removal cleanup
+            log.debug(f"Dirs to remove: {dirs_to_rm}")
+            map(PCLOS.force_rm_directory, dirs_to_rm)
+            log.debug(f"Files to remove: {files_to_remove}")
+            map(PCLOS.remove_file, files_to_remove)
+            # update menus
+            PCLOS.update_menus()
 
-        return (is_uninstall_successful, uninstall_msg)
+        # Now let's deal with LibreOffice's the language packs.
+        # User may want to remove just that (no core package uninstall)
+        # in which case we are going to be done.
+        # Alternatively core package is also marked for removal and will be
+        # uninstalled in the later step.
+        # Such ordering will not interfere with dependencies,
+        # as language packs are optional additions anyway.
+        # Never remove en-US language pack
+        LibreOfficeLANGS = [
+            p
+            for p in packages_to_remove
+            if ((p.family == "LibreOffice") and p.is_langpack() and (p.kind != "en-US"))
+        ]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for lang in LibreOfficeLANGS:
+            # LibreOffice langs removal procedures
+            expected_rpm_names = [
+                f"libreoffice{lang.version}-{lang.kind}-",
+                f"libreoffice{lang.version}-dict-{lang.kind}-",
+                f"libobasis{lang.version}-{lang.kind}-",
+                f"libobasis{lang.version}-{lang.kind}-help-",
+            ]
+            for candidate in expected_rpm_names:
+                success, reply = PCLOS.run_shell_command(
+                    f"rpm -qa | grep {candidate}", err_check=False
+                )
+                if not success:
+                    return (False, "Failed to run shell command")
+                else:
+                    if reply:
+                        rpms_to_rm.append(candidate[:-1])
+        if LibreOfficeLANGS:
+            log.debug(f"LO langs rpms_to_rm: {rpms_to_rm}")
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
 
-    def _install_LibreOffice_components(
+        # Finaly remove LibreOffice core if mareked for removal
+        LibreOfficeCORE = [
+            p
+            for p in packages_to_remove
+            if (p.family == "LibreOffice" and p.is_corepack())
+        ]
+        dirs_to_rm = []
+        files_to_remove = []
+        rpms_to_rm = []
+        for core in LibreOfficeCORE:
+            # Removal procedures for LibreOffice core.
+            if core.version.find("3.3") == 0:  # 3.3 and its subvariants
+                rpms_to_rm.append(f"libreoffice3-ure")
+                rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                # Leftover files and directories to remove
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/libreoffice"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("Desktop/lomanager.desktop")
+                    )
+                    kdedir = user.home_dir.joinpath(".kde4/vdt/2/2a")
+                    if kdedir.exists():
+                        files_to_remove.extend(kdedir.glob("LO*"))
+                skel_fm_dir = pathlib.Path("/etc/skel_fm").joinpath(".kde4/vdt/2/2a")
+                if skel_fm_dir.exists():
+                    files_to_remove.extend(skel_fm_dir.glob("LO*"))
+                for leftover_dir in pathlib.Path("/opt").glob("libreoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+                for icon in pathlib.Path("/usr/share/icons").glob("libreoffice-*"):
+                    files_to_remove.append(icon)
+
+            if core.version in configuration.LO_versionS:
+                # All if-s in case (extremely unlikely) someone managed to
+                # install more then one version
+                if core.version == "3.4":
+                    # if [ "$bv" == "3.4" ]
+                    # then
+                    #   apt-get remove libreoffice$bv-ure libreoffice$bv-mandriva-menus -y
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if (
+                    core.version == "3.5"
+                    or core.version == "3.6"
+                    or core.version == "4.0"
+                ):
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-stdlibs")
+                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if (
+                    core.version != "3.4"
+                    and core.version != "3.5"
+                    and core.version != "3.6"
+                    and core.version != "4.0"
+                ):
+                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
+                    rpms_to_rm.append(f"libreoffice{core.version}-freedesktop-menus")
+                    rpms_to_rm.append(f"libobasis{core.version}-ooofonts")
+                # Leftover files and directories to remove (common for all vers.)
+                for user in users:
+                    dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
+                    dirs_to_rm.append(user.home_dir.joinpath(".config/libreoffice"))
+                    files_to_remove.append(
+                        user.home_dir.joinpath("Desktop/lomanager.desktop")
+                    )
+                for dir in pathlib.Path("/etc/skel/.config").glob("libreoffice*"):
+                    dirs_to_rm.append(dir)
+                for leftover_dir in pathlib.Path("/opt").glob("libreoffice*"):
+                    dirs_to_rm.append(leftover_dir)
+                for icon in pathlib.Path("/usr/share/icons").glob("libreoffice*"):
+                    files_to_remove.append(icon)
+        if LibreOfficeCORE:
+            # Remove
+            log.debug(f"LO core rpms_to_rm: {rpms_to_rm}")
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            if not s:
+                return (False, msg)
+            # Do post-removal cleanup
+            log.debug(f"Dirs to remove: {dirs_to_rm}")
+            map(PCLOS.force_rm_directory, dirs_to_rm)
+            log.debug(f"Files to remove: {files_to_remove}")
+            map(PCLOS.remove_file, files_to_remove)
+            # update menus
+            PCLOS.update_menus()
+
+        uninstall_msg = "Packages successfully uninstalled"
+        return (True, uninstall_msg)
+
+    def _install_office_components(
         self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        LO_core_tgzS: dict,
+        LO_langs_tgzS: dict,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_install_successful = False
-        install_msg = ""
+        PCLOS.clean_working_dir()
 
-        # TODO: There should be a .tar.gz file(s) in downloaded_files
-        #       Unziping it takes place in this function
-        log.info(">>PRETENDING<< to be installing files...")
+        rpms_c = []
+        rpms_l = []
+        if LO_core_tgzS:
+            tgz = LO_core_tgzS[0]
+            log.debug("Core tar.gz found")
+            rpms_c = PCLOS.extract_tgz(tgz)
+        if LO_langs_tgzS:
+            for tgz in LO_langs_tgzS:
+                log.debug("Lang/Help pack tar.gz found")
+                rpms_l += PCLOS.extract_tgz(tgz)
 
-        total_time_sek = 5
-        steps = 30
-        for i in range(steps):
-            progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-            progress_percentage(progress)
-            time.sleep(total_time_sek / steps)
+        rpms = rpms_c + rpms_l
+        if rpms:
+            # Some rpm should be installed
 
-        is_install_successful = True
-        log.info(">>PRETENDING<< ...done installing packages.")
+            rpms_to_install = [r for r in rpms if "-kde-integration-" not in str(r)]
+            kde_rpms = [r for r in rpms if "-kde-integration-" in str(r)]
+            for rpm in kde_rpms:
+                PCLOS.remove_file(rpm)
 
-        return (is_install_successful, install_msg)
+            log.debug("Extracted rpm files to install")
+            for rpm in rpms_to_install:
+                log.debug(rpm)
+
+            is_installed, msg = PCLOS.install_using_rpm(
+                rpms_to_install,
+                progress_msg,
+                progress,
+            )
+
+            PCLOS.clean_working_dir()
+
+            if is_installed is False:
+                return (False, msg)
+
+            # Postinstall stuff
+            self._disable_LO_update_checks()
+            self._modify_dot_desktop_files()
+            self._fix_LXDE_icons()
+
+            # Finaly return success
+            return (True, "LibreOffice packages successfully installed")
+
+        else:
+            msg = "No rpms extracted"
+            log.error(msg)
+            return (False, msg)
 
     def _disable_LO_update_checks(self):
-        log.debug(
-            ">>PRETENDING<< Preventing LibreOffice from looking for updates on its own..."
+        log.debug("Preventing LibreOffice from checking for updates on its own")
+
+        # -- helper functions --
+        def register_all_namespaces(f_name):
+            namespaces = dict(
+                [node for _, node in ET.iterparse(f_name, events=["start-ns"])]
+            )
+            for ns in namespaces:
+                ET.register_namespace(ns, namespaces[ns])
+
+        def add_disabled_autocheck(root):
+            uc_item = ET.SubElement(root, "item")
+            uc_item.set(
+                "oor:path",
+                r"/org.openoffice.Office.Jobs/Jobs/org.openoffice.Office.Jobs:Job['UpdateCheck']/Arguments",
+            )
+            uc_prop = ET.SubElement(uc_item, "prop")
+            uc_prop.set("oor:name", "AutoCheckEnabled")
+            uc_prop.set("oor:op", "fuse")
+            uc_prop.set("oor:type", "xs:boolean")
+            uc_val = ET.SubElement(uc_prop, "value")
+            uc_val.text = "false"
+
+        def create_xcu_file_w_disabled_autocheck(file: pathlib.Path):
+            ET.register_namespace("oor", "https://openoffice.org/2001/registry")
+            xml_root = ET.Element("{https://openoffice.org/2001/registry}items")
+            add_disabled_autocheck(root=xml_root)
+            xml_tree = ET.ElementTree(xml_root)
+            xml_tree.write(
+                file,
+                xml_declaration=True,
+                method="xml",
+                encoding="UTF-8",
+            )
+
+        def find_autocheck_prop(root):
+            value = ET.Element("value")
+            for property in root.iter("prop"):
+                if "AutoCheckEnabled" in property.attrib.values():
+                    return property.find("value")
+            return value
+
+        # -- end helper functions --
+
+        # Disable checks for every existing user
+        for user in PCLOS.get_system_users():
+            conf_dir = user.home_dir.joinpath(".config/libreoffice/4/user")
+            xcu_file = conf_dir.joinpath("registrymodifications.xcu")
+            if xcu_file.exists():
+                # modify existing file
+                register_all_namespaces(xcu_file)
+                xml_tree = ET.parse(xcu_file)
+                xml_root = xml_tree.getroot()
+                value = find_autocheck_prop(root=xml_root)
+                if value is None or value.text is None:
+                    # property does not exist, add it
+                    add_disabled_autocheck(root=xml_root)
+                else:
+                    # property exists.
+                    # set its value to false (even if it's false already)
+                    value.text = "false"
+
+                xml_tree.write(
+                    xcu_file,
+                    xml_declaration=True,
+                    method="xml",
+                    encoding="UTF-8",
+                )
+            else:
+                # LibreOffice was never started by this user
+                # Create new xcu_file with auto checks disabled
+                if not conf_dir.exists():
+                    PCLOS.make_dir_tree(target_dir=conf_dir)
+                create_xcu_file_w_disabled_autocheck(file=xcu_file)
+
+        # Disable checking for new users (if ever created)
+        skel_dir = pathlib.Path("/etc/skel/.config/libreoffice/4/user")
+        skel_xcu_file = skel_dir.joinpath("registrymodifications.xcu")
+        if not skel_xcu_file.exists():
+            if not skel_dir.exists():
+                PCLOS.make_dir_tree(target_dir=skel_dir)
+            create_xcu_file_w_disabled_autocheck(file=skel_xcu_file)
+
+    def _modify_dot_desktop_files(self):
+        # .desktop files shipped with LibreOffice contain the line:
+        # Categories=Office;Spreadsheet;X-Red-Hat-Base;
+        # Change it to:
+        # Categories=Office;
+        base_dirS = pathlib.Path("/opt").glob("libreoffice*")
+        fileS = [
+            "base.desktop",
+            "calc.desktop",
+            "draw.desktop",
+            "impress.desktop",
+            "math.desktop",
+            "writer.desktop",
+        ]
+        for dir in base_dirS:
+            for file in fileS:
+                fp = dir.joinpath("share/xdg").joinpath(file)
+                if fp.exists():
+                    with open(fp, "r") as infile:
+                        config_lineS = infile.readlines()
+
+                    with open(fp, "w") as outfile:
+                        for line in config_lineS:
+                            if line.startswith("Categories="):
+                                outfile.write("Categories=Office;\n")
+                            else:
+                                outfile.write(line)
+        # Refresh menus
+        PCLOS.update_menus()
+
+    def _fix_LXDE_icons(self):
+        iconS = pathlib.Path("/usr/share/icons/hicolor/32x32/apps").glob(
+            "libreoffice7*"
         )
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
-
-    def _add_templates_to_etcskel(self):
-        # TODO: This function should put a file (smth.xcu) to /etc/skel
-        #       in order to have LO properly set up for any new user
-        #       accounts created in the OS
-        log.debug(">>PRETENDING<< Adding files to /etc/skel ...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
-
-    def _clean_dot_desktop_files(self):
-        # TODO: This function should remove association between LibreOffice
-        #       and Open Document file formats (odt, odf, etc.) from the
-        #       global .desktop file (and user files too?)
-        log.debug(">>PRETENDING<< Rebuilding menu entries...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
+        for icon in iconS:
+            PCLOS.run_shell_command(f"ln -fs {icon} /usr/share/icons/", err_check=False)
+        if pathlib.Path("/usr/bin/lxpanelctl").exists():
+            PCLOS.run_shell_command(f"/usr/bin/lxpanelctl restart", err_check=False)
+        PCLOS.update_menus()
 
     def _uninstall_clipart(
         self,
-        packages_to_remove: list,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        c_art_pkgs_to_rm: list,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_uninstall_successful = False
-        uninstall_msg = ""
-
-        log.debug(f"Packages to remove:")
-        for p in packages_to_remove:
-            log.debug(f"                  * {p}")
-        log.info(">>PRETENDING<< to be removing packages...")
-
-        time.sleep(2)
-
-        is_uninstall_successful = True
-        log.info(">>PRETENDING<< ...done removing packages.")
-
-        return (is_uninstall_successful, uninstall_msg)
+        # For now it doesn't seem that openclipart rpm package name
+        # includes version number so getting this information
+        # from c_art_pkgs_to_rm is not necessary.
+        rpms_to_rm = []
+        expected_rpm_names = ["libreoffice-openclipart", "clipart-openclipart"]
+        for candidate in expected_rpm_names:
+            success, reply = PCLOS.run_shell_command(
+                f"rpm -qa | grep {candidate}", err_check=False
+            )
+            if not success:
+                return (False, "Failed to run shell command")
+            else:
+                if reply:
+                    rpms_to_rm.append(candidate)
+        s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+        if not s:
+            return (False, msg)
+        return (True, "Clipart successfully uninstalled")
 
     def _install_clipart(
         self,
-        downloaded_files: dict,
-        progress_description: Callable,
-        progress_percentage: Callable,
+        clipart_rpmS: dict,
+        progress_msg: Callable,
+        progress: Callable,
     ) -> tuple[bool, str]:
-        is_install_successful = False
-        install_msg = ""
+        # 1) Move files (clipart-openclipart- and libreoffice-openclipart-)
+        #    from verified copy directory to /var/cache/apt/archives
+        cache_dir = pathlib.Path("/var/cache/apt/archives/")
+        package_names = []
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
+        for file in clipart_rpmS:
+            # Full name in to_path (including file.name) causes
+            # move_file to overwrite destination if it exists
+            if not PCLOS.move_file(
+                from_path=file, to_path=cache_dir.joinpath(file.name)
+            ):
+                return (False, "Openclipart not installed, error moving file")
+            # rpm name != rpm filename
+            rpm_name = "-".join(file.name.split("-")[:2])
+            package_names.append(rpm_name)
+        log.debug(f"clipart package_names: {package_names}")
 
-        log.info(">>PRETENDING<< to be installing files...")
+        # 2) Use apt-get to install those 2 files
+        s, _ = PCLOS.install_using_apt_get(
+            package_nameS=package_names,
+            progress_description=progress_msg,
+            progress_percentage=progress,
+        )
+        if s is False:
+            return (False, "Error installing rpm packages")
 
-        total_time_sek = 5
-        steps = 30
-        for i in range(steps):
-            progress = int((i / (steps - 1)) * 100)  # progress in % (0-100)
-            progress_percentage(progress)
-            time.sleep(total_time_sek / steps)
+        # 3) move rpm files back to storage
+        # TODO: What if the user doesn't want to be keeping the files?
+        #       Is it a good place to remove them?
+        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
+        for file in clipart_rpmS:
+            if not PCLOS.move_file(
+                from_path=cache_dir.joinpath(file.name), to_path=file
+            ):
+                return (False, "Openclipart installed but there was error moving file")
 
-        is_install_successful = True
-        log.info(">>PRETENDING<< ...done installing packages.")
-
-        return (is_install_successful, install_msg)
+        return (True, "Openclipart successfully installed")
 
     def _save_copy_for_offline_install(self) -> tuple[bool, str]:
         # TODO: This function should mv verified_copies folder
