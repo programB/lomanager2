@@ -75,11 +75,11 @@ class Adapter(QObject):
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
 
-        # Check if there are any limitation on this program's
-        # operations as a result of problems detected
-        # during initial system verification
-        if self._main_model.any_limitations:
-            self.warning_signal.emit()
+        # # Check if there are any limitation on this program's
+        # # operations as a result of problems detected
+        # # during initial system verification
+        # if self._main_model.any_limitations:
+        #     self.warning_signal.emit()
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
@@ -134,6 +134,13 @@ class Adapter(QObject):
         log.debug("Refreshing!")
         self._main_model.refresh_state()
         self._package_menu_viewmodel.layoutChanged.emit()
+        # Check if there are any limitation on this program's
+        # operations as a result of problems detected
+        # during initial system verification
+        # if self._main_model.any_limitations:
+        #     self.warning_signal.emit()
+        if self._main_model._warnings:
+            self.warning_signal.emit()
 
     def _choose_dir_and_install_from_local_copy(self):
         # Ask the user for directory with saved packages

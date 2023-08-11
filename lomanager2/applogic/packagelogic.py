@@ -30,7 +30,9 @@ class MainLogic(object):
         PCLOS.create_directories()
 
         # 2) Create state objects
-        self._warnings = [""]
+        # self.any_limitations = False
+        # self._warnings = [""]
+        self._warnings = []
         self.global_flags = SignalFlags()
         # self._package_tree = VirtualPackage.__new__(VirtualPackage)
         # self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
@@ -39,12 +41,12 @@ class MainLogic(object):
             self._package_tree, "", "", "", "", "", ""
         )
 
-        # 3) Run flags_logic
-        self.any_limitations, self._warnings = self._flags_logic()
-        if self.any_limitations is True:
-            log.error("System not ready for all operations:")
-            for i, warning in enumerate(self._warnings):
-                log.error(f"{i+1}: {warning}")
+        # # 3) Run flags_logic
+        # self.any_limitations, self._warnings = self.flags_logic()
+        # if self.any_limitations is True:
+        #     log.error("System not ready for all operations:")
+        #     for i, warning in enumerate(self._warnings):
+        #         log.error(f"{i+1}: {warning}")
 
         # # 4) Gather system information
         # #           AND
@@ -104,7 +106,8 @@ class MainLogic(object):
         return warnings
 
     def _clear_warnings(self):
-        self._warnings = [""]
+        # self._warnings = [""]
+        self._warnings = []
 
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
@@ -732,14 +735,18 @@ class MainLogic(object):
 
         step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
         # TODO: Add logging
-        any_limitations = False
+        # any_limitations = False
         info_list = []
         msg = ""
 
         step.start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
-            any_limitations = True
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
+            # any_limitations = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             info_list.append(msg)
         if running_managers:  # at least 1 package manager is running
@@ -747,7 +754,7 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
-            any_limitations = True
+            # any_limitations = True
             msg = (
                 "Some package managers are still running and "
                 "as a result you won't be able to install or uninstall "
@@ -763,14 +770,17 @@ class MainLogic(object):
         step.start("Looking for running Office")
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
-            any_limitations = True
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            # any_limitations = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             info_list.append(msg)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
-            any_limitations = True
+            # any_limitations = True
             msg = (
                 "Office is running and as a result you "
                 "won't be able to install or uninstall "
@@ -795,7 +805,7 @@ class MainLogic(object):
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_network_install = True
-                    any_limitations = True
+                    # any_limitations = True
                     msg = (
                         "The OS is not fully updated "
                         "and as a result installations are blocked. "
@@ -805,7 +815,7 @@ class MainLogic(object):
                     info_list.append(msg)
             else:
                 self.global_flags.block_network_install = True
-                any_limitations = True
+                # any_limitations = True
                 msg = (
                     "Failed to check update status \n"
                     "and as a result you won't be able to install "
@@ -820,7 +830,7 @@ class MainLogic(object):
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
-            any_limitations = True
+            # any_limitations = True
             msg = (
                 "You are running outdated version of "
                 "this program! "
@@ -831,10 +841,10 @@ class MainLogic(object):
             )
             info_list.append(msg)
 
-        self.any_limitations = any_limitations
+        # self.any_limitations = any_limitations
         self._warnings = info_list.copy()
         self.refresh_state(args, kwargs)
-        return (any_limitations, info_list)
+        # return (any_limitations, info_list)
 
     def _install(
         self,
