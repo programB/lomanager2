@@ -2100,7 +2100,10 @@ class ManualSelectionLogic(object):
 
         # Object representing items in the menu
         self.root = root_node
-        self.java = [c for c in self.root.children if "Java" in c.family][0]
+        # BUG: DO NOT USE self.java
+        # java_pkgs = [c for c in self.root.children if "Java" in c.family]
+        # self.java = None if not java_pkgs else java_pkgs[0]
+        # self.java = [c for c in self.root.children if "Java" in c.family][0]
 
         # BUG: DO NOT USE self.packages
         # useful at times
@@ -2317,6 +2320,10 @@ class ManualSelectionLogic(object):
 
         is_apply_install_successul = False
 
+        # BUG: DO NOT USE self.java
+        java_pkgs = [c for c in self.root.children if "Java" in c.family]
+        java = None if not java_pkgs else java_pkgs[0]
+
         # OpenOffice dependency tree
         # OpenOffice cannot be installed, it can only be uninstalled
         # and is always marked for removal if detected.
@@ -2357,7 +2364,9 @@ class ManualSelectionLogic(object):
                         [m for m in family_members if m.is_marked_for_install]
                     )
                     if not is_any_member_marked_for_install:
-                        for office in self.java.children:
+                        # BUG: DO NOT USE self.java
+                        # for office in self.java.children:
+                        for office in java.children:
                             if office.version != self.latest_available_LO_version:
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
@@ -2369,11 +2378,16 @@ class ManualSelectionLogic(object):
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
                 # 2) Java not installed - install it
-                if not self.java.is_installed:
-                    self.java.is_marked_for_install = True
+                # BUG: DO NOT USE self.java
+                # if not self.java.is_installed:
+                if not java.is_installed:
+                    # BUG: DO NOT USE self.java
+                    java.is_marked_for_install = True
                 # 3) if installing latest LO mark older versions for removal
                 if package.version == self.latest_available_LO_version:
-                    for office in self.java.children:
+                    # BUG: DO NOT USE self.java
+                    # for office in self.java.children:
+                    for office in java.children:
                         if office.version != self.latest_available_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
