@@ -29,6 +29,7 @@ class Adapter(QObject):
     status_signal = Signal(dict)
     worker_ready_signal = Signal()
     warning_signal = Signal()
+    init_signal = Signal()
     GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
@@ -74,11 +75,11 @@ class Adapter(QObject):
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
 
-        # Check if there are any limitation on this program's
-        # operations as a result of problems detected
-        # during initial system verification
-        if self._main_model.any_limitations:
-            self.warning_signal.emit()
+        # # Check if there are any limitation on this program's
+        # # operations as a result of problems detected
+        # # during initial system verification
+        # if self._main_model.any_limitations:
+        #     self.warning_signal.emit()
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
@@ -126,9 +127,20 @@ class Adapter(QObject):
         # Internal Signal: Shows dialog with initial system state
         self.warning_signal.connect(self._show_warnings)
 
+        # Internal Signal: Shows dialog with initial system state
+        self.init_signal.connect(self._run_flags_logic)
+
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
         self._main_model.refresh_state()
+        self._package_menu_viewmodel.layoutChanged.emit()
+        # Check if there are any limitation on this program's
+        # operations as a result of problems detected
+        # during initial system verification
+        # if self._main_model.any_limitations:
+        #     self.warning_signal.emit()
+        if self._main_model.warnings:
+            self.warning_signal.emit()
 
     def _choose_dir_and_install_from_local_copy(self):
         # Ask the user for directory with saved packages
@@ -227,10 +239,16 @@ class Adapter(QObject):
         self._progress_view.progress_bar.setValue(0)
         self._progress_view.overall_progress_description.setText("")
         self._progress_view.overall_progress_bar.setValue(0)
+        self._progress_view.overall_progress_bar.setTextVisible(False)
         self._progress_view.show()
+
+        # Change cursor
+        self._main_view.setCursor(Qt.WaitCursor)
+
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
         # or _choose_dir_and_install_from_local_copy
+        # or _run_flags_logic
         self.procedure_thread.start()
 
     def _update_progress_description(self, text: str):
@@ -247,6 +265,7 @@ class Adapter(QObject):
 
     def _thread_stopped_or_terminated(self):
         log.debug("Thread finished signal received.")
+        self._main_view.unsetCursor()
         self._progress_view.hide()
         log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
@@ -271,7 +290,7 @@ class Adapter(QObject):
 
     def _show_warnings(self):
         info = "Due to issues below this program will not be able to perform some operations:\n\n"
-        for i, warning in enumerate(self._main_model._warnings):
+        for i, warning in enumerate(self._main_model.warnings):
             info = info + str(i + 1) + ") " + warning + "\n\n"
         self._main_view.info_dialog.setWindowTitle("Warning")
         self._main_view.info_dialog.setText(info)
@@ -302,6 +321,20 @@ class Adapter(QObject):
             is_local_enabled = False
         self._main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
 
+    def _run_flags_logic(self):
+        print("init signal emitted")
+        self.procedure_thread = ProcedureWorker(
+            function_to_run=self._main_model.flags_logic,
+            report_status=self.status_signal.emit,
+            progress_description=self.progress_description_signal.emit,
+            progress_percentage=self.progress_signal.emit,
+            overall_progress_description=self.overall_progress_description_signal.emit,
+            overall_progress_percentage=self.overall_progress_signal.emit,
+        )
+        # Lock GUI elements, open progress window and start thread
+        self.worker_ready_signal.emit()
+        # self._main_model.flags_logic()
+
 
 def main():
     lomanager2App = QApplication([])
@@ -317,6 +350,7 @@ def main():
     adapter.change_GUI_locks()
 
     main_window.show()
+    adapter.init_signal.emit()
     sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 

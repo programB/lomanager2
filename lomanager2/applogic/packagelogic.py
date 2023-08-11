@@ -26,28 +26,14 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        # 1) Create needed directories
         PCLOS.create_directories()
 
-        # 2) Create state objects
-        self._warnings = [""]
+        self.warnings = []
         self.global_flags = SignalFlags()
-        self._package_tree = VirtualPackage.__new__(VirtualPackage)
-        self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
-
-        # 3) Run flags_logic
-        self.any_limitations, self._warnings = self._flags_logic()
-        if self.any_limitations is True:
-            log.error("System not ready for all operations:")
-            for i, warning in enumerate(self._warnings):
-                log.error(f"{i+1}: {warning}")
-
-        # 4) Gather system information
-        #           AND
-        # 5) Initialize state objects
-        #
-        #   (done in separate, reusable method)
-        self.refresh_state()
+        self._package_tree = VirtualPackage("master-node", "", "")
+        self._package_menu = ManualSelectionLogic(
+            self._package_tree, "", "", "", "", "", ""
+        )
 
     # -- Public interface for MainLogic
 
@@ -78,10 +64,10 @@ class MainLogic(object):
         )
         space_available = PCLOS.free_space_in_dir(configuration.download_dir)
         # 4) set "ready for state transition flag" (T/F) accordingly
-        # 5) add warning message to self._warnings if not enough space
+        # 5) add warning message to self.warnings if not enough space
         if space_available < total_space_needed:
             self.global_flags.ready_to_apply_changes = False
-            self._warnings = [
+            self.warnings = [
                 {
                     "explanation": "Insufficient disk space for operation.",
                     "data": "Space needed: "
@@ -95,12 +81,10 @@ class MainLogic(object):
         return pms
 
     def get_warnings(self):
-        warnings = deepcopy(self._warnings)
-        self._clear_warnings()
+        warnings = deepcopy(self.warnings)
+        # clear warnings object
+        self.warnings = []
         return warnings
-
-    def _clear_warnings(self):
-        self._warnings = [""]
 
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
@@ -215,19 +199,139 @@ class MainLogic(object):
         )
         return status
 
-    def refresh_state(self):
-        # -- NEW Logic --
-        # 1) Query for installed software
+    def flags_logic(self, *args, **kwargs):
+        """'Rises' flags indicating some operations will not be available
+
+        This method performs checks of the operating system and
+        sets the status of the flags in the self.global_flags object
+        to TRUE if some package operations need to be BLOCKED.
+        When it happens a human readable messages for the cause
+        is added to the self.warnings list.
+        """
+
+        step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
+        # TODO: Add logging
+        info_list = []
+        msg = ""
+
+        step.start("Looking for running package managers")
+        status, running_managers = PCLOS.get_running_package_managers()
+        if status is False:
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
+        if running_managers:  # at least 1 package manager is running
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
+            msg = (
+                "Some package managers are still running and "
+                "as a result you won't be able to install or uninstall "
+                "any packages. "
+                "Close the managers listed and restart this program.\n"
+                "manager: PID\n"
+            )
+            for manager, pids in running_managers.items():
+                msg = msg + manager + ": " + str(pids) + "  "
+            info_list.append(msg)
+        step.end(msg)
+
+        step.start("Looking for running Office")
+        status, running_office_suits = PCLOS.get_running_Office_processes()
+        if status is False:
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
+        if running_office_suits:  # an office app is running
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            msg = (
+                "Office is running and as a result you "
+                "won't be able to install or uninstall "
+                "any packages."
+                "Save your work, close Office and restart "
+                "this program.\n"
+                "Office: PID\n"
+            )
+            for office, pids in running_office_suits.items():
+                msg = msg + office + ": " + str(pids) + "  "
+            info_list.append(msg)
+        step.end(msg)
+
+        # no running manager prevents access to system rpm database
+        step.start("Checking for system updates")
+        if self.global_flags.block_checking_4_updates is False:
+            (
+                check_successfull,
+                is_updated,
+                explanation,
+            ) = PCLOS.check_system_update_status()
+            if check_successfull:
+                if not is_updated:
+                    self.global_flags.block_network_install = True
+                    msg = (
+                        "The OS is not fully updated "
+                        "and as a result installations are blocked. "
+                        "Update your system and restart "
+                        "this program."
+                    )
+                    info_list.append(msg)
+            else:
+                self.global_flags.block_network_install = True
+                msg = (
+                    "Failed to check update status \n"
+                    "and as a result you won't be able to install "
+                    "LibreOffice packages. "
+                    "Check you internet connection "
+                    "and restart this program."
+                )
+                if explanation:
+                    msg = msg + "\n" + explanation
+                info_list.append(msg)
+        step.end(msg)
+
+        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
+            self.global_flags.block_network_install = True
+            msg = (
+                "You are running outdated version of "
+                "this program! "
+                "As a result you won't be able to install "
+                "any packages."
+                "Update your system and restart "
+                "this program."
+            )
+            info_list.append(msg)
+
+        self.warnings = info_list.copy()
+        self.refresh_state(args, kwargs)
+
+    def refresh_state(self, *args, **kwargs):
+        step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
+
+        step.start("Detecting installed software")
         installed_vps = self._detect_installed_software()
-        # 2) Query for available software
+        step.end()
+
+        step.start("Building available software list")
         available_vps = self._get_available_software()
-        # 3) Create joint list of packages
+        step.end()
+
+        step.start("Building dependency tree")
+        # Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
-        # 5) build package dependency tree
-        root_node = self._build_dependency_tree(joint_package_list)
-        log.debug("TREE \n" + root_node.tree_representation())
-        # 4) apply virtual packages initial state logic
+        self._build_dependency_tree(joint_package_list)
+        log.debug("TREE \n" + self._package_tree.tree_representation())
+        step.end()
+
+        step.start("Applying restrictions")
         (
             latest_Java,
             newest_Java,
@@ -235,12 +339,8 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(root_node)
-        # 6) Replace the old state of the list with the new one
-        # self._virtual_packages = joint_package_list
-        # 7) the same with package tree
-        self._package_tree = root_node
-        # -- --------- --
+        ) = self._set_packages_initial_state(self._package_tree)
+        step.end()
 
         self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
@@ -256,9 +356,12 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
-    def _build_dependency_tree(self, packageS: list[VirtualPackage]) -> VirtualPackage:
-        master_node = VirtualPackage("master-node", "", "")
-        current_parent = master_node
+    def _build_dependency_tree(self, packageS: list[VirtualPackage]):
+        # Make master node forget its children
+        # (this will hopefully delete all descendent virtual package objects)
+        self._package_tree.children = []
+        current_parent = self._package_tree
+
         # 1st tier: Link Java and Clipart to top level package
         already_handled = []
         for package in packageS:
@@ -301,9 +404,7 @@ class MainLogic(object):
         packageS = [p for p in packageS if p not in already_handled]
         # At this point packageS should be empty
         # log.debug(f"packageS: {packageS}")
-
         # log.debug("\n" + master_node.tree_representation())
-        return master_node
 
     def _set_packages_initial_state(
         self,
@@ -680,116 +781,6 @@ class MainLogic(object):
         for p in installed_virtual_packages:
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
-
-    def _flags_logic(self) -> tuple[bool, list[str]]:
-        """'Rises' flags indicating some operations will not be available
-
-        This method performs checks of the operating system and
-        sets the status of the flags in the self._flags object
-        to TRUE if some package operations need to be BLOCKED.
-
-        Returns
-        -------
-        tuple
-          (any_limitations: bool, info_list: list of strings)
-          any_limitations is True if ANY flag was raised
-          list contain human readable reason(s) for rising them.
-        """
-
-        # TODO: Add logging
-        any_limitations = False
-        info_list = []
-
-        status, running_managers = PCLOS.get_running_package_managers()
-        if status is False:
-            any_limitations = True
-            msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
-        if running_managers:  # at least 1 package manager is running
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            self.global_flags.block_checking_4_updates = True
-            any_limitations = True
-            msg = (
-                "Some package managers are still running and "
-                "as a result you won't be able to install or uninstall "
-                "any packages. "
-                "Close the managers listed and restart this program.\n"
-                "manager: PID\n"
-            )
-            for manager, pids in running_managers.items():
-                msg = msg + manager + ": " + str(pids) + "  "
-            info_list.append(msg)
-
-        status, running_office_suits = PCLOS.get_running_Office_processes()
-        if status is False:
-            any_limitations = True
-            msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
-        if running_office_suits:  # an office app is running
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            any_limitations = True
-            msg = (
-                "Office is running and as a result you "
-                "won't be able to install or uninstall "
-                "any packages."
-                "Save your work, close Office and restart "
-                "this program.\n"
-                "Office: PID\n"
-            )
-            for office, pids in running_office_suits.items():
-                msg = msg + office + ": " + str(pids) + "  "
-            info_list.append(msg)
-
-        # no running manager prevents access to system rpm database
-        if self.global_flags.block_checking_4_updates is False:
-            (
-                check_successfull,
-                is_updated,
-                explanation,
-            ) = PCLOS.check_system_update_status()
-            if check_successfull:
-                if not is_updated:
-                    self.global_flags.block_network_install = True
-                    any_limitations = True
-                    msg = (
-                        "The OS is not fully updated "
-                        "and as a result installations are blocked. "
-                        "Update your system and restart "
-                        "this program."
-                    )
-                    info_list.append(msg)
-            else:
-                self.global_flags.block_network_install = True
-                any_limitations = True
-                msg = (
-                    "Failed to check update status \n"
-                    "and as a result you won't be able to install "
-                    "LibreOffice packages. "
-                    "Check you internet connection "
-                    "and restart this program."
-                )
-                if explanation:
-                    msg = msg + "\n" + explanation
-                info_list.append(msg)
-
-        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self.global_flags.block_network_install = True
-            any_limitations = True
-            msg = (
-                "You are running outdated version of "
-                "this program! "
-                "As a result you won't be able to install "
-                "any packages."
-                "Update your system and restart "
-                "this program."
-            )
-            info_list.append(msg)
-
-        return (any_limitations, info_list)
 
     def _install(
         self,
@@ -2084,12 +2075,6 @@ class ManualSelectionLogic(object):
 
         # Object representing items in the menu
         self.root = root_node
-        self.java = [c for c in self.root.children if "Java" in c.family][0]
-
-        # useful at times
-        self.packages = []
-        self.root.get_subtree(self.packages)
-        self.packages.remove(self.root)
 
         # A dictionary of packages to alter
         self.package_delta = {
@@ -2139,7 +2124,12 @@ class ManualSelectionLogic(object):
           (bool, bool, bool) - for columns 3,4,5 (visible) package flags
         """
 
-        package = self.packages[row]
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        package = packages[row]
+
         if column == 0:
             return (package.family, True, False)
         elif column == 1:
@@ -2197,7 +2187,11 @@ class ManualSelectionLogic(object):
         """
 
         is_logic_applied = False
-        package = self.packages[row]
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        package = packages[row]
 
         if column == 3:
             is_logic_applied = self._apply_removal_logic(package, value)
@@ -2217,7 +2211,7 @@ class ManualSelectionLogic(object):
         self.package_delta["packages_to_install"] = []
         self.package_delta["space_to_be_used"] = 0
         # # create new delta
-        for package in self.packages:
+        for package in packages:
             if package.is_marked_for_removal or package.is_marked_for_upgrade:
                 size = 0
                 for file in package.real_files:
@@ -2241,7 +2235,11 @@ class ManualSelectionLogic(object):
         int
           number of rows
         """
-        return len(self.packages)
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        return len(packages)
 
     def get_column_count(self) -> int:
         """Returns number of columns of the package menu
@@ -2278,6 +2276,9 @@ class ManualSelectionLogic(object):
         log.debug(">>> Install logic triggerd <<<")
 
         is_apply_install_successul = False
+
+        java_pkgs = [c for c in self.root.children if "Java" in c.family]
+        java = None if not java_pkgs else java_pkgs[0]
 
         # OpenOffice dependency tree
         # OpenOffice cannot be installed, it can only be uninstalled
@@ -2319,7 +2320,7 @@ class ManualSelectionLogic(object):
                         [m for m in family_members if m.is_marked_for_install]
                     )
                     if not is_any_member_marked_for_install:
-                        for office in self.java.children:
+                        for office in java.children:
                             if office.version != self.latest_available_LO_version:
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
@@ -2331,11 +2332,11 @@ class ManualSelectionLogic(object):
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
                 # 2) Java not installed - install it
-                if not self.java.is_installed:
-                    self.java.is_marked_for_install = True
+                if not java.is_installed:
+                    java.is_marked_for_install = True
                 # 3) if installing latest LO mark older versions for removal
                 if package.version == self.latest_available_LO_version:
-                    for office in self.java.children:
+                    for office in java.children:
                         if office.version != self.latest_available_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
@@ -2354,7 +2355,7 @@ class ManualSelectionLogic(object):
                 # TODO: Possible not true anymore
                 #     As the install option is only available
                 #     when no installed LO was detected
-                #     and thus the latest LO was added to self.packages
+                #     and thus the latest LO was added to packages
                 #     there is no need to care about other installed LO suits
                 #     Such situation should never occur.
                 is_apply_install_successul = True
@@ -2439,7 +2440,11 @@ class ManualSelectionLogic(object):
         return is_apply_removal_successul
 
     def _decide_what_to_download(self):
-        for package in self.packages:
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        for package in packages:
             # if package.is_marked_for_install and package.is_installed is False:
             if package.is_marked_for_install and package.is_installed is False:
                 package.is_marked_for_download = True
