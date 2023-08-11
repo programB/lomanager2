@@ -2102,10 +2102,11 @@ class ManualSelectionLogic(object):
         self.root = root_node
         self.java = [c for c in self.root.children if "Java" in c.family][0]
 
+        # BUG: DO NOT USE self.packages
         # useful at times
-        self.packages = []
-        self.root.get_subtree(self.packages)
-        self.packages.remove(self.root)
+        # self.packages = []
+        # self.root.get_subtree(self.packages)
+        # self.packages.remove(self.root)
 
         # A dictionary of packages to alter
         self.package_delta = {
@@ -2155,7 +2156,14 @@ class ManualSelectionLogic(object):
           (bool, bool, bool) - for columns 3,4,5 (visible) package flags
         """
 
-        package = self.packages[row]
+        # BUG: DO NOT USE self.packages
+        # Never keep the reference to package list
+        # package = self.packages[row]
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        package = packages[row]
+
         if column == 0:
             return (package.family, True, False)
         elif column == 1:
@@ -2213,7 +2221,13 @@ class ManualSelectionLogic(object):
         """
 
         is_logic_applied = False
-        package = self.packages[row]
+        # BUG: DO NOT USE self.packages
+        # Never keep the reference to package list
+        # package = self.packages[row]
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        package = packages[row]
 
         if column == 3:
             is_logic_applied = self._apply_removal_logic(package, value)
@@ -2233,7 +2247,9 @@ class ManualSelectionLogic(object):
         self.package_delta["packages_to_install"] = []
         self.package_delta["space_to_be_used"] = 0
         # # create new delta
-        for package in self.packages:
+        # BUG: DO NOT USE self.packages
+        # for package in self.packages:
+        for package in packages:
             if package.is_marked_for_removal or package.is_marked_for_upgrade:
                 size = 0
                 for file in package.real_files:
@@ -2257,7 +2273,13 @@ class ManualSelectionLogic(object):
         int
           number of rows
         """
-        return len(self.packages)
+        # BUG: DO NOT USE self.packages
+        # Never keep the reference to package list
+        # return len(self.packages)
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        return len(packages)
 
     def get_column_count(self) -> int:
         """Returns number of columns of the package menu
@@ -2367,6 +2389,7 @@ class ManualSelectionLogic(object):
                         else:
                             # parent not installed - install it as well
                             package.parent.is_marked_for_install = True
+                # BUG: DO NOT USE self.packages
                 # TODO: Possible not true anymore
                 #     As the install option is only available
                 #     when no installed LO was detected
@@ -2455,7 +2478,12 @@ class ManualSelectionLogic(object):
         return is_apply_removal_successul
 
     def _decide_what_to_download(self):
-        for package in self.packages:
+        # BUG: DO NOT USE self.packages
+        # for package in self.packages:
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        for package in packages:
             # if package.is_marked_for_install and package.is_installed is False:
             if package.is_marked_for_install and package.is_installed is False:
                 package.is_marked_for_download = True
