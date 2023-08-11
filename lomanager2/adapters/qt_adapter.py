@@ -312,6 +312,11 @@ class Adapter(QObject):
         print("init signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._main_model.flags_logic,
+            report_status=self.status_signal.emit,
+            progress_description=self.progress_description_signal.emit,
+            progress_percentage=self.progress_signal.emit,
+            overall_progress_description=self.overall_progress_description_signal.emit,
+            overall_progress_percentage=self.overall_progress_signal.emit,
         )
         # Lock GUI elements, open progress window and start thread
         self.worker_ready_signal.emit()

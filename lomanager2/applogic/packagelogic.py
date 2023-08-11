@@ -219,21 +219,40 @@ class MainLogic(object):
         )
         return status
 
-    def refresh_state(self):
+    def refresh_state(self, *args, **kwargs):
+        step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
+
+        log.debug("****** IN refresh_state *******")
+        # upon start Synaptic does:
+        # - Reading package list
+        # - Building dependency tree
+        # when reload button pressed
+        # - Dowloading package information (there is a pop window with progress)
+        # - Reading package list
+        # - Building dependency tree
+
         # -- NEW Logic --
         # 1) Query for installed software
+        step.start("Detecting installed software")
         installed_vps = self._detect_installed_software()
+        step.end()
+
         # 2) Query for available software
+        step.start("Building available software list")
         available_vps = self._get_available_software()
+        step.end()
+
         # 3) Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         # 5) build package dependency tree
         # root_node = self._build_dependency_tree(joint_package_list)
+        step.start("Building dependency tree")
         self._build_dependency_tree(joint_package_list)
         # log.debug("TREE \n" + root_node.tree_representation())
         log.debug("TREE \n" + self._package_tree.tree_representation())
 
+        step.start("Applying restrictions")
         # 4) apply virtual packages initial state logic
         (
             latest_Java,
@@ -244,6 +263,7 @@ class MainLogic(object):
             newest_Clip,
             # ) = self._set_packages_initial_state(root_node)
         ) = self._set_packages_initial_state(self._package_tree)
+        step.end()
         # 6) Replace the old state of the list with the new one
         # self._virtual_packages = joint_package_list
         # 7) the same with package tree
@@ -694,7 +714,8 @@ class MainLogic(object):
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
-    def _flags_logic(self) -> tuple[bool, list[str]]:
+    # def flags_logic(self) -> tuple[bool, list[str]]:
+    def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
 
         This method performs checks of the operating system and
@@ -709,10 +730,13 @@ class MainLogic(object):
           list contain human readable reason(s) for rising them.
         """
 
+        step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
         # TODO: Add logging
         any_limitations = False
         info_list = []
+        msg = ""
 
+        step.start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
             any_limitations = True
@@ -734,7 +758,9 @@ class MainLogic(object):
             for manager, pids in running_managers.items():
                 msg = msg + manager + ": " + str(pids) + "  "
             info_list.append(msg)
+        step.end(msg)
 
+        step.start("Looking for running Office")
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
             any_limitations = True
@@ -756,8 +782,10 @@ class MainLogic(object):
             for office, pids in running_office_suits.items():
                 msg = msg + office + ": " + str(pids) + "  "
             info_list.append(msg)
+        step.end(msg)
 
         # no running manager prevents access to system rpm database
+        step.start("Checking for system updates")
         if self.global_flags.block_checking_4_updates is False:
             (
                 check_successfull,
@@ -788,6 +816,7 @@ class MainLogic(object):
                 if explanation:
                     msg = msg + "\n" + explanation
                 info_list.append(msg)
+        step.end(msg)
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
