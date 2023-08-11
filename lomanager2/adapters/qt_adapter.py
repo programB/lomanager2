@@ -240,6 +240,10 @@ class Adapter(QObject):
         self._progress_view.overall_progress_description.setText("")
         self._progress_view.overall_progress_bar.setValue(0)
         self._progress_view.show()
+
+        # Change cursor
+        self._main_view.setCursor(Qt.WaitCursor)
+
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
         # or _choose_dir_and_install_from_local_copy
@@ -260,6 +264,7 @@ class Adapter(QObject):
 
     def _thread_stopped_or_terminated(self):
         log.debug("Thread finished signal received.")
+        self._main_view.unsetCursor()
         self._progress_view.hide()
         log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
