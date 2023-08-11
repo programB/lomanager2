@@ -26,34 +26,14 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        # 1) Create needed directories
         PCLOS.create_directories()
 
-        # 2) Create state objects
-        # self.any_limitations = False
-        # self._warnings = [""]
         self._warnings = []
         self.global_flags = SignalFlags()
-        # self._package_tree = VirtualPackage.__new__(VirtualPackage)
-        # self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
         self._package_tree = VirtualPackage("master-node", "", "")
         self._package_menu = ManualSelectionLogic(
             self._package_tree, "", "", "", "", "", ""
         )
-
-        # # 3) Run flags_logic
-        # self.any_limitations, self._warnings = self.flags_logic()
-        # if self.any_limitations is True:
-        #     log.error("System not ready for all operations:")
-        #     for i, warning in enumerate(self._warnings):
-        #         log.error(f"{i+1}: {warning}")
-
-        # # 4) Gather system information
-        # #           AND
-        # # 5) Initialize state objects
-        # #
-        # #   (done in separate, reusable method)
-        # self.refresh_state()
 
     # -- Public interface for MainLogic
 
@@ -106,7 +86,6 @@ class MainLogic(object):
         return warnings
 
     def _clear_warnings(self):
-        # self._warnings = [""]
         self._warnings = []
 
     def apply_changes(self, *args, **kwargs):
@@ -225,38 +204,23 @@ class MainLogic(object):
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
 
-        log.debug("****** IN refresh_state *******")
-        # upon start Synaptic does:
-        # - Reading package list
-        # - Building dependency tree
-        # when reload button pressed
-        # - Dowloading package information (there is a pop window with progress)
-        # - Reading package list
-        # - Building dependency tree
-
-        # -- NEW Logic --
-        # 1) Query for installed software
         step.start("Detecting installed software")
         installed_vps = self._detect_installed_software()
         step.end()
 
-        # 2) Query for available software
         step.start("Building available software list")
         available_vps = self._get_available_software()
         step.end()
 
-        # 3) Create joint list of packages
+        step.start("Building dependency tree")
+        # Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
-        # 5) build package dependency tree
-        # root_node = self._build_dependency_tree(joint_package_list)
-        step.start("Building dependency tree")
         self._build_dependency_tree(joint_package_list)
-        # log.debug("TREE \n" + root_node.tree_representation())
         log.debug("TREE \n" + self._package_tree.tree_representation())
+        step.end()
 
         step.start("Applying restrictions")
-        # 4) apply virtual packages initial state logic
         (
             latest_Java,
             newest_Java,
@@ -264,14 +228,8 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-            # ) = self._set_packages_initial_state(root_node)
         ) = self._set_packages_initial_state(self._package_tree)
         step.end()
-        # 6) Replace the old state of the list with the new one
-        # self._virtual_packages = joint_package_list
-        # 7) the same with package tree
-        # self._package_tree = root_node
-        # -- --------- --
 
         self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
@@ -287,14 +245,12 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
-    # def _build_dependency_tree(self, packageS: list[VirtualPackage]) -> VirtualPackage:
     def _build_dependency_tree(self, packageS: list[VirtualPackage]):
         # Make master node forget its children
         # (this will hopefully delete all descendent virtual package objects)
         self._package_tree.children = []
-        # master_node = VirtualPackage("master-node", "", "")
-        # current_parent = master_node
         current_parent = self._package_tree
+
         # 1st tier: Link Java and Clipart to top level package
         already_handled = []
         for package in packageS:
@@ -337,9 +293,7 @@ class MainLogic(object):
         packageS = [p for p in packageS if p not in already_handled]
         # At this point packageS should be empty
         # log.debug(f"packageS: {packageS}")
-
         # log.debug("\n" + master_node.tree_representation())
-        # return master_node
 
     def _set_packages_initial_state(
         self,
@@ -717,25 +671,18 @@ class MainLogic(object):
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
-    # def flags_logic(self) -> tuple[bool, list[str]]:
     def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
 
         This method performs checks of the operating system and
-        sets the status of the flags in the self._flags object
+        sets the status of the flags in the self.global_flags object
         to TRUE if some package operations need to be BLOCKED.
-
-        Returns
-        -------
-        tuple
-          (any_limitations: bool, info_list: list of strings)
-          any_limitations is True if ANY flag was raised
-          list contain human readable reason(s) for rising them.
+        When it happens a human readable messages for the cause
+        is added to the self._warnings list.
         """
 
         step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
         # TODO: Add logging
-        # any_limitations = False
         info_list = []
         msg = ""
 
@@ -746,7 +693,6 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
-            # any_limitations = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             info_list.append(msg)
         if running_managers:  # at least 1 package manager is running
@@ -754,7 +700,6 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
-            # any_limitations = True
             msg = (
                 "Some package managers are still running and "
                 "as a result you won't be able to install or uninstall "
@@ -773,14 +718,12 @@ class MainLogic(object):
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
-            # any_limitations = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             info_list.append(msg)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
-            # any_limitations = True
             msg = (
                 "Office is running and as a result you "
                 "won't be able to install or uninstall "
@@ -805,7 +748,6 @@ class MainLogic(object):
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_network_install = True
-                    # any_limitations = True
                     msg = (
                         "The OS is not fully updated "
                         "and as a result installations are blocked. "
@@ -815,7 +757,6 @@ class MainLogic(object):
                     info_list.append(msg)
             else:
                 self.global_flags.block_network_install = True
-                # any_limitations = True
                 msg = (
                     "Failed to check update status \n"
                     "and as a result you won't be able to install "
@@ -830,7 +771,6 @@ class MainLogic(object):
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
             self.global_flags.block_network_install = True
-            # any_limitations = True
             msg = (
                 "You are running outdated version of "
                 "this program! "
@@ -841,10 +781,8 @@ class MainLogic(object):
             )
             info_list.append(msg)
 
-        # self.any_limitations = any_limitations
         self._warnings = info_list.copy()
         self.refresh_state(args, kwargs)
-        # return (any_limitations, info_list)
 
     def _install(
         self,
@@ -2139,16 +2077,6 @@ class ManualSelectionLogic(object):
 
         # Object representing items in the menu
         self.root = root_node
-        # BUG: DO NOT USE self.java
-        # java_pkgs = [c for c in self.root.children if "Java" in c.family]
-        # self.java = None if not java_pkgs else java_pkgs[0]
-        # self.java = [c for c in self.root.children if "Java" in c.family][0]
-
-        # BUG: DO NOT USE self.packages
-        # useful at times
-        # self.packages = []
-        # self.root.get_subtree(self.packages)
-        # self.packages.remove(self.root)
 
         # A dictionary of packages to alter
         self.package_delta = {
@@ -2198,9 +2126,7 @@ class ManualSelectionLogic(object):
           (bool, bool, bool) - for columns 3,4,5 (visible) package flags
         """
 
-        # BUG: DO NOT USE self.packages
         # Never keep the reference to package list
-        # package = self.packages[row]
         packages = []
         self.root.get_subtree(packages)
         packages.remove(self.root)
@@ -2263,9 +2189,7 @@ class ManualSelectionLogic(object):
         """
 
         is_logic_applied = False
-        # BUG: DO NOT USE self.packages
         # Never keep the reference to package list
-        # package = self.packages[row]
         packages = []
         self.root.get_subtree(packages)
         packages.remove(self.root)
@@ -2289,8 +2213,6 @@ class ManualSelectionLogic(object):
         self.package_delta["packages_to_install"] = []
         self.package_delta["space_to_be_used"] = 0
         # # create new delta
-        # BUG: DO NOT USE self.packages
-        # for package in self.packages:
         for package in packages:
             if package.is_marked_for_removal or package.is_marked_for_upgrade:
                 size = 0
@@ -2315,9 +2237,7 @@ class ManualSelectionLogic(object):
         int
           number of rows
         """
-        # BUG: DO NOT USE self.packages
         # Never keep the reference to package list
-        # return len(self.packages)
         packages = []
         self.root.get_subtree(packages)
         packages.remove(self.root)
@@ -2359,7 +2279,6 @@ class ManualSelectionLogic(object):
 
         is_apply_install_successul = False
 
-        # BUG: DO NOT USE self.java
         java_pkgs = [c for c in self.root.children if "Java" in c.family]
         java = None if not java_pkgs else java_pkgs[0]
 
@@ -2403,8 +2322,6 @@ class ManualSelectionLogic(object):
                         [m for m in family_members if m.is_marked_for_install]
                     )
                     if not is_any_member_marked_for_install:
-                        # BUG: DO NOT USE self.java
-                        # for office in self.java.children:
                         for office in java.children:
                             if office.version != self.latest_available_LO_version:
                                 office.is_remove_opt_enabled = True
@@ -2417,15 +2334,10 @@ class ManualSelectionLogic(object):
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
                 # 2) Java not installed - install it
-                # BUG: DO NOT USE self.java
-                # if not self.java.is_installed:
                 if not java.is_installed:
-                    # BUG: DO NOT USE self.java
                     java.is_marked_for_install = True
                 # 3) if installing latest LO mark older versions for removal
                 if package.version == self.latest_available_LO_version:
-                    # BUG: DO NOT USE self.java
-                    # for office in self.java.children:
                     for office in java.children:
                         if office.version != self.latest_available_LO_version:
                             office.mark_for_removal()
@@ -2442,11 +2354,10 @@ class ManualSelectionLogic(object):
                         else:
                             # parent not installed - install it as well
                             package.parent.is_marked_for_install = True
-                # BUG: DO NOT USE self.packages
                 # TODO: Possible not true anymore
                 #     As the install option is only available
                 #     when no installed LO was detected
-                #     and thus the latest LO was added to self.packages
+                #     and thus the latest LO was added to packages
                 #     there is no need to care about other installed LO suits
                 #     Such situation should never occur.
                 is_apply_install_successul = True
@@ -2531,8 +2442,7 @@ class ManualSelectionLogic(object):
         return is_apply_removal_successul
 
     def _decide_what_to_download(self):
-        # BUG: DO NOT USE self.packages
-        # for package in self.packages:
+        # Never keep the reference to package list
         packages = []
         self.root.get_subtree(packages)
         packages.remove(self.root)
