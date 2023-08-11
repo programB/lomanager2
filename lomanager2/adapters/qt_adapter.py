@@ -29,6 +29,7 @@ class Adapter(QObject):
     status_signal = Signal(dict)
     worker_ready_signal = Signal()
     warning_signal = Signal()
+    init_signal = Signal()
     GUI_locks_signal = Signal()
 
     def __init__(self, app_main_model, app_main_view) -> None:
@@ -125,6 +126,9 @@ class Adapter(QObject):
 
         # Internal Signal: Shows dialog with initial system state
         self.warning_signal.connect(self._show_warnings)
+
+        # Internal Signal: Shows dialog with initial system state
+        self.init_signal.connect(self._run_flags_logic)
 
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
@@ -231,6 +235,7 @@ class Adapter(QObject):
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
         # or _choose_dir_and_install_from_local_copy
+        # or _run_flags_logic
         self.procedure_thread.start()
 
     def _update_progress_description(self, text: str):
@@ -302,6 +307,15 @@ class Adapter(QObject):
             is_local_enabled = False
         self._main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
 
+    def _run_flags_logic(self):
+        print("init signal emitted")
+        self.procedure_thread = ProcedureWorker(
+            function_to_run=self._main_model.flags_logic,
+        )
+        # Lock GUI elements, open progress window and start thread
+        self.worker_ready_signal.emit()
+        # self._main_model.flags_logic()
+
 
 def main():
     lomanager2App = QApplication([])
@@ -317,6 +331,7 @@ def main():
     adapter.change_GUI_locks()
 
     main_window.show()
+    adapter.init_signal.emit()
     sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 

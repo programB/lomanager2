@@ -42,12 +42,12 @@ class MainLogic(object):
             for i, warning in enumerate(self._warnings):
                 log.error(f"{i+1}: {warning}")
 
-        # 4) Gather system information
-        #           AND
-        # 5) Initialize state objects
-        #
-        #   (done in separate, reusable method)
-        self.refresh_state()
+        # # 4) Gather system information
+        # #           AND
+        # # 5) Initialize state objects
+        # #
+        # #   (done in separate, reusable method)
+        # self.refresh_state()
 
     # -- Public interface for MainLogic
 
@@ -789,6 +789,9 @@ class MainLogic(object):
             )
             info_list.append(msg)
 
+        self.any_limitations = any_limitations
+        self._warnings = info_list.copy()
+        self.refresh_state(args, kwargs)
         return (any_limitations, info_list)
 
     def _install(
