@@ -32,8 +32,12 @@ class MainLogic(object):
         # 2) Create state objects
         self._warnings = [""]
         self.global_flags = SignalFlags()
-        self._package_tree = VirtualPackage.__new__(VirtualPackage)
-        self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
+        # self._package_tree = VirtualPackage.__new__(VirtualPackage)
+        # self._package_menu = ManualSelectionLogic.__new__(ManualSelectionLogic)
+        self._package_tree = VirtualPackage("master-node", "", "")
+        self._package_menu = ManualSelectionLogic(
+            self._package_tree, "", "", "", "", "", ""
+        )
 
         # 3) Run flags_logic
         self.any_limitations, self._warnings = self._flags_logic()
@@ -225,8 +229,11 @@ class MainLogic(object):
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         # 5) build package dependency tree
-        root_node = self._build_dependency_tree(joint_package_list)
-        log.debug("TREE \n" + root_node.tree_representation())
+        # root_node = self._build_dependency_tree(joint_package_list)
+        self._build_dependency_tree(joint_package_list)
+        # log.debug("TREE \n" + root_node.tree_representation())
+        log.debug("TREE \n" + self._package_tree.tree_representation())
+
         # 4) apply virtual packages initial state logic
         (
             latest_Java,
@@ -235,11 +242,12 @@ class MainLogic(object):
             newest_LO,
             latest_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(root_node)
+            # ) = self._set_packages_initial_state(root_node)
+        ) = self._set_packages_initial_state(self._package_tree)
         # 6) Replace the old state of the list with the new one
         # self._virtual_packages = joint_package_list
         # 7) the same with package tree
-        self._package_tree = root_node
+        # self._package_tree = root_node
         # -- --------- --
 
         self._package_menu = ManualSelectionLogic(
@@ -256,9 +264,14 @@ class MainLogic(object):
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic
-    def _build_dependency_tree(self, packageS: list[VirtualPackage]) -> VirtualPackage:
-        master_node = VirtualPackage("master-node", "", "")
-        current_parent = master_node
+    # def _build_dependency_tree(self, packageS: list[VirtualPackage]) -> VirtualPackage:
+    def _build_dependency_tree(self, packageS: list[VirtualPackage]):
+        # Make master node forget its children
+        # (this will hopefully delete all descendent virtual package objects)
+        self._package_tree.children = []
+        # master_node = VirtualPackage("master-node", "", "")
+        # current_parent = master_node
+        current_parent = self._package_tree
         # 1st tier: Link Java and Clipart to top level package
         already_handled = []
         for package in packageS:
@@ -303,7 +316,7 @@ class MainLogic(object):
         # log.debug(f"packageS: {packageS}")
 
         # log.debug("\n" + master_node.tree_representation())
-        return master_node
+        # return master_node
 
     def _set_packages_initial_state(
         self,
