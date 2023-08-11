@@ -239,6 +239,7 @@ class Adapter(QObject):
         self._progress_view.progress_bar.setValue(0)
         self._progress_view.overall_progress_description.setText("")
         self._progress_view.overall_progress_bar.setValue(0)
+        self._progress_view.overall_progress_bar.setTextVisible(False)
         self._progress_view.show()
 
         # Change cursor
