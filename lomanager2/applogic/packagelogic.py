@@ -82,11 +82,9 @@ class MainLogic(object):
 
     def get_warnings(self):
         warnings = deepcopy(self._warnings)
-        self._clear_warnings()
-        return warnings
-
-    def _clear_warnings(self):
+        # clear warnings object
         self._warnings = []
+        return warnings
 
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
