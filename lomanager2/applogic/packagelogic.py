@@ -28,7 +28,7 @@ class MainLogic(object):
     def __init__(self) -> None:
         PCLOS.create_directories()
 
-        self._warnings = []
+        self.warnings = []
         self.global_flags = SignalFlags()
         self._package_tree = VirtualPackage("master-node", "", "")
         self._package_menu = ManualSelectionLogic(
@@ -64,10 +64,10 @@ class MainLogic(object):
         )
         space_available = PCLOS.free_space_in_dir(configuration.download_dir)
         # 4) set "ready for state transition flag" (T/F) accordingly
-        # 5) add warning message to self._warnings if not enough space
+        # 5) add warning message to self.warnings if not enough space
         if space_available < total_space_needed:
             self.global_flags.ready_to_apply_changes = False
-            self._warnings = [
+            self.warnings = [
                 {
                     "explanation": "Insufficient disk space for operation.",
                     "data": "Space needed: "
@@ -81,9 +81,9 @@ class MainLogic(object):
         return pms
 
     def get_warnings(self):
-        warnings = deepcopy(self._warnings)
+        warnings = deepcopy(self.warnings)
         # clear warnings object
-        self._warnings = []
+        self.warnings = []
         return warnings
 
     def apply_changes(self, *args, **kwargs):
@@ -676,7 +676,7 @@ class MainLogic(object):
         sets the status of the flags in the self.global_flags object
         to TRUE if some package operations need to be BLOCKED.
         When it happens a human readable messages for the cause
-        is added to the self._warnings list.
+        is added to the self.warnings list.
         """
 
         step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
@@ -779,7 +779,7 @@ class MainLogic(object):
             )
             info_list.append(msg)
 
-        self._warnings = info_list.copy()
+        self.warnings = info_list.copy()
         self.refresh_state(args, kwargs)
 
     def _install(

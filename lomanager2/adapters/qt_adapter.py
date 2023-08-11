@@ -139,7 +139,7 @@ class Adapter(QObject):
         # during initial system verification
         # if self._main_model.any_limitations:
         #     self.warning_signal.emit()
-        if self._main_model._warnings:
+        if self._main_model.warnings:
             self.warning_signal.emit()
 
     def _choose_dir_and_install_from_local_copy(self):
@@ -290,7 +290,7 @@ class Adapter(QObject):
 
     def _show_warnings(self):
         info = "Due to issues below this program will not be able to perform some operations:\n\n"
-        for i, warning in enumerate(self._main_model._warnings):
+        for i, warning in enumerate(self._main_model.warnings):
             info = info + str(i + 1) + ") " + warning + "\n\n"
         self._main_view.info_dialog.setWindowTitle("Warning")
         self._main_view.info_dialog.setText(info)
