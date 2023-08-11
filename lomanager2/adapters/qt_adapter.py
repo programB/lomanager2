@@ -133,6 +133,7 @@ class Adapter(QObject):
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
         self._main_model.refresh_state()
+        self._package_menu_viewmodel.layoutChanged.emit()
 
     def _choose_dir_and_install_from_local_copy(self):
         # Ask the user for directory with saved packages
