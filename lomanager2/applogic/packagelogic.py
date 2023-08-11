@@ -199,6 +199,119 @@ class MainLogic(object):
         )
         return status
 
+    def flags_logic(self, *args, **kwargs):
+        """'Rises' flags indicating some operations will not be available
+
+        This method performs checks of the operating system and
+        sets the status of the flags in the self.global_flags object
+        to TRUE if some package operations need to be BLOCKED.
+        When it happens a human readable messages for the cause
+        is added to the self.warnings list.
+        """
+
+        step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
+        # TODO: Add logging
+        info_list = []
+        msg = ""
+
+        step.start("Looking for running package managers")
+        status, running_managers = PCLOS.get_running_package_managers()
+        if status is False:
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
+        if running_managers:  # at least 1 package manager is running
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            self.global_flags.block_checking_4_updates = True
+            msg = (
+                "Some package managers are still running and "
+                "as a result you won't be able to install or uninstall "
+                "any packages. "
+                "Close the managers listed and restart this program.\n"
+                "manager: PID\n"
+            )
+            for manager, pids in running_managers.items():
+                msg = msg + manager + ": " + str(pids) + "  "
+            info_list.append(msg)
+        step.end(msg)
+
+        step.start("Looking for running Office")
+        status, running_office_suits = PCLOS.get_running_Office_processes()
+        if status is False:
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            msg = "Unexpected error. Could not read processes PIDs. Check log."
+            info_list.append(msg)
+        if running_office_suits:  # an office app is running
+            self.global_flags.block_removal = True
+            self.global_flags.block_network_install = True
+            self.global_flags.block_local_copy_install = True
+            msg = (
+                "Office is running and as a result you "
+                "won't be able to install or uninstall "
+                "any packages."
+                "Save your work, close Office and restart "
+                "this program.\n"
+                "Office: PID\n"
+            )
+            for office, pids in running_office_suits.items():
+                msg = msg + office + ": " + str(pids) + "  "
+            info_list.append(msg)
+        step.end(msg)
+
+        # no running manager prevents access to system rpm database
+        step.start("Checking for system updates")
+        if self.global_flags.block_checking_4_updates is False:
+            (
+                check_successfull,
+                is_updated,
+                explanation,
+            ) = PCLOS.check_system_update_status()
+            if check_successfull:
+                if not is_updated:
+                    self.global_flags.block_network_install = True
+                    msg = (
+                        "The OS is not fully updated "
+                        "and as a result installations are blocked. "
+                        "Update your system and restart "
+                        "this program."
+                    )
+                    info_list.append(msg)
+            else:
+                self.global_flags.block_network_install = True
+                msg = (
+                    "Failed to check update status \n"
+                    "and as a result you won't be able to install "
+                    "LibreOffice packages. "
+                    "Check you internet connection "
+                    "and restart this program."
+                )
+                if explanation:
+                    msg = msg + "\n" + explanation
+                info_list.append(msg)
+        step.end(msg)
+
+        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
+            self.global_flags.block_network_install = True
+            msg = (
+                "You are running outdated version of "
+                "this program! "
+                "As a result you won't be able to install "
+                "any packages."
+                "Update your system and restart "
+                "this program."
+            )
+            info_list.append(msg)
+
+        self.warnings = info_list.copy()
+        self.refresh_state(args, kwargs)
+
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
 
@@ -668,119 +781,6 @@ class MainLogic(object):
         for p in installed_virtual_packages:
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
-
-    def flags_logic(self, *args, **kwargs):
-        """'Rises' flags indicating some operations will not be available
-
-        This method performs checks of the operating system and
-        sets the status of the flags in the self.global_flags object
-        to TRUE if some package operations need to be BLOCKED.
-        When it happens a human readable messages for the cause
-        is added to the self.warnings list.
-        """
-
-        step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
-        # TODO: Add logging
-        info_list = []
-        msg = ""
-
-        step.start("Looking for running package managers")
-        status, running_managers = PCLOS.get_running_package_managers()
-        if status is False:
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            self.global_flags.block_checking_4_updates = True
-            msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
-        if running_managers:  # at least 1 package manager is running
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            self.global_flags.block_checking_4_updates = True
-            msg = (
-                "Some package managers are still running and "
-                "as a result you won't be able to install or uninstall "
-                "any packages. "
-                "Close the managers listed and restart this program.\n"
-                "manager: PID\n"
-            )
-            for manager, pids in running_managers.items():
-                msg = msg + manager + ": " + str(pids) + "  "
-            info_list.append(msg)
-        step.end(msg)
-
-        step.start("Looking for running Office")
-        status, running_office_suits = PCLOS.get_running_Office_processes()
-        if status is False:
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
-        if running_office_suits:  # an office app is running
-            self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
-            self.global_flags.block_local_copy_install = True
-            msg = (
-                "Office is running and as a result you "
-                "won't be able to install or uninstall "
-                "any packages."
-                "Save your work, close Office and restart "
-                "this program.\n"
-                "Office: PID\n"
-            )
-            for office, pids in running_office_suits.items():
-                msg = msg + office + ": " + str(pids) + "  "
-            info_list.append(msg)
-        step.end(msg)
-
-        # no running manager prevents access to system rpm database
-        step.start("Checking for system updates")
-        if self.global_flags.block_checking_4_updates is False:
-            (
-                check_successfull,
-                is_updated,
-                explanation,
-            ) = PCLOS.check_system_update_status()
-            if check_successfull:
-                if not is_updated:
-                    self.global_flags.block_network_install = True
-                    msg = (
-                        "The OS is not fully updated "
-                        "and as a result installations are blocked. "
-                        "Update your system and restart "
-                        "this program."
-                    )
-                    info_list.append(msg)
-            else:
-                self.global_flags.block_network_install = True
-                msg = (
-                    "Failed to check update status \n"
-                    "and as a result you won't be able to install "
-                    "LibreOffice packages. "
-                    "Check you internet connection "
-                    "and restart this program."
-                )
-                if explanation:
-                    msg = msg + "\n" + explanation
-                info_list.append(msg)
-        step.end(msg)
-
-        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self.global_flags.block_network_install = True
-            msg = (
-                "You are running outdated version of "
-                "this program! "
-                "As a result you won't be able to install "
-                "any packages."
-                "Update your system and restart "
-                "this program."
-            )
-            info_list.append(msg)
-
-        self.warnings = info_list.copy()
-        self.refresh_state(args, kwargs)
 
     def _install(
         self,
