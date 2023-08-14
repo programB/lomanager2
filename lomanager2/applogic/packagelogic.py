@@ -434,10 +434,10 @@ class MainLogic(object):
         # (direct children of Java) there is ONLY one such package, that
         # is the one recommended for installation
         # (latest version there is or a specific one if downgrading)
-        latest_available_LO_version = ""
+        recommended_LO_version = ""
         for office in LibreOfficeS:
             if office.is_installed is False:
-                latest_available_LO_version = office.version
+                recommended_LO_version = office.version
                 break
 
         newest_installed_Clipart_version = ""
@@ -474,34 +474,35 @@ class MainLogic(object):
 
         # 4) Check options for LibreOffice
         #
-        # LibreOffice is installed
+        # LibreOffice is installed?
         if newest_installed_LO_version:
             log.debug(f"Newest installed LO: {newest_installed_LO_version}")
 
-            # a) is latest version already installed ?
-            if newest_installed_LO_version == latest_available_LO_version:
-                log.debug("Installed LO is already at latest available version")
+            # a) is recommended version already installed ?
+            if newest_installed_LO_version == recommended_LO_version:
+                log.debug("Recommended LibreOffice version is already installed")
                 # Allow for additional lang packs installation
                 # - LibreOffice only !!! OpenOffice office is not supported.
                 # - skip lang packs that are already installed (obvious)
                 for office in LibreOfficeS:
-                    if office.version == latest_available_LO_version:
+                    if office.version == recommended_LO_version:
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_install()
 
-            # b) newer version available - allow upgrading
-            elif latest_available_LO_version == self._return_newer_ver(
-                latest_available_LO_version,
-                newest_installed_LO_version,
-            ):
+            # b) a different version is available - allow it to be installed
+            #    (We don't care if this different version is newer or older
+            #     than the one installed - what matters is that it's different.
+            #     It is very unlikely that it will be older unless we are
+            #     downgrading in which case this is what we actually want.)
+            else:
                 log.debug(
-                    "LibreOffice version available from the repo "
-                    f"({latest_available_LO_version}) is newer then "
+                    "Recommended LibreOffice version "
+                    f"({recommended_LO_version}) is different than "
                     f"the installed one ({newest_installed_LO_version}) "
                 )
                 # newest LibreOffice installed can be removed
-                # latest LibreOffice available can be installed
+                # recommended LibreOffice can be installed
                 # (older LibreOffice and OpenOffice versions
                 #  can only be uninstalled).
                 for office in LibreOfficeS:
@@ -510,29 +511,17 @@ class MainLogic(object):
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_removal()
-                    if office.version == latest_available_LO_version:
+                    if office.version == recommended_LO_version:
                         office.allow_install()
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_install()
 
-            # c) Something is wrong,
-            else:
-                log.error(
-                    "Something is wrong. Installed LibreOffice version "
-                    f"({newest_installed_LO_version}) is newer than the one "
-                    f"in the repo ({latest_available_LO_version}). "
-                    "This program will not allow you to make any changes."
-                )
-                for package in all_packages:
-                    package.disallow_operations()
-
-        # LibreOffice is not installed at all (OpenOffice may be present)
         else:
             log.debug("No installed LibreOffice found")
-            # Allow for latest available LibreOffice to be installed
+            # Allow the recommended version to be installed
             for office in LibreOfficeS:
-                if office.version == latest_available_LO_version:
+                if office.version == recommended_LO_version:
                     office.allow_install()
                     for lang in office.children:
                         lang.allow_install()
@@ -603,7 +592,7 @@ class MainLogic(object):
         return (
             latest_available_Java_version,
             newest_installed_Java_version,
-            latest_available_LO_version,
+            recommended_LO_version,
             newest_installed_LO_version,
             latest_available_Clipart_version,
             newest_installed_Clipart_version,
