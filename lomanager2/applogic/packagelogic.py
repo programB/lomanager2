@@ -335,7 +335,7 @@ class MainLogic(object):
         (
             latest_Java,
             newest_Java,
-            latest_LO,
+            recommended_LO,
             newest_LO,
             latest_Clip,
             newest_Clip,
@@ -346,7 +346,7 @@ class MainLogic(object):
             root_node=self._package_tree,
             latest_Java=latest_Java,
             newest_Java=newest_Java,
-            latest_LO=latest_LO,
+            recommended_LO=recommended_LO,
             newest_LO=newest_LO,
             latest_Clip=latest_Clip,
             newest_Clip=newest_Clip,
@@ -2082,7 +2082,7 @@ class ManualSelectionLogic(object):
         root_node: VirtualPackage,
         latest_Java: str,
         newest_Java: str,
-        latest_LO: str,
+        recommended_LO: str,
         newest_LO: str,
         latest_Clip: str,
         newest_Clip: str,
@@ -2090,7 +2090,7 @@ class ManualSelectionLogic(object):
         # TODO: Refactor these variables. In fact there is no need
         #       to make any intermediate ones, just name the
         #       arguments properly and get rid of "self."
-        self.latest_available_LO_version = latest_LO
+        self.recommended_LO_version = recommended_LO
         self.latest_available_clipart_version = latest_Clip
         self.newest_installed_LO_version = newest_LO
 
@@ -2332,17 +2332,17 @@ class ManualSelectionLogic(object):
                     for lang in package.children:
                         lang.is_marked_for_install = False
                 # 4) if unmarking the last LO package of
-                #    the latest available version
+                #    the recommended version
                 #    make the removal option for installed Office
                 #    accessible again
-                if package.version == self.latest_available_LO_version:
+                if package.version == self.recommended_LO_version:
                     family_members = package.get_your_family()
                     is_any_member_marked_for_install = any(
                         [m for m in family_members if m.is_marked_for_install]
                     )
                     if not is_any_member_marked_for_install:
                         for office in java.children:
-                            if office.version != self.latest_available_LO_version:
+                            if office.version != self.recommended_LO_version:
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
                                     lang.is_remove_opt_enabled = True
@@ -2355,10 +2355,10 @@ class ManualSelectionLogic(object):
                 # 2) Java not installed - install it
                 if not java.is_installed:
                     java.is_marked_for_install = True
-                # 3) if installing latest LO mark older versions for removal
-                if package.version == self.latest_available_LO_version:
+                # 3) if installing recommended LO mark older versions for removal
+                if package.version == self.recommended_LO_version:
                     for office in java.children:
-                        if office.version != self.latest_available_LO_version:
+                        if office.version != self.recommended_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
                             for lang in office.children:
