@@ -677,7 +677,11 @@ class MainLogic(object):
         ]
         available_virtual_packages.append(java_core_vp)
 
-        LO_ver = configuration.latest_available_LO_version
+        # Decide which version should be recommended for installation
+        if configuration.force_specific_LO_version != "":
+            LO_ver = configuration.force_specific_LO_version
+        else:
+            LO_ver = configuration.latest_available_LO_version
         LO_minor_ver = self._make_minor_ver(LO_ver)
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
