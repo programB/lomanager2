@@ -308,47 +308,60 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
-    for version in configuration.LO_versionS:
-        if pathlib.Path("/usr/bin/libreoffice" + version).exists():
-            dbg_message = ("Detected LibreOffice ver.: {}").format(version)
-            log.debug(dbg_message)
+    if pathlib.Path("/usr/bin").glob("libreoffice*"):
+        log.debug("Detected LibreOffice binary")
+        # Check if the ure rpm package is installed
+        success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
+        if success and reply:
+            log.debug("LibreOffice's ure package is installed")
+            ure_package_str = reply.split("\n")[0]
+            # Get full version by quering this rpm package
+            success, reply = run_shell_command(
+                f"rpm -q {ure_package_str} --qf %{{version}}"
+            )
+            full_version = reply.strip()
+            log.debug(
+                f"LibreOffice office version read from ure package is: {full_version}"
+            )
+            # base_version is first 2 numbers eg. 7.5.4.2 -> 7.5
+            base_version = ".".join(full_version.split(".")[:2])
 
-            # Try to detect language packs installed but only for
-            # for series 7.0 and above
-            if int(version.split(".")[0]) < 7:
-                list_of_detected_suits.append(("LibreOffice", version, ()))
-            else:
-                success, reply = run_shell_command(
-                    f"rpm -qa | grep libreoffice{version}", err_check=False
+            # Add core package to the list
+            list_of_detected_suits.append(("LibreOffice", full_version, ()))
+            # Try to detect language packs installed for that version
+            success, reply = run_shell_command(
+                f"rpm -qa | grep libreoffice{base_version}", err_check=False
+            )
+            if success and reply:
+                regex_lang = re.compile(
+                    rf"^libreoffice{base_version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{full_version}[0-9\-]*[0-9]$"
                 )
-                if success and reply:
-                    regex_lang = re.compile(
-                        rf"^libreoffice{version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{version}[0-9\-\.]*[0-9]$"
+                # example matches:
+                # libreoffice7.5-fr-7.5.4.2-2
+                # (the last digit after the "-" sing is the rpm release version
+                # and is of no interest)
+                # #  det_lang = "fr" det_regio = ""
+                # libreoffice7.4-ca-valencia-7.4.4.2-2
+                # #  det_lang = "ca" det_regio = "-valencia"
+                # libreoffice7.4-en-GB-7.4.4.2-2
+                # #  det_lang = "en" det_regio = "-GB"
+                langs_found = []
+                for package in reply.split("\n"):
+                    if match := regex_lang.search(package):
+                        det_lang = match.group("det_lang")
+                        det_regio = match.group("det_regio")
+                        if det_regio:
+                            det_lang = det_lang + det_regio
+                        langs_found.append(det_lang)
+                list_of_detected_suits.append(
+                    (
+                        "LibreOffice",
+                        full_version,
+                        tuple(langs_found),
                     )
-                    # example matches:
-                    # libreoffice7.5-fr-7.5.4.2-2
-                    # #  det_lang = "fr" det_regio = ""
-                    # libreoffice7.4-ca-valencia-7.4.4.2-2
-                    # #  det_lang = "ca" det_regio = "-valencia"
-                    # libreoffice7.4-en-GB-7.4.4.2-2
-                    # #  det_lang = "en" det_regio = "-GB"
-                    langs_found = []
-                    for package in reply.split("\n"):
-                        if match := regex_lang.search(package):
-                            det_lang = match.group("det_lang")
-                            det_regio = match.group("det_regio")
-                            if det_regio:
-                                det_lang = det_lang + det_regio
-                            langs_found.append(det_lang)
-                    list_of_detected_suits.append(
-                        (
-                            "LibreOffice",
-                            version,
-                            tuple(langs_found),
-                        )
-                    )
-                else:
-                    list_of_detected_suits.append(("LibreOffice", version, ()))
+                )
+            else:
+                log.warning("LibreOffice binary detected but no installed rpm found.")
 
     inf_message = ("All detected office suits (and langs): {}").format(
         list_of_detected_suits
