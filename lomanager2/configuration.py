@@ -58,31 +58,3 @@ PCLOS_repo_path = "/os/Linux/distr/pclinuxos/pclinuxos/apt/pclinuxos/64bit/RPMS.
 DocFund_base_url = "http://download.documentfoundation.org/libreoffice/stable/"
 DocFund_path_ending = "/rpm/x86_64/"
 
-# The list of LibreOffice versions that were available for install in PCLOS
-# (excluding version 3.3 and its subversions)
-LO_versionS = [
-    "3.4",
-    "3.5",
-    "3.6",
-    "4.0",
-    "4.1",
-    "4.2",
-    "4.3",
-    "4.4",
-    "5.0",
-    "5.1",
-    "5.2",
-    "5.3",
-    "5.4",
-    "6.0",
-    "6.1",
-    "6.2",
-    "6.3",
-    "6.4",
-    "7.0",
-    "7.1",
-    "7.2",
-    "7.3",
-    "7.4",
-    "7.5",
-]
