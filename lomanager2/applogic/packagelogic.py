@@ -517,12 +517,12 @@ class MainLogic(object):
                     if office.version == newest_installed_LO_version:
                         office.allow_removal()
                         for lang in office.children:
-                            if not lang.is_installed:
+                            if lang.is_installed:
                                 lang.allow_removal()
                     if office.version == recommended_LO_version:
                         office.allow_install()
                         for lang in office.children:
-                            if not lang.is_installed:
+                            if lang.is_installed is False:
                                 lang.allow_install()
 
         else:
