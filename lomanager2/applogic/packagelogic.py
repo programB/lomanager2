@@ -448,9 +448,11 @@ class MainLogic(object):
                     clipart.version,
                     newest_installed_LO_version,
                 )
-        latest_available_Clipart_version = (
-            configuration.latest_available_clipart_version
-        )
+        recommended_Clipart_version = ""
+        for clipart in clipartS:
+            if clipart.is_installed is False:
+                recommended_Clipart_version = clipart.version
+                break
 
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
@@ -533,44 +535,30 @@ class MainLogic(object):
         #
         # Clipart is installed
         if newest_installed_Clipart_version:
-            # a) Installed Clipart already at latest version,
-            if newest_installed_Clipart_version == latest_available_Clipart_version:
+            # a) Installed Clipart already at recommended version,
+            if newest_installed_Clipart_version == recommended_Clipart_version:
                 log.debug("Clipart is already at latest available version")
-            # b) Newer version available - allow upgrading
-            elif latest_available_Clipart_version == self._return_newer_ver(
-                latest_available_Clipart_version,
-                newest_installed_Clipart_version,
-            ):
+            # b) different version is recommended
+            else:
                 log.debug(
-                    "Clipart version available from the repo "
-                    f"({latest_available_Clipart_version}) is newer "
-                    "then the installed one "
-                    f"({newest_installed_Clipart_version})"
+                    "Recommended Clipart version "
+                    f"({recommended_Clipart_version}) is different than "
+                    f"the installed one ({newest_installed_Clipart_version})"
                 )
                 # newest Clipart installed can be removed
                 # latest Clipart available can be installed
                 for clipart in clipartS:
                     if clipart.version == newest_installed_Clipart_version:
                         clipart.allow_removal()
-                    if clipart.version == latest_available_Clipart_version:
+                    if clipart.version == recommended_Clipart_version:
                         clipart.allow_install()
-            # c) Something is wrong,
-            else:
-                log.error(
-                    "Something is wrong. Installed Openclipart version "
-                    f"({newest_installed_Clipart_version}) is newer than "
-                    f"the one in the repo({latest_available_Clipart_version}). "
-                    "This program will not allow you to make any changes."
-                )
-                for package in all_packages:
-                    package.disallow_operations()
 
         # Clipart is not installed at all
         else:
             log.debug("No installed Clipart library found")
-            # Allow for latest available Clipart to be installed
+            # Allow the recommended version to be installed 
             for clipart in clipartS:
-                if clipart.version == latest_available_Clipart_version:
+                if clipart.version == recommended_Clipart_version:
                     clipart.allow_install()
 
         # If some operations are not permited because
@@ -597,7 +585,7 @@ class MainLogic(object):
             newest_installed_Java_version,
             recommended_LO_version,
             newest_installed_LO_version,
-            latest_available_Clipart_version,
+            recommended_Clipart_version,
             newest_installed_Clipart_version,
         )
 
