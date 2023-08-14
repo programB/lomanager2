@@ -310,7 +310,7 @@ class MainLogic(object):
             info_list.append(msg)
 
         self.warnings = info_list.copy()
-        self.refresh_state(args, kwargs)
+        self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
