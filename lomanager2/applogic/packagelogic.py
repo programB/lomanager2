@@ -333,23 +333,23 @@ class MainLogic(object):
 
         step.start("Applying restrictions")
         (
-            latest_Java,
-            newest_Java,
-            recommended_LO,
-            newest_LO,
-            recommended_Clip,
-            newest_Clip,
+            latest_Java_ver,
+            newest_Java_ver,
+            recommended_LO_ver,
+            newest_LO_ver,
+            recommended_Clip_ver,
+            newest_Clip_ver,
         ) = self._set_packages_initial_state()
         step.end()
 
         self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
-            latest_Java=latest_Java,
-            newest_Java=newest_Java,
-            recommended_LO=recommended_LO,
-            newest_LO=newest_LO,
-            recommended_Clip=recommended_Clip,
-            newest_Clip=newest_Clip,
+            latest_Java_version=latest_Java_ver,
+            newest_Java_version=newest_Java_ver,
+            recommended_LO_version=recommended_LO_ver,
+            newest_installed_LO_version=newest_LO_ver,
+            recommended_Clipart_version=recommended_Clip_ver,
+            newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
 
@@ -2069,19 +2069,16 @@ class ManualSelectionLogic(object):
     def __init__(
         self,
         root_node: VirtualPackage,
-        latest_Java: str,
-        newest_Java: str,
-        recommended_LO: str,
-        newest_LO: str,
-        recommended_Clip: str,
-        newest_Clip: str,
+        latest_Java_version: str,
+        newest_Java_version: str,
+        recommended_LO_version: str,
+        newest_installed_LO_version: str,
+        recommended_Clipart_version: str,
+        newest_Clipart_version: str,
     ) -> None:
-        # TODO: Refactor these variables. In fact there is no need
-        #       to make any intermediate ones, just name the
-        #       arguments properly and get rid of "self."
-        self.recommended_LO_version = recommended_LO
-        self.recommended_clipart_version = recommended_Clip
-        self.newest_installed_LO_version = newest_LO
+        self.recommended_LO_version = recommended_LO_version
+        self.recommended_clipart_version = recommended_Clipart_version
+        self.newest_installed_LO_version = newest_installed_LO_version
 
         # Object representing items in the menu
         self.root = root_node
