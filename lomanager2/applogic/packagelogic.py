@@ -421,7 +421,7 @@ class MainLogic(object):
         newest_installed_Java_version = ""
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
-            newest_installed_LO_version = java.version
+            newest_installed_Java_version = java.version
         latest_available_Java_version = configuration.latest_available_java_version
         # java install/remove/upgrade options are never visible
 
