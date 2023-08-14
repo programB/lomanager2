@@ -314,13 +314,15 @@ class MainLogic(object):
 
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
+        statusfunc = statusfunc_closure(callbacks=kwargs)
+        msg = ""
 
         step.start("Detecting installed software")
         installed_vps = self._detect_installed_software()
         step.end()
 
         step.start("Building available software list")
-        available_vps = self._get_available_software()
+        available_vps, msg = self._get_available_software()
         step.end()
 
         step.start("Building dependency tree")
@@ -352,6 +354,9 @@ class MainLogic(object):
             newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
+        if msg:
+            return statusfunc(isOK=False, msg=msg)
+        return statusfunc(isOK=True, msg="")
 
     # -- end Public interface for MainLogic
 
@@ -641,6 +646,7 @@ class MainLogic(object):
 
     def _get_available_software(self):
         available_virtual_packages = []
+        msg = ""
 
         java_ver = configuration.latest_available_java_version
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
@@ -666,6 +672,7 @@ class MainLogic(object):
         # Decide which version should be recommended for installation
         if configuration.force_specific_LO_version != "":
             LO_ver = configuration.force_specific_LO_version
+            msg += f"Downgrade of LibreOffice to version {LO_ver} is recommended. "
         else:
             LO_ver = configuration.latest_available_LO_version
         LO_minor_ver = self._make_minor_ver(LO_ver)
@@ -739,7 +746,7 @@ class MainLogic(object):
         log.debug(f">>PRETENDING<< available software:")
         for p in available_virtual_packages:
             log.debug(f"                                 *  {p}")
-        return available_virtual_packages
+        return (available_virtual_packages, msg)
 
     def _detect_installed_software(self):
         installed_virtual_packages = []
