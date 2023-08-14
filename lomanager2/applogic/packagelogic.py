@@ -430,7 +430,15 @@ class MainLogic(object):
                     office.version,
                     newest_installed_LO_version,
                 )
-        latest_available_LO_version = configuration.latest_available_LO_version
+        # Initialy among not installed LibreOffice core packages
+        # (direct children of Java) there is ONLY one such package, that
+        # is the one recommended for installation
+        # (latest version there is or a specific one if downgrading)
+        latest_available_LO_version = ""
+        for office in LibreOfficeS:
+            if office.is_installed is False:
+                latest_available_LO_version = office.version
+                break
 
         newest_installed_Clipart_version = ""
         clipartS = [c for c in root.children if "Clipart" in c.family]
@@ -726,6 +734,7 @@ class MainLogic(object):
                 },
             ]
             available_virtual_packages.append(office_lang_vp)
+
         clipart_ver = configuration.latest_available_clipart_version
         clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
         clipart_core_vp.is_installed = False
