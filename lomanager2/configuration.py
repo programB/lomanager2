@@ -7,7 +7,8 @@ logging.basicConfig(
 )
 
 lomanger2_version = "7.5"
-latest_available_LO_version = "7.5"
+# latest_available_LO_version = "7.5"
+latest_available_LO_version = "7.5.4.2"
 latest_available_LO_minor_version = "7.5.4"
 latest_available_clipart_version = "7.5"
 # latest_available_java_version = "16"

@@ -1303,12 +1303,14 @@ class MainLogic(object):
         files_to_remove = []
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
+            # base_version is first 2 numbers eg. 7.5.4.2 -> 7.5
+            base_version = ".".join(lang.version.split(".")[:2])
             # LibreOffice langs removal procedures
             expected_rpm_names = [
-                f"libreoffice{lang.version}-{lang.kind}-",
-                f"libreoffice{lang.version}-dict-{lang.kind}-",
-                f"libobasis{lang.version}-{lang.kind}-",
-                f"libobasis{lang.version}-{lang.kind}-help-",
+                f"libreoffice{base_version}-{lang.kind}-",
+                f"libreoffice{base_version}-dict-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-help-",
             ]
             for candidate in expected_rpm_names:
                 success, reply = PCLOS.run_shell_command(
@@ -1357,32 +1359,35 @@ class MainLogic(object):
                 for icon in pathlib.Path("/usr/share/icons").glob("libreoffice-*"):
                     files_to_remove.append(icon)
 
-            if core.version in configuration.LO_versionS:
+            # All version (with subvariants) starting from 3.4 and later
+            # (Historicaly these were:
+            #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
+            #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
+            else:
+                # base_version is first 2 numbers eg. 7.5.4.2 -> 7.5
+                base_version = ".".join(core.version.split(".")[:2])
                 # All if-s in case (extremely unlikely) someone managed to
                 # install more then one version
-                if core.version == "3.4":
-                    # if [ "$bv" == "3.4" ]
-                    # then
-                    #   apt-get remove libreoffice$bv-ure libreoffice$bv-mandriva-menus -y
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if core.version.startswith("3.4"):
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-mandriva-menus")
                 if (
-                    core.version == "3.5"
-                    or core.version == "3.6"
-                    or core.version == "4.0"
+                    core.version.startswith("3.5")
+                    or core.version.startswith("3.6")
+                    or core.version.startswith("4.0")
                 ):
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-stdlibs")
-                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-stdlibs")
+                    rpms_to_rm.append(f"libreoffice{base_version}-mandriva-menus")
                 if (
-                    core.version != "3.4"
-                    and core.version != "3.5"
-                    and core.version != "3.6"
-                    and core.version != "4.0"
+                    core.version.startswith("3.4") is False
+                    and core.version.startswith("3.5") is False
+                    and core.version.startswith("3.6") is False
+                    and core.version.startswith("4.0") is False
                 ):
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-freedesktop-menus")
-                    rpms_to_rm.append(f"libobasis{core.version}-ooofonts")
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-freedesktop-menus")
+                    rpms_to_rm.append(f"libobasis{base_version}-ooofonts")
                 # Leftover files and directories to remove (common for all vers.)
                 for user in users:
                     dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
