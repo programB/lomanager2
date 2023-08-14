@@ -337,7 +337,7 @@ class MainLogic(object):
             newest_Java,
             recommended_LO,
             newest_LO,
-            latest_Clip,
+            recommended_Clip,
             newest_Clip,
         ) = self._set_packages_initial_state(self._package_tree)
         step.end()
@@ -348,7 +348,7 @@ class MainLogic(object):
             newest_Java=newest_Java,
             recommended_LO=recommended_LO,
             newest_LO=newest_LO,
-            latest_Clip=latest_Clip,
+            recommended_Clip=recommended_Clip,
             newest_Clip=newest_Clip,
         )
         self.global_flags.ready_to_apply_changes = True
@@ -556,7 +556,7 @@ class MainLogic(object):
         # Clipart is not installed at all
         else:
             log.debug("No installed Clipart library found")
-            # Allow the recommended version to be installed 
+            # Allow the recommended version to be installed
             for clipart in clipartS:
                 if clipart.version == recommended_Clipart_version:
                     clipart.allow_install()
@@ -2075,14 +2075,14 @@ class ManualSelectionLogic(object):
         newest_Java: str,
         recommended_LO: str,
         newest_LO: str,
-        latest_Clip: str,
+        recommended_Clip: str,
         newest_Clip: str,
     ) -> None:
         # TODO: Refactor these variables. In fact there is no need
         #       to make any intermediate ones, just name the
         #       arguments properly and get rid of "self."
         self.recommended_LO_version = recommended_LO
-        self.latest_available_clipart_version = latest_Clip
+        self.recommended_clipart_version = recommended_Clip
         self.newest_installed_LO_version = newest_LO
 
         # Object representing items in the menu
