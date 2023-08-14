@@ -277,7 +277,7 @@ class Adapter(QObject):
     def _display_status_information(self, status: dict):
         if "explanation" in status.keys() and "is_OK" in status.keys():
             info = status["explanation"]
-            if status["is_OK"] is True:
+            if status["is_OK"] is True and info != "":
                 self._main_view.info_dialog.setWindowTitle("Success")
                 self._main_view.info_dialog.setText(info)
                 self._main_view.info_dialog.setIcon(QMessageBox.Icon.Information)
