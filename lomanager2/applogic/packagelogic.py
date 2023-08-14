@@ -444,7 +444,10 @@ class MainLogic(object):
         clipartS = [c for c in root.children if "Clipart" in c.family]
         for clipart in clipartS:
             if clipart.is_installed:
-                newest_installed_Clipart_version = clipart.version
+                newest_installed_Clipart_version = self._return_newer_ver(
+                    clipart.version,
+                    newest_installed_LO_version,
+                )
         latest_available_Clipart_version = (
             configuration.latest_available_clipart_version
         )
