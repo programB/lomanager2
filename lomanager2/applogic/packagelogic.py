@@ -602,15 +602,17 @@ class MainLogic(object):
         )
 
     def _return_newer_ver(self, v1: str, v2: str) -> str:
-        """Returns the newer of to versions passed
+        """Returns the newer of two versions passed
 
         Version strings are assumed to be dot
         separated eg. "4.5"
         These strings MUST follow the pattern
         but need not to be of the same length.
-        Any version is newer then an empty string
+        (in such case shorter version string is padded
+         with zeros before comparison)
+        Any version is newer then an empty string.
         Empty string is returned is both v1 and v2
-        empty strings.
+        are empty strings.
 
         Parameters
         ----------
@@ -635,17 +637,21 @@ class MainLogic(object):
             else:
                 v1_int = [int(i) for i in v1.split(".")]
                 v2_int = [int(i) for i in v2.split(".")]
-                size_of_smaller_list = (
-                    len(v2_int) if (len(v2_int) < len(v1_int)) else len(v1_int)
-                )
-                for i in range(size_of_smaller_list):
+
+                # pad shorter list with zeros to match sizes
+                diff = abs(len(v1_int) - len(v2_int))
+                v1_int.extend([0] * diff) if len(v1_int) <= len(
+                    v2_int
+                ) else v2_int.extend([0] * diff)
+
+                for i in range(len(v1_int)):
                     if v1_int[i] == v2_int[i]:
                         continue
                     elif v1_int[i] > v2_int[i]:
                         return v1
                     else:
                         return v2
-        return v1  # ver1 = ver2
+        return v1  # ver1 == ver2
 
     def _get_available_software(self):
         available_virtual_packages = []
