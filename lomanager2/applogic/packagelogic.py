@@ -1237,7 +1237,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for oo in OpenOfficeS:
             # OpenOffice removal procedures
-            if oo.version.find("2.") == 0:  # any series 2.x
+            if oo.version.startswith("2."):  # any series 2.x
                 rpms_to_rm.extend(["openoffice.org", "openoffice.org-mimelnk"])
                 # Leftover files and directories to remove
                 for user in users:
@@ -1251,7 +1251,7 @@ class MainLogic(object):
                     dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
                 for leftover_dir in pathlib.Path("/opt").glob("openoffice*"):
                     dirs_to_rm.append(leftover_dir)
-            if oo.version.find("3.") == 0 and oo.version != "3.0.0":  # any later
+            if oo.version.startswith("3.") and oo.version != "3.0.0":  # any later
                 rpms_to_rm.append("openoffice.org-ure")
                 rpms_to_rm.append(f"openoffice.org{oo.version}-mandriva-menus")
                 # Leftover files and directories to remove
@@ -1336,7 +1336,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for core in LibreOfficeCORE:
             # Removal procedures for LibreOffice core.
-            if core.version.find("3.3") == 0:  # 3.3 and its subvariants
+            if core.version.startswith("3.3"):  # 3.3 and its subvariants
                 rpms_to_rm.append(f"libreoffice3-ure")
                 rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
                 # Leftover files and directories to remove
