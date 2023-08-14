@@ -339,7 +339,7 @@ class MainLogic(object):
             newest_LO,
             recommended_Clip,
             newest_Clip,
-        ) = self._set_packages_initial_state(self._package_tree)
+        ) = self._set_packages_initial_state()
         step.end()
 
         self._package_menu = ManualSelectionLogic(
@@ -406,11 +406,9 @@ class MainLogic(object):
         # log.debug(f"packageS: {packageS}")
         # log.debug("\n" + master_node.tree_representation())
 
-    def _set_packages_initial_state(
-        self,
-        root: VirtualPackage,
-    ) -> tuple[str, str, str, str, str, str]:
+    def _set_packages_initial_state(self) -> tuple[str, str, str, str, str, str]:
         """Decides on initial conditions for packages install/removal."""
+        root = self._package_tree
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
