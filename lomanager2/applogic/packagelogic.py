@@ -678,7 +678,8 @@ class MainLogic(object):
         available_virtual_packages.append(java_core_vp)
 
         LO_ver = configuration.latest_available_LO_version
-        LO_minor_ver = configuration.latest_available_LO_minor_version
+        # LO_minor_ver is first 3 numbers eg. 7.5.4.2 -> 7.5.4
+        LO_minor_ver = ".".join(LO_ver.split(".")[:3])
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
         office_core_vp.real_files = [
