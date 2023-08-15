@@ -310,17 +310,19 @@ class MainLogic(object):
             info_list.append(msg)
 
         self.warnings = info_list.copy()
-        self.refresh_state(args, kwargs)
+        self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
+        statusfunc = statusfunc_closure(callbacks=kwargs)
+        msg = ""
 
         step.start("Detecting installed software")
         installed_vps = self._detect_installed_software()
         step.end()
 
         step.start("Building available software list")
-        available_vps = self._get_available_software()
+        available_vps, msg = self._get_available_software()
         step.end()
 
         step.start("Building dependency tree")
@@ -333,25 +335,28 @@ class MainLogic(object):
 
         step.start("Applying restrictions")
         (
-            latest_Java,
-            newest_Java,
-            latest_LO,
-            newest_LO,
-            latest_Clip,
-            newest_Clip,
-        ) = self._set_packages_initial_state(self._package_tree)
+            latest_Java_ver,
+            newest_Java_ver,
+            recommended_LO_ver,
+            newest_LO_ver,
+            recommended_Clip_ver,
+            newest_Clip_ver,
+        ) = self._set_packages_initial_state()
         step.end()
 
         self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
-            latest_Java=latest_Java,
-            newest_Java=newest_Java,
-            latest_LO=latest_LO,
-            newest_LO=newest_LO,
-            latest_Clip=latest_Clip,
-            newest_Clip=newest_Clip,
+            latest_Java_version=latest_Java_ver,
+            newest_Java_version=newest_Java_ver,
+            recommended_LO_version=recommended_LO_ver,
+            newest_installed_LO_version=newest_LO_ver,
+            recommended_Clipart_version=recommended_Clip_ver,
+            newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
+        if msg:
+            return statusfunc(isOK=False, msg=msg)
+        return statusfunc(isOK=True, msg="")
 
     # -- end Public interface for MainLogic
 
@@ -406,11 +411,9 @@ class MainLogic(object):
         # log.debug(f"packageS: {packageS}")
         # log.debug("\n" + master_node.tree_representation())
 
-    def _set_packages_initial_state(
-        self,
-        root: VirtualPackage,
-    ) -> tuple[str, str, str, str, str, str]:
+    def _set_packages_initial_state(self) -> tuple[str, str, str, str, str, str]:
         """Decides on initial conditions for packages install/removal."""
+        root = self._package_tree
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
@@ -418,7 +421,7 @@ class MainLogic(object):
         newest_installed_Java_version = ""
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
-            newest_installed_LO_version = java.version
+            newest_installed_Java_version = java.version
         latest_available_Java_version = configuration.latest_available_java_version
         # java install/remove/upgrade options are never visible
 
@@ -430,16 +433,29 @@ class MainLogic(object):
                     office.version,
                     newest_installed_LO_version,
                 )
-        latest_available_LO_version = configuration.latest_available_LO_version
+        # Initialy among not installed LibreOffice core packages
+        # (direct children of Java) there is ONLY one such package, that
+        # is the one recommended for installation
+        # (latest version there is or a specific one if downgrading)
+        recommended_LO_version = ""
+        for office in LibreOfficeS:
+            if office.is_installed is False:
+                recommended_LO_version = office.version
+                break
 
         newest_installed_Clipart_version = ""
         clipartS = [c for c in root.children if "Clipart" in c.family]
         for clipart in clipartS:
             if clipart.is_installed:
-                newest_installed_Clipart_version = clipart.version
-        latest_available_Clipart_version = (
-            configuration.latest_available_clipart_version
-        )
+                newest_installed_Clipart_version = self._return_newer_ver(
+                    clipart.version,
+                    newest_installed_LO_version,
+                )
+        recommended_Clipart_version = ""
+        for clipart in clipartS:
+            if clipart.is_installed is False:
+                recommended_Clipart_version = clipart.version
+                break
 
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
@@ -466,65 +482,54 @@ class MainLogic(object):
 
         # 4) Check options for LibreOffice
         #
-        # LibreOffice is installed
+        # LibreOffice is installed?
         if newest_installed_LO_version:
             log.debug(f"Newest installed LO: {newest_installed_LO_version}")
 
-            # a) is latest version already installed ?
-            if newest_installed_LO_version == latest_available_LO_version:
-                log.debug("Installed LO is already at latest available version")
+            # a) is recommended version already installed ?
+            if newest_installed_LO_version == recommended_LO_version:
+                log.debug("Recommended LibreOffice version is already installed")
                 # Allow for additional lang packs installation
                 # - LibreOffice only !!! OpenOffice office is not supported.
                 # - skip lang packs that are already installed (obvious)
                 for office in LibreOfficeS:
-                    if office.version == latest_available_LO_version:
+                    if office.version == recommended_LO_version:
                         for lang in office.children:
                             if not lang.is_installed:
                                 lang.allow_install()
 
-            # b) newer version available - allow upgrading
-            elif latest_available_LO_version == self._return_newer_ver(
-                latest_available_LO_version,
-                newest_installed_LO_version,
-            ):
+            # b) a different version is available - allow it to be installed
+            #    (We don't care if this different version is newer or older
+            #     than the one installed - what matters is that it's different.
+            #     It is very unlikely that it will be older unless we are
+            #     downgrading in which case this is what we actually want.)
+            else:
                 log.debug(
-                    "LibreOffice version available from the repo "
-                    f"({latest_available_LO_version}) is newer then "
+                    "Recommended LibreOffice version "
+                    f"({recommended_LO_version}) is different than "
                     f"the installed one ({newest_installed_LO_version}) "
                 )
                 # newest LibreOffice installed can be removed
-                # latest LibreOffice available can be installed
+                # recommended LibreOffice can be installed
                 # (older LibreOffice and OpenOffice versions
                 #  can only be uninstalled).
                 for office in LibreOfficeS:
                     if office.version == newest_installed_LO_version:
                         office.allow_removal()
                         for lang in office.children:
-                            if not lang.is_installed:
+                            if lang.is_installed:
                                 lang.allow_removal()
-                    if office.version == latest_available_LO_version:
+                    if office.version == recommended_LO_version:
                         office.allow_install()
                         for lang in office.children:
-                            if not lang.is_installed:
+                            if lang.is_installed is False:
                                 lang.allow_install()
 
-            # c) Something is wrong,
-            else:
-                log.error(
-                    "Something is wrong. Installed LibreOffice version "
-                    f"({newest_installed_LO_version}) is newer than the one "
-                    f"in the repo ({latest_available_LO_version}). "
-                    "This program will not allow you to make any changes."
-                )
-                for package in all_packages:
-                    package.disallow_operations()
-
-        # LibreOffice is not installed at all (OpenOffice may be present)
         else:
             log.debug("No installed LibreOffice found")
-            # Allow for latest available LibreOffice to be installed
+            # Allow the recommended version to be installed
             for office in LibreOfficeS:
-                if office.version == latest_available_LO_version:
+                if office.version == recommended_LO_version:
                     office.allow_install()
                     for lang in office.children:
                         lang.allow_install()
@@ -533,44 +538,30 @@ class MainLogic(object):
         #
         # Clipart is installed
         if newest_installed_Clipart_version:
-            # a) Installed Clipart already at latest version,
-            if newest_installed_Clipart_version == latest_available_Clipart_version:
+            # a) Installed Clipart already at recommended version,
+            if newest_installed_Clipart_version == recommended_Clipart_version:
                 log.debug("Clipart is already at latest available version")
-            # b) Newer version available - allow upgrading
-            elif latest_available_Clipart_version == self._return_newer_ver(
-                latest_available_Clipart_version,
-                newest_installed_Clipart_version,
-            ):
+            # b) different version is recommended
+            else:
                 log.debug(
-                    "Clipart version available from the repo "
-                    f"({latest_available_Clipart_version}) is newer "
-                    "then the installed one "
-                    f"({newest_installed_Clipart_version})"
+                    "Recommended Clipart version "
+                    f"({recommended_Clipart_version}) is different than "
+                    f"the installed one ({newest_installed_Clipart_version})"
                 )
                 # newest Clipart installed can be removed
                 # latest Clipart available can be installed
                 for clipart in clipartS:
                     if clipart.version == newest_installed_Clipart_version:
                         clipart.allow_removal()
-                    if clipart.version == latest_available_Clipart_version:
+                    if clipart.version == recommended_Clipart_version:
                         clipart.allow_install()
-            # c) Something is wrong,
-            else:
-                log.error(
-                    "Something is wrong. Installed Openclipart version "
-                    f"({newest_installed_Clipart_version}) is newer than "
-                    f"the one in the repo({latest_available_Clipart_version}). "
-                    "This program will not allow you to make any changes."
-                )
-                for package in all_packages:
-                    package.disallow_operations()
 
         # Clipart is not installed at all
         else:
             log.debug("No installed Clipart library found")
-            # Allow for latest available Clipart to be installed
+            # Allow the recommended version to be installed
             for clipart in clipartS:
-                if clipart.version == latest_available_Clipart_version:
+                if clipart.version == recommended_Clipart_version:
                     clipart.allow_install()
 
         # If some operations are not permited because
@@ -595,22 +586,24 @@ class MainLogic(object):
         return (
             latest_available_Java_version,
             newest_installed_Java_version,
-            latest_available_LO_version,
+            recommended_LO_version,
             newest_installed_LO_version,
-            latest_available_Clipart_version,
+            recommended_Clipart_version,
             newest_installed_Clipart_version,
         )
 
     def _return_newer_ver(self, v1: str, v2: str) -> str:
-        """Returns the newer of to versions passed
+        """Returns the newer of two versions passed
 
         Version strings are assumed to be dot
         separated eg. "4.5"
         These strings MUST follow the pattern
         but need not to be of the same length.
-        Any version is newer then an empty string
+        (in such case shorter version string is padded
+         with zeros before comparison)
+        Any version is newer then an empty string.
         Empty string is returned is both v1 and v2
-        empty strings.
+        are empty strings.
 
         Parameters
         ----------
@@ -635,20 +628,25 @@ class MainLogic(object):
             else:
                 v1_int = [int(i) for i in v1.split(".")]
                 v2_int = [int(i) for i in v2.split(".")]
-                size_of_smaller_list = (
-                    len(v2_int) if (len(v2_int) < len(v1_int)) else len(v1_int)
-                )
-                for i in range(size_of_smaller_list):
+
+                # pad shorter list with zeros to match sizes
+                diff = abs(len(v1_int) - len(v2_int))
+                v1_int.extend([0] * diff) if len(v1_int) <= len(
+                    v2_int
+                ) else v2_int.extend([0] * diff)
+
+                for i in range(len(v1_int)):
                     if v1_int[i] == v2_int[i]:
                         continue
                     elif v1_int[i] > v2_int[i]:
                         return v1
                     else:
                         return v2
-        return v1  # ver1 = ver2
+        return v1  # ver1 == ver2
 
     def _get_available_software(self):
         available_virtual_packages = []
+        msg = ""
 
         java_ver = configuration.latest_available_java_version
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
@@ -671,8 +669,13 @@ class MainLogic(object):
         ]
         available_virtual_packages.append(java_core_vp)
 
-        LO_ver = configuration.latest_available_LO_version
-        LO_minor_ver = configuration.latest_available_LO_minor_version
+        # Decide which version should be recommended for installation
+        if configuration.force_specific_LO_version != "":
+            LO_ver = configuration.force_specific_LO_version
+            msg += f"Downgrade of LibreOffice to version {LO_ver} is recommended. "
+        else:
+            LO_ver = configuration.latest_available_LO_version
+        LO_minor_ver = self._make_minor_ver(LO_ver)
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
         office_core_vp.real_files = [
@@ -716,6 +719,7 @@ class MainLogic(object):
                 },
             ]
             available_virtual_packages.append(office_lang_vp)
+
         clipart_ver = configuration.latest_available_clipart_version
         clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
         clipart_core_vp.is_installed = False
@@ -742,7 +746,7 @@ class MainLogic(object):
         log.debug(f">>PRETENDING<< available software:")
         for p in available_virtual_packages:
             log.debug(f"                                 *  {p}")
-        return available_virtual_packages
+        return (available_virtual_packages, msg)
 
     def _detect_installed_software(self):
         installed_virtual_packages = []
@@ -1231,7 +1235,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for oo in OpenOfficeS:
             # OpenOffice removal procedures
-            if oo.version.find("2.") == 0:  # any series 2.x
+            if oo.version.startswith("2."):  # any series 2.x
                 rpms_to_rm.extend(["openoffice.org", "openoffice.org-mimelnk"])
                 # Leftover files and directories to remove
                 for user in users:
@@ -1245,7 +1249,7 @@ class MainLogic(object):
                     dirs_to_rm.append(user.home_dir.joinpath(".config/ooo3"))
                 for leftover_dir in pathlib.Path("/opt").glob("openoffice*"):
                     dirs_to_rm.append(leftover_dir)
-            if oo.version.find("3.") == 0 and oo.version != "3.0.0":  # any later
+            if oo.version.startswith("3.") and oo.version != "3.0.0":  # any later
                 rpms_to_rm.append("openoffice.org-ure")
                 rpms_to_rm.append(f"openoffice.org{oo.version}-mandriva-menus")
                 # Leftover files and directories to remove
@@ -1297,12 +1301,13 @@ class MainLogic(object):
         files_to_remove = []
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
+            base_version = self._make_base_ver(lang.version)
             # LibreOffice langs removal procedures
             expected_rpm_names = [
-                f"libreoffice{lang.version}-{lang.kind}-",
-                f"libreoffice{lang.version}-dict-{lang.kind}-",
-                f"libobasis{lang.version}-{lang.kind}-",
-                f"libobasis{lang.version}-{lang.kind}-help-",
+                f"libreoffice{base_version}-{lang.kind}-",
+                f"libreoffice{base_version}-dict-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-help-",
             ]
             for candidate in expected_rpm_names:
                 success, reply = PCLOS.run_shell_command(
@@ -1330,7 +1335,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for core in LibreOfficeCORE:
             # Removal procedures for LibreOffice core.
-            if core.version.find("3.3") == 0:  # 3.3 and its subvariants
+            if core.version.startswith("3.3"):  # 3.3 and its subvariants
                 rpms_to_rm.append(f"libreoffice3-ure")
                 rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
                 # Leftover files and directories to remove
@@ -1351,32 +1356,34 @@ class MainLogic(object):
                 for icon in pathlib.Path("/usr/share/icons").glob("libreoffice-*"):
                     files_to_remove.append(icon)
 
-            if core.version in configuration.LO_versionS:
+            # All version (with subvariants) starting from 3.4 and later
+            # (Historicaly these were:
+            #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
+            #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
+            else:
+                base_version = self._make_base_ver(core.version)
                 # All if-s in case (extremely unlikely) someone managed to
                 # install more then one version
-                if core.version == "3.4":
-                    # if [ "$bv" == "3.4" ]
-                    # then
-                    #   apt-get remove libreoffice$bv-ure libreoffice$bv-mandriva-menus -y
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                if core.version.startswith("3.4"):
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-mandriva-menus")
                 if (
-                    core.version == "3.5"
-                    or core.version == "3.6"
-                    or core.version == "4.0"
+                    core.version.startswith("3.5")
+                    or core.version.startswith("3.6")
+                    or core.version.startswith("4.0")
                 ):
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-stdlibs")
-                    rpms_to_rm.append(f"libreoffice{core.version}-mandriva-menus")
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-stdlibs")
+                    rpms_to_rm.append(f"libreoffice{base_version}-mandriva-menus")
                 if (
-                    core.version != "3.4"
-                    and core.version != "3.5"
-                    and core.version != "3.6"
-                    and core.version != "4.0"
+                    core.version.startswith("3.4") is False
+                    and core.version.startswith("3.5") is False
+                    and core.version.startswith("3.6") is False
+                    and core.version.startswith("4.0") is False
                 ):
-                    rpms_to_rm.append(f"libreoffice{core.version}-ure")
-                    rpms_to_rm.append(f"libreoffice{core.version}-freedesktop-menus")
-                    rpms_to_rm.append(f"libobasis{core.version}-ooofonts")
+                    rpms_to_rm.append(f"libreoffice{base_version}-ure")
+                    rpms_to_rm.append(f"libreoffice{base_version}-freedesktop-menus")
+                    rpms_to_rm.append(f"libobasis{base_version}-ooofonts")
                 # Leftover files and directories to remove (common for all vers.)
                 for user in users:
                     dirs_to_rm.append(user.home_dir.joinpath(".libreoffice"))
@@ -2052,6 +2059,16 @@ class MainLogic(object):
             Clipart_local_copy,
         )
 
+    def _make_base_ver(self, full_version: str) -> str:
+        # base version comprises of the first 2 numbers of the full version
+        # eg. 7.5.4.2 -> 7.5
+        return ".".join(full_version.split(".")[:2])
+
+    def _make_minor_ver(self, full_version: str) -> str:
+        # minor version comprises of the first 3 numbers of the full version
+        # eg. 7.5.4.2 -> 7.5.4
+        return ".".join(full_version.split(".")[:3])
+
     # -- end Private methods of MainLogic
 
 
@@ -2059,19 +2076,16 @@ class ManualSelectionLogic(object):
     def __init__(
         self,
         root_node: VirtualPackage,
-        latest_Java: str,
-        newest_Java: str,
-        latest_LO: str,
-        newest_LO: str,
-        latest_Clip: str,
-        newest_Clip: str,
+        latest_Java_version: str,
+        newest_Java_version: str,
+        recommended_LO_version: str,
+        newest_installed_LO_version: str,
+        recommended_Clipart_version: str,
+        newest_Clipart_version: str,
     ) -> None:
-        # TODO: Refactor these variables. In fact there is no need
-        #       to make any intermediate ones, just name the
-        #       arguments properly and get rid of "self."
-        self.latest_available_LO_version = latest_LO
-        self.latest_available_clipart_version = latest_Clip
-        self.newest_installed_LO_version = newest_LO
+        self.recommended_LO_version = recommended_LO_version
+        self.recommended_clipart_version = recommended_Clipart_version
+        self.newest_installed_LO_version = newest_installed_LO_version
 
         # Object representing items in the menu
         self.root = root_node
@@ -2311,17 +2325,17 @@ class ManualSelectionLogic(object):
                     for lang in package.children:
                         lang.is_marked_for_install = False
                 # 4) if unmarking the last LO package of
-                #    the latest available version
+                #    the recommended version
                 #    make the removal option for installed Office
                 #    accessible again
-                if package.version == self.latest_available_LO_version:
+                if package.version == self.recommended_LO_version:
                     family_members = package.get_your_family()
                     is_any_member_marked_for_install = any(
                         [m for m in family_members if m.is_marked_for_install]
                     )
                     if not is_any_member_marked_for_install:
                         for office in java.children:
-                            if office.version != self.latest_available_LO_version:
+                            if office.version != self.recommended_LO_version:
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
                                     lang.is_remove_opt_enabled = True
@@ -2334,10 +2348,10 @@ class ManualSelectionLogic(object):
                 # 2) Java not installed - install it
                 if not java.is_installed:
                     java.is_marked_for_install = True
-                # 3) if installing latest LO mark older versions for removal
-                if package.version == self.latest_available_LO_version:
+                # 3) if installing recommended LO mark older versions for removal
+                if package.version == self.recommended_LO_version:
                     for office in java.children:
-                        if office.version != self.latest_available_LO_version:
+                        if office.version != self.recommended_LO_version:
                             office.mark_for_removal()
                             office.is_remove_opt_enabled = False
                             for lang in office.children:
