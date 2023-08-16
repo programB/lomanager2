@@ -218,11 +218,11 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
     Returns
     -------
     free_space : int
-        Free space in kibibytes (KiB).
+        Free space in bytes
     """
 
-    free_space = int(shutil.disk_usage(dir).free / 1024)
-    log.debug(f"free space in {dir}: {free_space} KiB")
+    free_space = int(shutil.disk_usage(dir).free)
+    log.debug(f"free space in {dir}: {free_space} bytes")
     return free_space
 
 

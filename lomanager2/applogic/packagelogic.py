@@ -110,14 +110,14 @@ class MainLogic(object):
                     "name": "task-java-2019-1pclos2019.noarch.rpm",
                     "base_url": configuration.PCLOS_repo_base_url
                     + configuration.PCLOS_repo_path,
-                    "estimated_download_size": 2,  # size in kilobytes
+                    "estimated_download_size": 1592,  # size in bytes
                     "checksum": "",
                 },
                 {
                     "name": "java-sun-16-2pclos2021.x86_64.rpm",
                     "base_url": configuration.PCLOS_repo_base_url
                     + configuration.PCLOS_repo_path,
-                    "estimated_download_size": 116736,  # size in kilobytes
+                    "estimated_download_size": 119920500,  # size in bytes
                     "checksum": "",
                 },
             ]
@@ -631,14 +631,14 @@ class MainLogic(object):
                 "name": "task-java-2019-1pclos2019.noarch.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 2,  # size in kilobytes
+                "estimated_download_size": 1592,  # size in bytes
                 "checksum": "",
             },
             {
                 "name": "java-sun-16-2pclos2021.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 116736,  # size in kilobytes
+                "estimated_download_size": 119920500,  # size in bytes
                 "checksum": "",
             },
         ]
@@ -659,7 +659,7 @@ class MainLogic(object):
                 "base_url": configuration.DocFund_base_url
                 + LO_minor_ver
                 + configuration.DocFund_path_ending,
-                "estimated_download_size": 229376,  # size in kilobytes
+                "estimated_download_size": 235265947,  # size in bytes
                 "checksum": "md5",
             },
         ]
@@ -677,7 +677,7 @@ class MainLogic(object):
                     "base_url": configuration.DocFund_base_url
                     + LO_minor_ver
                     + configuration.DocFund_path_ending,
-                    "estimated_download_size": 3277,  # size in kilobytes
+                    "estimated_download_size": 3654837,  # size in bytes
                     "checksum": "md5",
                 },
                 {
@@ -689,7 +689,7 @@ class MainLogic(object):
                     "base_url": configuration.DocFund_base_url
                     + LO_minor_ver
                     + configuration.DocFund_path_ending,
-                    "estimated_download_size": 17408,  # size in kilobytes
+                    "estimated_download_size": 17366862,  # size in bytes
                     "checksum": "md5",
                 },
             ]
@@ -705,14 +705,14 @@ class MainLogic(object):
                 + "-1pclos2023.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 8704,  # size in kilobytes
+                "estimated_download_size": 8927046,  # size in bytes
                 "checksum": "",
             },
             {
                 "name": "clipart-openclipart-2.0-1pclos2021.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 877568,  # size in kilobytes
+                "estimated_download_size": 899116547,  # size in bytes
                 "checksum": "",
             },
         ]
