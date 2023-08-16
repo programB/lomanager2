@@ -53,32 +53,7 @@ class MainLogic(object):
 
     def set_PackageMenu_field(self, row, column, value_as_bool):
         # 1) call PackageMenu method to
-        pms = self._package_menu.set_package_field(row, column, value_as_bool)
-        # 2) above always creates a list of real rpm packages that need
-        #    to be removed/installed and the space they occupy/will occupy
-        # 3) compare the space requirement of new state with available
-        #    free disk space
-        total_space_needed = (
-            self._package_menu.package_delta["space_to_be_used"]
-            - self._package_menu.package_delta["space_to_be_freed"]
-        )
-        space_available = PCLOS.free_space_in_dir(configuration.download_dir)
-        # 4) set "ready for state transition flag" (T/F) accordingly
-        # 5) add warning message to self.warnings if not enough space
-        if space_available < total_space_needed:
-            self.global_flags.ready_to_apply_changes = False
-            self.warnings = [
-                {
-                    "explanation": "Insufficient disk space for operation.",
-                    "data": "Space needed: "
-                    + str(total_space_needed)
-                    + "space available: "
-                    + str(space_available),
-                }
-            ]
-        else:
-            self.global_flags.ready_to_apply_changes = True
-        return pms
+        return self._package_menu.set_package_field(row, column, value_as_bool)
 
     def get_warnings(self):
         warnings = deepcopy(self.warnings)
@@ -135,14 +110,14 @@ class MainLogic(object):
                     "name": "task-java-2019-1pclos2019.noarch.rpm",
                     "base_url": configuration.PCLOS_repo_base_url
                     + configuration.PCLOS_repo_path,
-                    "estimated_download_size": 2,  # size in kilobytes
+                    "estimated_download_size": 1592,  # size in bytes
                     "checksum": "",
                 },
                 {
                     "name": "java-sun-16-2pclos2021.x86_64.rpm",
                     "base_url": configuration.PCLOS_repo_base_url
                     + configuration.PCLOS_repo_path,
-                    "estimated_download_size": 116736,  # size in kilobytes
+                    "estimated_download_size": 119920500,  # size in bytes
                     "checksum": "",
                 },
             ]
@@ -656,14 +631,14 @@ class MainLogic(object):
                 "name": "task-java-2019-1pclos2019.noarch.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 2,  # size in kilobytes
+                "estimated_download_size": 1592,  # size in bytes
                 "checksum": "",
             },
             {
                 "name": "java-sun-16-2pclos2021.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 116736,  # size in kilobytes
+                "estimated_download_size": 119920500,  # size in bytes
                 "checksum": "",
             },
         ]
@@ -684,7 +659,7 @@ class MainLogic(object):
                 "base_url": configuration.DocFund_base_url
                 + LO_minor_ver
                 + configuration.DocFund_path_ending,
-                "estimated_download_size": 229376,  # size in kilobytes
+                "estimated_download_size": 235265947,  # size in bytes
                 "checksum": "md5",
             },
         ]
@@ -702,7 +677,7 @@ class MainLogic(object):
                     "base_url": configuration.DocFund_base_url
                     + LO_minor_ver
                     + configuration.DocFund_path_ending,
-                    "estimated_download_size": 3277,  # size in kilobytes
+                    "estimated_download_size": 3654837,  # size in bytes
                     "checksum": "md5",
                 },
                 {
@@ -714,7 +689,7 @@ class MainLogic(object):
                     "base_url": configuration.DocFund_base_url
                     + LO_minor_ver
                     + configuration.DocFund_path_ending,
-                    "estimated_download_size": 17408,  # size in kilobytes
+                    "estimated_download_size": 17366862,  # size in bytes
                     "checksum": "md5",
                 },
             ]
@@ -730,14 +705,14 @@ class MainLogic(object):
                 + "-1pclos2023.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 8704,  # size in kilobytes
+                "estimated_download_size": 8927046,  # size in bytes
                 "checksum": "",
             },
             {
                 "name": "clipart-openclipart-2.0-1pclos2021.x86_64.rpm",
                 "base_url": configuration.PCLOS_repo_base_url
                 + configuration.PCLOS_repo_path,
-                "estimated_download_size": 877568,  # size in kilobytes
+                "estimated_download_size": 899116547,  # size in bytes
                 "checksum": "",
             },
         ]
@@ -809,9 +784,22 @@ class MainLogic(object):
         }
 
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        # STEP
         # Some packages need to be downloaded
         if packages_to_download:
+            # STEP
+            step.start("Checking free disk space for download...")
+            is_enough, needed, available = self._space_for_download(
+                packages_to_download
+            )
+            if is_enough is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Insufficient disk space to download selected "
+                    f"packages. Needed: {needed}. Available {available}\n",
+                )
+            step.end("...disk space OK")
+
+            # STEP
             step.start("Collecting packages...")
 
             # Run collect_packages procedure
@@ -1193,13 +1181,13 @@ class MainLogic(object):
             package_names.append(rpm_name)
 
         # 2) Use apt-get to install those 2 files
-        s, _ = PCLOS.install_using_apt_get(
+        is_installed, msg = PCLOS.install_using_apt_get(
             package_nameS=package_names,
             progress_description=progress_msg,
             progress_percentage=progress,
         )
-        if s is False:
-            return (False, "Error installing rpm packages")
+        if is_installed is False:
+            return (False, msg)
 
         # 3) move rpm files back to storage
         # TODO: What if the user doesn't want to be keeping the files?
@@ -1644,13 +1632,13 @@ class MainLogic(object):
         log.debug(f"clipart package_names: {package_names}")
 
         # 2) Use apt-get to install those 2 files
-        s, _ = PCLOS.install_using_apt_get(
+        is_installed, msg = PCLOS.install_using_apt_get(
             package_nameS=package_names,
             progress_description=progress_msg,
             progress_percentage=progress,
         )
-        if s is False:
-            return (False, "Error installing rpm packages")
+        if is_installed is False:
+            return (False, msg)
 
         # 3) move rpm files back to storage
         # TODO: What if the user doesn't want to be keeping the files?
@@ -2059,6 +2047,37 @@ class MainLogic(object):
             Clipart_local_copy,
         )
 
+    def _space_for_download(
+        self, packages_to_download: list[VirtualPackage]
+    ) -> tuple[bool, str, str]:
+        needed = 0
+        for p in packages_to_download:
+            for file in p.real_files:
+                needed += file["estimated_download_size"]
+        available = PCLOS.free_space_in_dir(configuration.working_dir)
+        is_enough = available > needed
+
+        def get_size_string(bytes_size):
+            if bytes_size / (1024**3) < 1:
+                if bytes_size / (1024**2) < 1:
+                    if bytes_size / 1024 < 1:
+                        return str(bytes_size) + " bytes"
+                    else:
+                        return str(round(bytes_size / (1024**1))) + " KiB"
+                else:
+                    return str(round(bytes_size / (1024**2))) + " MiB"
+            else:
+                return str(round(bytes_size / (1024**3))) + " GiB"
+
+        needed_str = get_size_string(needed)
+        available_str = get_size_string(available)
+        log.debug(f"Total size of packages to download: {needed_str}")
+        log.debug(
+            f"Free space available in {configuration.working_dir}: {available_str}"
+        )
+
+        return (is_enough, needed_str, available_str)
+
     # -- end Private methods of MainLogic
 
 
@@ -2079,14 +2098,6 @@ class ManualSelectionLogic(object):
 
         # Object representing items in the menu
         self.root = root_node
-
-        # A dictionary of packages to alter
-        self.package_delta = {
-            "packages_to_remove": [],
-            "space_to_be_freed": 0,
-            "packages_to_install": [],
-            "space_to_be_used": 0,
-        }
 
     # Public methods
     def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
@@ -2207,27 +2218,6 @@ class ManualSelectionLogic(object):
             is_logic_applied = self._apply_install_logic(package, value)
         else:
             is_logic_applied = False
-
-        # Build the list of rpm to install/remove
-        # # wipe previous delta
-        self.package_delta["packages_to_remove"] = []
-        self.package_delta["space_to_be_freed"] = 0
-        self.package_delta["packages_to_install"] = []
-        self.package_delta["space_to_be_used"] = 0
-        # # create new delta
-        for package in packages:
-            if package.is_marked_for_removal or package.is_marked_for_upgrade:
-                size = 0
-                for file in package.real_files:
-                    size += file["estimated_download_size"]
-                    self.package_delta["packages_to_remove"] += [file["name"]]
-                self.package_delta["space_to_be_freed"] = size
-            if package.is_marked_for_install:
-                size = 0
-                for file in package.real_files:
-                    size += file["estimated_download_size"]
-                    self.package_delta["packages_to_install"] += [file["name"]]
-                self.package_delta["space_to_be_used"] = size
 
         return is_logic_applied
 

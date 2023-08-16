@@ -218,11 +218,11 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
     Returns
     -------
     free_space : int
-        Free space in kibibytes (KiB).
+        Free space in bytes
     """
 
-    free_space = int(shutil.disk_usage(dir).free / 1024)
-    log.debug(f"free space in {dir}: {free_space} KiB")
+    free_space = int(shutil.disk_usage(dir).free)
+    log.debug(f"free space in {dir}: {free_space} bytes")
     return free_space
 
 
@@ -619,16 +619,24 @@ def install_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
-    _, msg = run_shell_command_with_progress(
+    _, output = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
     )
-    if "error" in msg or "Error" in msg:
-        return (False, "Installation of rpm packages failed. Check logs.")
+    if "needs" in output:
+        msg = "Installation of rpm packages failed - insufficient disk space. Packages where not installed "
+        log.error(msg + output)
+        return (False, msg)
+    elif "error" in output or "Error" in output:
+        msg = "Installation of rpm packages failed. Check logs. "
+        log.error(msg + output)
+        return (False, msg)
     else:
-        return (True, "Rpm packages successfully installed.")
+        msg = "Rpm packages successfully installed. "
+        log.debug(msg + output)
+        return (True, msg)
 
 
 def clean_working_dir() -> bool:
@@ -726,9 +734,13 @@ def install_using_rpm(
         err_check=False,
     )
     if status:
-        if "error" in output:
-            msg = "Dry-run install failed. Packages where not installed: " + output
-            log.debug(msg)
+        if "needs" in output:
+            msg = "Dry-run install failed - insufficient disk space. Packages where not installed "
+            log.error(msg + output)
+            return (False, msg)
+        if any(map(lambda e: e in output, ["error", "Error"])):
+            msg = "Dry-run install failed. Packages where not installed "
+            log.error(msg + output)
             return (False, msg)
         else:
             msg = "Dry-run install successful. Proceeding with actual install..."
