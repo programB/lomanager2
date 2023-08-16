@@ -675,7 +675,7 @@ class MainLogic(object):
             msg += f"Downgrade of LibreOffice to version {LO_ver} is recommended. "
         else:
             LO_ver = configuration.latest_available_LO_version
-        LO_minor_ver = self._make_minor_ver(LO_ver)
+        LO_minor_ver = PCLOS.make_minor_ver(LO_ver)
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
         office_core_vp.real_files = [
@@ -1301,7 +1301,7 @@ class MainLogic(object):
         files_to_remove = []
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
-            base_version = self._make_base_ver(lang.version)
+            base_version = PCLOS.make_base_ver(lang.version)
             # LibreOffice langs removal procedures
             expected_rpm_names = [
                 f"libreoffice{base_version}-{lang.kind}-",
@@ -1361,7 +1361,7 @@ class MainLogic(object):
             #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
             #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
             else:
-                base_version = self._make_base_ver(core.version)
+                base_version = PCLOS.make_base_ver(core.version)
                 # All if-s in case (extremely unlikely) someone managed to
                 # install more then one version
                 if core.version.startswith("3.4"):
@@ -2058,16 +2058,6 @@ class MainLogic(object):
             LibreOffice_langs_local_copy,
             Clipart_local_copy,
         )
-
-    def _make_base_ver(self, full_version: str) -> str:
-        # base version comprises of the first 2 numbers of the full version
-        # eg. 7.5.4.2 -> 7.5
-        return ".".join(full_version.split(".")[:2])
-
-    def _make_minor_ver(self, full_version: str) -> str:
-        # minor version comprises of the first 3 numbers of the full version
-        # eg. 7.5.4.2 -> 7.5.4
-        return ".".join(full_version.split(".")[:3])
 
     # -- end Private methods of MainLogic
 
