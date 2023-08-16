@@ -726,9 +726,13 @@ def install_using_rpm(
         err_check=False,
     )
     if status:
-        if "error" in output:
-            msg = "Dry-run install failed. Packages where not installed: " + output
-            log.debug(msg)
+        if "needs" in output:
+            msg = "Dry-run install failed - insufficient disk space. Packages where not installed "
+            log.error(msg + output)
+            return (False, msg)
+        if any(map(lambda e: e in output, ["error", "Error"])):
+            msg = "Dry-run install failed. Packages where not installed "
+            log.error(msg + output)
             return (False, msg)
         else:
             msg = "Dry-run install successful. Proceeding with actual install..."
