@@ -53,28 +53,7 @@ class MainLogic(object):
 
     def set_PackageMenu_field(self, row, column, value_as_bool):
         # 1) call PackageMenu method to
-        pms = self._package_menu.set_package_field(row, column, value_as_bool)
-        # 2) above always creates a list of real rpm packages that need
-        #    to be removed/installed and the space they occupy/will occupy
-        # 3) compare the space requirement of new state with available
-        #    free disk space
-        total_space_needed = (
-            self._package_menu.package_delta["space_to_be_used"]
-            - self._package_menu.package_delta["space_to_be_freed"]
-        )
-        space_available = PCLOS.free_space_in_dir(configuration.download_dir)
-        # 4) set "ready for state transition flag" (T/F) accordingly
-        # 5) add warning message to self.warnings if not enough space
-        if space_available < total_space_needed:
-            self.global_flags.ready_to_apply_changes = False
-            self.warnings = [
-                "Insufficient disk space for operation. "
-                f"Space needed: {str(total_space_needed)} "
-                f"Space available: {str(space_available)}"
-            ]
-        else:
-            self.global_flags.ready_to_apply_changes = True
-        return pms
+        return self._package_menu.set_package_field(row, column, value_as_bool)
 
     def get_warnings(self):
         warnings = deepcopy(self.warnings)
@@ -2076,14 +2055,6 @@ class ManualSelectionLogic(object):
         # Object representing items in the menu
         self.root = root_node
 
-        # A dictionary of packages to alter
-        self.package_delta = {
-            "packages_to_remove": [],
-            "space_to_be_freed": 0,
-            "packages_to_install": [],
-            "space_to_be_used": 0,
-        }
-
     # Public methods
     def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
         """Gets any field in the package menu (at row and column)
@@ -2203,27 +2174,6 @@ class ManualSelectionLogic(object):
             is_logic_applied = self._apply_install_logic(package, value)
         else:
             is_logic_applied = False
-
-        # Build the list of rpm to install/remove
-        # # wipe previous delta
-        self.package_delta["packages_to_remove"] = []
-        self.package_delta["space_to_be_freed"] = 0
-        self.package_delta["packages_to_install"] = []
-        self.package_delta["space_to_be_used"] = 0
-        # # create new delta
-        for package in packages:
-            if package.is_marked_for_removal or package.is_marked_for_upgrade:
-                size = 0
-                for file in package.real_files:
-                    size += file["estimated_download_size"]
-                    self.package_delta["packages_to_remove"] += [file["name"]]
-                self.package_delta["space_to_be_freed"] = size
-            if package.is_marked_for_install:
-                size = 0
-                for file in package.real_files:
-                    size += file["estimated_download_size"]
-                    self.package_delta["packages_to_install"] += [file["name"]]
-                self.package_delta["space_to_be_used"] = size
 
         return is_logic_applied
 
