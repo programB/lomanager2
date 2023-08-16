@@ -68,13 +68,9 @@ class MainLogic(object):
         if space_available < total_space_needed:
             self.global_flags.ready_to_apply_changes = False
             self.warnings = [
-                {
-                    "explanation": "Insufficient disk space for operation.",
-                    "data": "Space needed: "
-                    + str(total_space_needed)
-                    + "space available: "
-                    + str(space_available),
-                }
+                "Insufficient disk space for operation. "
+                f"Space needed: {str(total_space_needed)} "
+                f"Space available: {str(space_available)}"
             ]
         else:
             self.global_flags.ready_to_apply_changes = True
