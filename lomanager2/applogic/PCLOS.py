@@ -509,17 +509,9 @@ def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
     return is_moved
 
 
-def create_directories():
-    directories = [
-        configuration.working_dir,
-        configuration.verified_dir.joinpath("Java_rpms"),
-        configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
-        configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
-        configuration.verified_dir.joinpath("Clipart_rpms"),
-    ]
-    for directory in directories:
-        log.debug(f"Creating: {directory}")
-        os.makedirs(directory, exist_ok=True)
+def create_dir(dir_path: pathlib.Path):
+    log.debug(f"Creating: {dir_path}")
+    os.makedirs(dir_path, exist_ok=True)
 
 
 def run_shell_command_with_progress(
@@ -639,16 +631,17 @@ def install_using_apt_get(
         return (True, msg)
 
 
-def clean_working_dir() -> bool:
-    # remove and recreate working_dir to make sure it is empty
-    target_dir = configuration.working_dir
+def clean_dir(dir_path: pathlib.Path) -> tuple[bool, str]:
+    # remove and recreate dir to make sure it is empty
     try:
-        shutil.rmtree(target_dir)
-        os.makedirs(target_dir, exist_ok=False)
-        return True
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+        create_dir(dir_path)
+        return (True, f"Recreated {dir_path}")
     except Exception as error:
-        log.error(f"Could not recreate working directory: {error}")
-        return False
+        msg = "Could not recreate directory "
+        log.error(msg + str(error))
+        return (False, msg)
 
 
 def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
@@ -869,9 +862,10 @@ def uninstall_using_apt_get(
         return (True, "Rpm packages successfully removed.")
 
 
-def force_rm_directory(path):
+def force_rm_directory(path: pathlib.Path):
     try:
-        shutil.rmtree(path)
+        if path.exists():
+            shutil.rmtree(path)
     except Exception as error:
         log.error("Failed to remove folder" + str(error))
 

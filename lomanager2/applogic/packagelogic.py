@@ -26,8 +26,6 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        PCLOS.create_directories()
-
         self.warnings = []
         self.global_flags = SignalFlags()
         self._package_tree = VirtualPackage("master-node", "", "")
@@ -783,6 +781,33 @@ class MainLogic(object):
             },
         }
 
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create working directory.\n" + msg_w,
+            )
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create verified directory.\n" + msg_v,
+            )
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
+
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
         # Some packages need to be downloaded
         if packages_to_download:
@@ -1012,17 +1037,6 @@ class MainLogic(object):
             step.end("...done saving packages")
         else:
             step.skip()
-
-        # STEP
-        # clean up working directory and verified copies directory
-        step.start("Removing temporary files and folders...")
-        is_cleaned, msg = self._clean_directories()
-        if is_cleaned is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to cleanup folders.\n" + msg,
-            )
-        step.end("...done removing temporary files and folders")
 
         status = {"is_OK": True, "explanation": ""}
         return status
@@ -1409,7 +1423,7 @@ class MainLogic(object):
         progress_msg: Callable,
         progress: Callable,
     ) -> tuple[bool, str]:
-        PCLOS.clean_working_dir()
+        PCLOS.clean_dir(configuration.working_dir)
 
         rpms_c = []
         rpms_l = []
@@ -1441,7 +1455,7 @@ class MainLogic(object):
                 progress,
             )
 
-            PCLOS.clean_working_dir()
+            PCLOS.clean_dir(configuration.working_dir)
 
             if is_installed is False:
                 return (False, msg)
@@ -1664,18 +1678,6 @@ class MainLogic(object):
         log.debug(">>PRETENDING<< ...done.")
         return (is_save_successful, save_msg)
 
-    def _clean_directories(self):
-        # TODO: This function should remove the contetns of working dir
-        #       and verified copies dir.
-        is_cleanup_successful = False
-        cleanup_msg = ""
-
-        log.debug(">>PRETENDING<< Cleaning temporary files...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
-
-        return (is_cleanup_successful, cleanup_msg)
-
     def _local_copy_install_procedure(
         self,
         local_copy_directory,
@@ -1693,6 +1695,33 @@ class MainLogic(object):
                 "Clipart": [],
             },
         }
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create working directory.\n" + msg_w,
+            )
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create verified directory.\n" + msg_v,
+            )
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
 
         # Take current state of package tree and create packages list
         virtual_packages = []
