@@ -784,9 +784,22 @@ class MainLogic(object):
         }
 
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        # STEP
         # Some packages need to be downloaded
         if packages_to_download:
+            # STEP
+            step.start("Checking free disk space for download...")
+            is_enough, needed, available = self._space_for_download(
+                packages_to_download
+            )
+            if is_enough is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Insufficient disk space to download selected "
+                    f"packages. Needed: {needed}. Available {available}\n",
+                )
+            step.end("...disk space OK")
+
+            # STEP
             step.start("Collecting packages...")
 
             # Run collect_packages procedure
@@ -2033,6 +2046,37 @@ class MainLogic(object):
             LibreOffice_langs_local_copy,
             Clipart_local_copy,
         )
+
+    def _space_for_download(
+        self, packages_to_download: list[VirtualPackage]
+    ) -> tuple[bool, str, str]:
+        needed = 0
+        for p in packages_to_download:
+            for file in p.real_files:
+                needed += file["estimated_download_size"]
+        available = PCLOS.free_space_in_dir(configuration.working_dir)
+        is_enough = available > needed
+
+        def get_size_string(bytes_size):
+            if bytes_size / (1024**3) < 1:
+                if bytes_size / (1024**2) < 1:
+                    if bytes_size / 1024 < 1:
+                        return str(bytes_size) + " bytes"
+                    else:
+                        return str(round(bytes_size / (1024**1))) + " KiB"
+                else:
+                    return str(round(bytes_size / (1024**2))) + " MiB"
+            else:
+                return str(round(bytes_size / (1024**3))) + " GiB"
+
+        needed_str = get_size_string(needed)
+        available_str = get_size_string(available)
+        log.debug(f"Total size of packages to download: {needed_str}")
+        log.debug(
+            f"Free space available in {configuration.working_dir}: {available_str}"
+        )
+
+        return (is_enough, needed_str, available_str)
 
     # -- end Private methods of MainLogic
 
