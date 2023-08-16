@@ -323,11 +323,8 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
             log.debug(
                 f"LibreOffice office version read from ure package is: {full_version}"
             )
-            # base_version is first 2 numbers eg. 7.5.4.2 -> 7.5
-            base_version = ".".join(full_version.split(".")[:2])
+            base_version = make_base_ver(full_version)
 
-            # Add core package to the list
-            list_of_detected_suits.append(("LibreOffice", full_version, ()))
             # Try to detect language packs installed for that version
             success, reply = run_shell_command(
                 f"rpm -qa | grep libreoffice{base_version}", err_check=False
@@ -361,7 +358,10 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                     )
                 )
             else:
-                log.warning("LibreOffice binary detected but no installed rpm found.")
+                # No langs detected just add the core package to the list
+                list_of_detected_suits.append(("LibreOffice", full_version, ()))
+        else:
+            log.warning("LibreOffice binary detected but no installed rpm found.")
 
     inf_message = ("All detected office suits (and langs): {}").format(
         list_of_detected_suits
@@ -873,3 +873,15 @@ def update_menus():
 
 def make_dir_tree(target_dir: pathlib.Path):
     os.makedirs(target_dir, exist_ok=True)
+
+
+def make_base_ver(full_version: str) -> str:
+    # base version comprises of the first 2 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5
+    return ".".join(full_version.split(".")[:2])
+
+
+def make_minor_ver(full_version: str) -> str:
+    # minor version comprises of the first 3 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5.4
+    return ".".join(full_version.split(".")[:3])
