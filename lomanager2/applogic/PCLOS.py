@@ -326,8 +326,6 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
             # base_version is first 2 numbers eg. 7.5.4.2 -> 7.5
             base_version = ".".join(full_version.split(".")[:2])
 
-            # Add core package to the list
-            list_of_detected_suits.append(("LibreOffice", full_version, ()))
             # Try to detect language packs installed for that version
             success, reply = run_shell_command(
                 f"rpm -qa | grep libreoffice{base_version}", err_check=False
@@ -361,7 +359,10 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                     )
                 )
             else:
-                log.warning("LibreOffice binary detected but no installed rpm found.")
+                # No langs detected just add the core package to the list
+                list_of_detected_suits.append(("LibreOffice", full_version, ()))
+        else:
+            log.warning("LibreOffice binary detected but no installed rpm found.")
 
     inf_message = ("All detected office suits (and langs): {}").format(
         list_of_detected_suits
