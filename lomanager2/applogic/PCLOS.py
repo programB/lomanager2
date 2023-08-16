@@ -619,16 +619,24 @@ def install_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("", 0)
 
-    _, msg = run_shell_command_with_progress(
+    _, output = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
     )
-    if "error" in msg or "Error" in msg:
-        return (False, "Installation of rpm packages failed. Check logs.")
+    if "needs" in output:
+        msg = "Installation of rpm packages failed - insufficient disk space. Packages where not installed "
+        log.error(msg + output)
+        return (False, msg)
+    elif "error" in output or "Error" in output:
+        msg = "Installation of rpm packages failed. Check logs. "
+        log.error(msg + output)
+        return (False, msg)
     else:
-        return (True, "Rpm packages successfully installed.")
+        msg = "Rpm packages successfully installed. "
+        log.debug(msg + output)
+        return (True, msg)
 
 
 def clean_working_dir() -> bool:
