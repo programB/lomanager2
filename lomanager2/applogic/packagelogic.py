@@ -1189,13 +1189,13 @@ class MainLogic(object):
             package_names.append(rpm_name)
 
         # 2) Use apt-get to install those 2 files
-        s, _ = PCLOS.install_using_apt_get(
+        is_installed, msg = PCLOS.install_using_apt_get(
             package_nameS=package_names,
             progress_description=progress_msg,
             progress_percentage=progress,
         )
-        if s is False:
-            return (False, "Error installing rpm packages")
+        if is_installed is False:
+            return (False, msg)
 
         # 3) move rpm files back to storage
         # TODO: What if the user doesn't want to be keeping the files?
@@ -1640,13 +1640,13 @@ class MainLogic(object):
         log.debug(f"clipart package_names: {package_names}")
 
         # 2) Use apt-get to install those 2 files
-        s, _ = PCLOS.install_using_apt_get(
+        is_installed, msg = PCLOS.install_using_apt_get(
             package_nameS=package_names,
             progress_description=progress_msg,
             progress_percentage=progress,
         )
-        if s is False:
-            return (False, "Error installing rpm packages")
+        if is_installed is False:
+            return (False, msg)
 
         # 3) move rpm files back to storage
         # TODO: What if the user doesn't want to be keeping the files?
