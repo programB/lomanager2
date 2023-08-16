@@ -430,7 +430,7 @@ def download_file(
             info = str(error)
             time.sleep(retry_delay_sec)
     info = "Failed to download file. " + info
-    return (True, info)
+    return (False, info)
 
 
 def verify_checksum(

@@ -1,5 +1,8 @@
 import logging
 import pathlib
+import socket
+
+socket.setdefaulttimeout(15)
 
 logging.basicConfig(
     format="[%(levelname)s](%(asctime)s) (in %(module)s.%(funcName)s): %(message)s",
