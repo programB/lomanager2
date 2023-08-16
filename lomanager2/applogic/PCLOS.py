@@ -165,6 +165,9 @@ def check_system_update_status() -> tuple[bool, bool, str]:
     # repo server it make take a while hence setting timeout to 45 sek.
     status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
     if status:
+        if any(map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])):
+            return(False, False, "Failed to check updates")
+
         status, output = run_shell_command(
             "apt-get dist-upgrade --fix-broken --simulate", timeout=15, err_check=True
         )
