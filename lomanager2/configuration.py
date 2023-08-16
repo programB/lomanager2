@@ -43,8 +43,7 @@ logging.debug("Supported language set limited for tests")
 LO_supported_langs = ["de", "fr", "it", "ja", "pl", "sk", "sv", "uk", "xh"]
 
 
-# Only every set tmp_directory in this module
-tmp_directory = pathlib.Path("/tmp/lomanager2-tmp")
+# Only every set actual directories names in this module
 working_dir = pathlib.Path("/tmp/lomanager2-tmp/working_directory")
 verified_dir = pathlib.Path("/tmp/lomanager2-tmp/verified_storage")
 offline_copy_dir = pathlib.Path("/tmp/lomanager2-saved_packages")
