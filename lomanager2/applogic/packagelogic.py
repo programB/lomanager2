@@ -1,4 +1,3 @@
-import time  # TODO: just for the tests
 import re
 import pathlib
 import urllib.request, urllib.error
@@ -1027,18 +1026,24 @@ class MainLogic(object):
         if keep_packages is True:
             step.start("Saving packages...")
 
-            is_saved, msg = self._save_copy_for_offline_install()
+            is_saved, msg = PCLOS.move_dir(
+                configuration.verified_dir, configuration.offline_copy_dir
+            )
             if is_saved is False:
                 return statusfunc(
                     isOK=False,
-                    msg="Failed save packages.\n" + msg,
+                    msg="Failed to save packages.\n" + msg,
                 )
-
+            else:
+                msg = f"All changes successful. Packages saved to {configuration.offline_copy_dir}"
+                log.info(msg)
             step.end("...done saving packages")
         else:
             step.skip()
+            msg = f"All changes successful"
+            log.info(msg)
 
-        status = {"is_OK": True, "explanation": ""}
+        status = {"is_OK": True, "explanation": msg}
         return status
 
     def _collect_packages(
@@ -1665,18 +1670,6 @@ class MainLogic(object):
                 return (False, "Openclipart installed but there was error moving file")
 
         return (True, "Openclipart successfully installed")
-
-    def _save_copy_for_offline_install(self) -> tuple[bool, str]:
-        # TODO: This function should mv verified_copies folder
-        #       to lomanager2_saved_packages
-        #       Path for both of those should be defined in the configuration
-        is_save_successful = False
-        save_msg = ""
-
-        log.debug(">>PRETENDING<< to be saving files for offline install...")
-        time.sleep(1)
-        log.debug(">>PRETENDING<< ...done.")
-        return (is_save_successful, save_msg)
 
     def _local_copy_install_procedure(
         self,

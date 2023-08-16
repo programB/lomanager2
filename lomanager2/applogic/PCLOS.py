@@ -514,6 +514,20 @@ def create_dir(dir_path: pathlib.Path):
     os.makedirs(dir_path, exist_ok=True)
 
 
+def move_dir(from_path: pathlib.Path, to_path: pathlib.Path) -> tuple[bool, str]:
+    try:
+        if from_path.exists():
+            force_rm_directory(to_path)
+        shutil.move(src=from_path, dst=to_path)
+        is_moved = True
+        msg = ""
+    except Exception as error:
+        msg = f"Error when moving {from_path} to {to_path}: "
+        log.error(msg + str(error))
+        is_moved = False
+    return (is_moved, msg)
+
+
 def run_shell_command_with_progress(
     cmd,
     progress: Callable,

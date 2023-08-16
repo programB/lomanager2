@@ -47,6 +47,7 @@ LO_supported_langs = ["de", "fr", "it", "ja", "pl", "sk", "sv", "uk", "xh"]
 tmp_directory = pathlib.Path("/tmp/lomanager2-tmp")
 working_dir = pathlib.Path("/tmp/lomanager2-tmp/working_directory")
 verified_dir = pathlib.Path("/tmp/lomanager2-tmp/verified_storage")
+offline_copy_dir = pathlib.Path("/tmp/lomanager2-saved_packages")
 
 # Read only
 keep_packages = False
