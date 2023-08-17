@@ -878,15 +878,6 @@ class MainLogic(object):
         # procedures converge and thus use the same function
 
         # STEP
-        # Check if there is enough disk space unpack and install
-        # requested packages
-        step.start("Checking free disk space...")
-        # TODO: Implement
-        # if not something(keep_packages, virtual_packages, downloaded_files)
-        # then error
-        step.end()
-
-        # STEP
         step.start("Trying to stop LibreOffice quickstarter...")
         self._terminate_LO_quickstarter()
         step.end()
@@ -1076,8 +1067,6 @@ class MainLogic(object):
 
         # Check if there is connection to the server(s)
         # and requested files exist.
-        # If so calculate/estimate the total download size
-        total_download_size = 0
         for package in packages_to_download:
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
@@ -1092,19 +1081,6 @@ class MainLogic(object):
                     msg = f"While trying to open {url} an error occurred: "
                     msg = msg + f"{error.reason}"
                     return (False, msg, rpms_and_tgzs_to_use)
-                else:
-                    content_length = resp.info()["Content-Length"]
-                    if content_length is not None and content_length != "0":
-                        size = int(int(content_length) / 1024)
-                        total_download_size += size
-                    else:
-                        total_download_size += file["estimated_size"]
-
-        free_space = PCLOS.free_space_in_dir(configuration.working_dir)
-
-        if free_space < total_download_size:
-            msg = "Insufficient disk space to download packages"
-            return (False, msg, rpms_and_tgzs_to_use)
 
         for package in packages_to_download:
             for file in package.real_files:
