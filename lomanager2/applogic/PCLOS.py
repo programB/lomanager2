@@ -739,7 +739,7 @@ def install_using_rpm(
     # Before going ahead with actual installation, test for potential problems
     log.debug("Trying dry-run install to check for errors...")
     status, output = run_shell_command(
-        "rpm -Uvh --test " + files_to_install,
+        "rpm -Uvh --replacepkgs --test " + files_to_install,
         timeout=5,
         err_check=False,
     )
@@ -794,7 +794,7 @@ def install_using_rpm(
                         return ("Working...", 0)
 
             cmd_list = ["bash", "-c"]
-            rpm_cmd = ["rpm -Uvh " + files_to_install]
+            rpm_cmd = ["rpm -Uvh --replacepkgs " + files_to_install]
             status, msg = run_shell_command_with_progress(
                 cmd_list + rpm_cmd,
                 # Example
