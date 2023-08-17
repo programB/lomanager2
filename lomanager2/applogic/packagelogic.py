@@ -1296,13 +1296,27 @@ class MainLogic(object):
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
             base_version = PCLOS.make_base_ver(lang.version)
-            # LibreOffice langs removal procedures
-            expected_rpm_names = [
-                f"libreoffice{base_version}-{lang.kind}-",
-                f"libreoffice{base_version}-dict-{lang.kind}-",
-                f"libobasis{base_version}-{lang.kind}-",
-                f"libobasis{base_version}-{lang.kind}-help-",
-            ]
+            # LibreOffice langs removal procedures.
+
+            # Never remove English, Spanish and French dictionaries when
+            # removing langpacks. These 3 dictionaries are provided by the
+            # core package and should be kept installed for as long as
+            # it is installed.
+            excluded = ["en", "es", "fr"]
+            if any([lang.kind.startswith(exl) for exl in excluded]):
+                expected_rpm_names = [
+                    f"libreoffice{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-help-",
+                ]
+            else:
+                expected_rpm_names = [
+                    f"libreoffice{base_version}-{lang.kind}-",
+                    f"libreoffice{base_version}-dict-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-help-",
+                ]
+
             for candidate in expected_rpm_names:
                 success, reply = PCLOS.run_shell_command(
                     f"rpm -qa | grep {candidate}", err_check=False
