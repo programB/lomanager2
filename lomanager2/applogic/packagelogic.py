@@ -124,14 +124,94 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        status = self._install(
+
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
+        collected_files = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create working directory.\n" + msg_w,
+            )
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create verified directory.\n" + msg_v,
+            )
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
+
+        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
+        # Some packages need to be downloaded
+        if packages_to_download:
+            # STEP
+            step.start("Checking free disk space for download...")
+            is_enough, needed, available = self._space_for_download(
+                packages_to_download
+            )
+            if is_enough is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Insufficient disk space to download selected "
+                    f"packages. Needed: {needed}. Available {available}\n",
+                )
+            step.end("...disk space OK")
+
+            # STEP
+            step.start("Collecting packages...")
+
+            # Run collect_packages procedure
+            is_every_pkg_collected, msg, collected_files = self._collect_packages(
+                packages_to_download,
+                progress_description=progress_description,
+                progress_percentage=progress,
+            )
+
+            if is_every_pkg_collected is False:
+                return statusfunc(
+                    isOK=False,
+                    msg="Failed to download requested packages.\n" + msg,
+                )
+            else:
+                step.end("...done collecting files")
+        # No need to download anything - just uninstalling
+        else:
+            step.skip()
+
+        # Uninstall/Upgrade/Install packages
+        status = self._make_changes(
+            virtual_packages,
+            rpms_and_tgzs_to_use=collected_files,
             keep_packages=keep_packages,
             statusfunc=statusfunc,
             progress_description=progress_description,
             progress_percentage=progress,
             step=step,
         )
-        return status
 
     def install_from_local_copy(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
@@ -768,104 +848,6 @@ class MainLogic(object):
         for p in installed_virtual_packages:
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
-
-    def _install(
-        self,
-        keep_packages,
-        statusfunc,
-        progress_description,
-        progress_percentage,
-        step,
-    ) -> dict:
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
-        collected_files = {
-            "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-        }
-
-        # STEP
-        # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
-        else:
-            directories = [
-                configuration.working_dir,
-                configuration.verified_dir.joinpath("Java_rpms"),
-                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
-                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
-                configuration.verified_dir.joinpath("Clipart_rpms"),
-            ]
-            for dir in directories:
-                PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
-
-        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        # Some packages need to be downloaded
-        if packages_to_download:
-            # STEP
-            step.start("Checking free disk space for download...")
-            is_enough, needed, available = self._space_for_download(
-                packages_to_download
-            )
-            if is_enough is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Insufficient disk space to download selected "
-                    f"packages. Needed: {needed}. Available {available}\n",
-                )
-            step.end("...disk space OK")
-
-            # STEP
-            step.start("Collecting packages...")
-
-            # Run collect_packages procedure
-            is_every_pkg_collected, msg, collected_files = self._collect_packages(
-                packages_to_download,
-                progress_description=progress_description,
-                progress_percentage=progress_percentage,
-            )
-
-            if is_every_pkg_collected is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to download requested packages.\n" + msg,
-                )
-            else:
-                step.end("...done collecting files")
-        # No need to download anything - just uninstalling
-        else:
-            step.skip()
-
-        # Uninstall/Upgrade/Install packages
-        status = self._make_changes(
-            virtual_packages,
-            rpms_and_tgzs_to_use=collected_files,
-            keep_packages=keep_packages,
-            statusfunc=statusfunc,
-            progress_description=progress_description,
-            progress_percentage=progress_percentage,
-            step=step,
-        )
-        return status
 
     def _make_changes(
         self,
