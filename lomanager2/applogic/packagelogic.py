@@ -5,6 +5,7 @@ from copy import deepcopy
 import xml.etree.ElementTree as ET
 import configuration
 from configuration import logging as log
+import lolangs
 from typing import Any, Tuple, Callable
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
@@ -453,7 +454,6 @@ class MainLogic(object):
             java.is_remove_opt_enabled = False
             java.is_remove_opt_visible = False
 
-
         # 4) Check options for LibreOffice
         #
         # LibreOffice is installed?
@@ -662,35 +662,38 @@ class MainLogic(object):
             },
         ]
         available_virtual_packages.append(office_core_vp)
-        for lang in configuration.LO_supported_langs:
-            office_lang_vp = VirtualPackage(lang, "LibreOffice", LO_ver)
+        for lang_code in lolangs.supported_langs.keys():
+            office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
                 {
                     "name": "LibreOffice_"
                     + LO_minor_ver
-                    + "_Linux_x86-64_rpm_helppack_"
-                    + lang
-                    + ".tar.gz",
-                    "base_url": configuration.DocFund_base_url
-                    + LO_minor_ver
-                    + configuration.DocFund_path_ending,
-                    "estimated_download_size": 3654837,  # size in bytes
-                    "checksum": "md5",
-                },
-                {
-                    "name": "LibreOffice_"
-                    + LO_minor_ver
                     + "_Linux_x86-64_rpm_langpack_"
-                    + lang
+                    + lang_code
                     + ".tar.gz",
                     "base_url": configuration.DocFund_base_url
                     + LO_minor_ver
                     + configuration.DocFund_path_ending,
                     "estimated_download_size": 17366862,  # size in bytes
                     "checksum": "md5",
-                },
+                }
             ]
+            if lang_code in lolangs.existing_helppacks:
+                office_lang_vp.real_files.append(
+                    {
+                        "name": "LibreOffice_"
+                        + LO_minor_ver
+                        + "_Linux_x86-64_rpm_helppack_"
+                        + lang_code
+                        + ".tar.gz",
+                        "base_url": configuration.DocFund_base_url
+                        + LO_minor_ver
+                        + configuration.DocFund_path_ending,
+                        "estimated_download_size": 3654837,  # size in bytes
+                        "checksum": "md5",
+                    }
+                )
             available_virtual_packages.append(office_lang_vp)
 
         clipart_ver = configuration.latest_available_clipart_version
@@ -1293,13 +1296,27 @@ class MainLogic(object):
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
             base_version = PCLOS.make_base_ver(lang.version)
-            # LibreOffice langs removal procedures
-            expected_rpm_names = [
-                f"libreoffice{base_version}-{lang.kind}-",
-                f"libreoffice{base_version}-dict-{lang.kind}-",
-                f"libobasis{base_version}-{lang.kind}-",
-                f"libobasis{base_version}-{lang.kind}-help-",
-            ]
+            # LibreOffice langs removal procedures.
+
+            # Never remove English, Spanish and French dictionaries when
+            # removing langpacks. These 3 dictionaries are provided by the
+            # core package and should be kept installed for as long as
+            # it is installed.
+            excluded = ["en", "es", "fr"]
+            if any([lang.kind.startswith(exl) for exl in excluded]):
+                expected_rpm_names = [
+                    f"libreoffice{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-help-",
+                ]
+            else:
+                expected_rpm_names = [
+                    f"libreoffice{base_version}-{lang.kind}-",
+                    f"libreoffice{base_version}-dict-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-",
+                    f"libobasis{base_version}-{lang.kind}-help-",
+                ]
+
             for candidate in expected_rpm_names:
                 success, reply = PCLOS.run_shell_command(
                     f"rpm -qa | grep {candidate}", err_check=False
