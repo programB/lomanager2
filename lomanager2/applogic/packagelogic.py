@@ -445,9 +445,14 @@ class MainLogic(object):
                 package.is_remove_opt_visible = True
 
         # 3)
-        # Java installation/upgrading or removal are not supported
+        # Java removal (or upgrade to newer versio) is not supported
         # by this program. This should be done by a proper package manager
         # like Synaptic
+        if java.is_installed:
+            java.is_marked_for_removal = False
+            java.is_remove_opt_enabled = False
+            java.is_remove_opt_visible = False
+
 
         # 4) Check options for LibreOffice
         #
