@@ -243,14 +243,175 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        status = self._local_copy_install_procedure(
-            local_copy_directory=local_copy_directory,
-            statusfunc=statusfunc,
-            progress_description=progress_description,
-            progress_percentage=progress,
-            step=step,
-        )
-        return status
+
+        is_modification_needed = False
+        rpms_and_tgzs_to_use = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create working directory.\n" + msg_w,
+            )
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            return statusfunc(
+                isOK=False,
+                msg="Failed to (re)create verified directory.\n" + msg_v,
+            )
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
+
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
+        # local_copy_directory exists?
+        if not pathlib.Path(local_copy_directory).is_dir():
+            return statusfunc(
+                isOK=False,
+                msg="Could not find directory with saved packages.",
+            )
+
+        # STEP
+        # Perform verification of local copy directory
+        step.start("Scanning local copy directory for packages...")
+        (
+            Java_local_copy,
+            LibreOffice_core_local_copy,
+            LibreOffice_langs_local_copy,
+            Clipart_local_copy,
+        ) = self._verify_local_copy(local_copy_directory)
+        step.end("...finished local copy directory scanning")
+
+        # STEP
+        step.start("Deciding what to install/remove...")
+        # First, for every package, reset any 'request' flags that the user
+        # may have set manually in the menu before changing mind and
+        # choosing to install from local copy.
+        # The logic of what should be installed/removed follows
+        java = [c for c in self._package_tree.children if "Java" in c.family][0]
+        for package in virtual_packages:
+            package.is_marked_for_removal = False
+            package.is_marked_for_install = False
+            package.is_marked_for_download = False
+
+        if LibreOffice_core_local_copy["isPresent"]:
+            # We are assuming the user wants to install it.
+            # This is possible only if Java is present in the OS or
+            # can be installed from local_copy_directory
+            if not java.is_installed and not Java_local_copy["isPresent"]:
+                return statusfunc(
+                    isOK=False,
+                    msg="Java is not installed in the system and was not "
+                    "found in the directory provided.",
+                )
+            elif not java.is_installed and Java_local_copy["isPresent"]:
+                log.info("Java packages found will be installed.")
+                rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
+                    "rpm_abs_paths"
+                ]
+            elif java.is_installed and not Java_local_copy["isPresent"]:
+                log.debug("Java already installed.")
+            else:
+                log.debug(
+                    "Java was found in the local copy directory but Java is "
+                    "already installed so it won't be reinstalled."
+                )
+
+            # Reaching this point means Java is or will be installed
+            log.info("LibreOffice packages found will be installed.")
+            # No complex checks/comparisons for Office. To make sure
+            # nothing gets messed up simply remove every Office package
+            # that is installed.
+            # (That includes OO, LO and any langpacks)
+            log.debug("Marking ALL existing Office packages for removal.")
+            for package in virtual_packages:
+                if (
+                    package.family == "OpenOffice"
+                    or package.family == "LibreOffice"
+                    and package.is_installed
+                ):
+                    package.is_marked_for_removal = True
+
+            rpms_and_tgzs_to_use["files_to_install"][
+                "LibreOffice-core"
+            ] = LibreOffice_core_local_copy["tgz_abs_paths"]
+
+            if LibreOffice_langs_local_copy["isPresent"]:
+                # There are also some language packs that can be installed
+                log.info("LibreOffice langpack(s) found will be installed too.")
+                rpms_and_tgzs_to_use["files_to_install"][
+                    "LibreOffice-langs"
+                ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
+
+            # Signal that changes are needed
+            is_modification_needed = is_modification_needed or True
+        else:
+            log.info(
+                "LibreOffice core package wasn't found in the local copy "
+                "directory and so LibreOffice will not be installed."
+                "(LibreOffice langpacks or Java won't be installed "
+                "either even if present in the local copy directory)."
+            )
+            is_modification_needed = is_modification_needed or False
+
+        if Clipart_local_copy["isPresent"]:
+            log.info("Openclipart packages found will be installed.")
+            for package in virtual_packages:
+                if package.family == "Clipart" and package.is_installed:
+                    log.debug("Installed Clipart installation marked for removal")
+                    # Clipart is already installed.
+                    # Simply remove it and install the one from local copy
+                    package.is_marked_for_removal = True
+
+            rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
+                "rpm_abs_paths"
+            ]
+            is_modification_needed = is_modification_needed or True
+        else:
+            log.info(
+                "Openclipart packages were not found in the local copy "
+                "directory so Openclipart will not be installed."
+            )
+            is_modification_needed = is_modification_needed or False
+        step.end()
+
+        if is_modification_needed is True:
+            # Go ahead and make changes
+            # (files provided by the user SHOULD NOT be removed - keep them)
+            output = self._make_changes(
+                virtual_packages,
+                rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
+                keep_packages=True,
+                statusfunc=statusfunc,
+                progress_description=progress_description,
+                progress_percentage=progress,
+                step=step,
+            )
+            return output
+        else:
+            return statusfunc(isOK=False, msg="Nothing to install. Check logs.")
 
     def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
@@ -1653,183 +1814,6 @@ class MainLogic(object):
                 return (False, "Openclipart installed but there was error moving file")
 
         return (True, "Openclipart successfully installed")
-
-    def _local_copy_install_procedure(
-        self,
-        local_copy_directory,
-        statusfunc,
-        progress_description,
-        progress_percentage,
-        step,
-    ) -> dict:
-        is_modification_needed = False
-        rpms_and_tgzs_to_use = {
-            "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-        }
-
-        # STEP
-        # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
-        else:
-            directories = [
-                configuration.working_dir,
-                configuration.verified_dir.joinpath("Java_rpms"),
-                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
-                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
-                configuration.verified_dir.joinpath("Clipart_rpms"),
-            ]
-            for dir in directories:
-                PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
-
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
-        # local_copy_directory exists?
-        if not pathlib.Path(local_copy_directory).is_dir():
-            return statusfunc(
-                isOK=False,
-                msg="Could not find directory with saved packages.",
-            )
-
-        # STEP
-        # Perform verification of local copy directory
-        step.start("Scanning local copy directory for packages...")
-        (
-            Java_local_copy,
-            LibreOffice_core_local_copy,
-            LibreOffice_langs_local_copy,
-            Clipart_local_copy,
-        ) = self._verify_local_copy(local_copy_directory)
-        step.end("...finished local copy directory scanning")
-
-        # STEP
-        step.start("Deciding what to install/remove...")
-        # First, for every package, reset any 'request' flags that the user
-        # may have set manually in the menu before changing mind and
-        # choosing to install from local copy.
-        # The logic of what should be installed/removed follows
-        java = [c for c in self._package_tree.children if "Java" in c.family][0]
-        for package in virtual_packages:
-            package.is_marked_for_removal = False
-            package.is_marked_for_install = False
-            package.is_marked_for_download = False
-
-        if LibreOffice_core_local_copy["isPresent"]:
-            # We are assuming the user wants to install it.
-            # This is possible only if Java is present in the OS or
-            # can be installed from local_copy_directory
-            if not java.is_installed and not Java_local_copy["isPresent"]:
-                return statusfunc(
-                    isOK=False,
-                    msg="Java is not installed in the system and was not "
-                    "found in the directory provided.",
-                )
-            elif not java.is_installed and Java_local_copy["isPresent"]:
-                log.info("Java packages found will be installed.")
-                rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
-                    "rpm_abs_paths"
-                ]
-            elif java.is_installed and not Java_local_copy["isPresent"]:
-                log.debug("Java already installed.")
-            else:
-                log.debug(
-                    "Java was found in the local copy directory but Java is "
-                    "already installed so it won't be reinstalled."
-                )
-
-            # Reaching this point means Java is or will be installed
-            log.info("LibreOffice packages found will be installed.")
-            # No complex checks/comparisons for Office. To make sure
-            # nothing gets messed up simply remove every Office package
-            # that is installed.
-            # (That includes OO, LO and any langpacks)
-            log.debug("Marking ALL existing Office packages for removal.")
-            for package in virtual_packages:
-                if (
-                    package.family == "OpenOffice"
-                    or package.family == "LibreOffice"
-                    and package.is_installed
-                ):
-                    package.is_marked_for_removal = True
-
-            rpms_and_tgzs_to_use["files_to_install"][
-                "LibreOffice-core"
-            ] = LibreOffice_core_local_copy["tgz_abs_paths"]
-
-            if LibreOffice_langs_local_copy["isPresent"]:
-                # There are also some language packs that can be installed
-                log.info("LibreOffice langpack(s) found will be installed too.")
-                rpms_and_tgzs_to_use["files_to_install"][
-                    "LibreOffice-langs"
-                ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
-
-            # Signal that changes are needed
-            is_modification_needed = is_modification_needed or True
-        else:
-            log.info(
-                "LibreOffice core package wasn't found in the local copy "
-                "directory and so LibreOffice will not be installed."
-                "(LibreOffice langpacks or Java won't be installed "
-                "either even if present in the local copy directory)."
-            )
-            is_modification_needed = is_modification_needed or False
-
-        if Clipart_local_copy["isPresent"]:
-            log.info("Openclipart packages found will be installed.")
-            for package in virtual_packages:
-                if package.family == "Clipart" and package.is_installed:
-                    log.debug("Installed Clipart installation marked for removal")
-                    # Clipart is already installed.
-                    # Simply remove it and install the one from local copy
-                    package.is_marked_for_removal = True
-
-            rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
-                "rpm_abs_paths"
-            ]
-            is_modification_needed = is_modification_needed or True
-        else:
-            log.info(
-                "Openclipart packages were not found in the local copy "
-                "directory so Openclipart will not be installed."
-            )
-            is_modification_needed = is_modification_needed or False
-        step.end()
-
-        if is_modification_needed is True:
-            # Go ahead and make changes
-            # (files provided by the user SHOULD NOT be removed - keep them)
-            output = self._make_changes(
-                virtual_packages,
-                rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
-                keep_packages=True,
-                statusfunc=statusfunc,
-                progress_description=progress_description,
-                progress_percentage=progress_percentage,
-                step=step,
-            )
-            return output
-        else:
-            return statusfunc(isOK=False, msg="Nothing to install. Check logs.")
 
     def _verify_local_copy(
         self,
