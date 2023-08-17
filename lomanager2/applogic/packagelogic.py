@@ -294,7 +294,13 @@ class MainLogic(object):
         step.end()
 
         step.start("Building available software list")
-        available_vps, msg = self._get_available_software()
+        (
+            available_vps,
+            recommended_Java_ver,
+            recommended_LO_ver,
+            recommended_Clip_ver,
+            msg,
+        ) = self._get_available_software()
         step.end()
 
         step.start("Building dependency tree")
@@ -307,18 +313,19 @@ class MainLogic(object):
 
         step.start("Applying restrictions")
         (
-            latest_Java_ver,
             newest_Java_ver,
-            recommended_LO_ver,
             newest_LO_ver,
-            recommended_Clip_ver,
             newest_Clip_ver,
-        ) = self._set_packages_initial_state()
+        ) = self._set_packages_initial_state(
+            recommended_Java_ver,
+            recommended_LO_ver,
+            recommended_Clip_ver,
+        )
         step.end()
 
         self._package_menu = ManualSelectionLogic(
             root_node=self._package_tree,
-            latest_Java_version=latest_Java_ver,
+            latest_Java_version=recommended_Java_ver,
             newest_Java_version=newest_Java_ver,
             recommended_LO_version=recommended_LO_ver,
             newest_installed_LO_version=newest_LO_ver,
@@ -383,7 +390,12 @@ class MainLogic(object):
         # log.debug(f"packageS: {packageS}")
         # log.debug("\n" + master_node.tree_representation())
 
-    def _set_packages_initial_state(self) -> tuple[str, str, str, str, str, str]:
+    def _set_packages_initial_state(
+        self,
+        recommended_Java_version,
+        recommended_LO_version,
+        recommended_Clipart_version,
+    ) -> tuple[str, str, str]:
         """Decides on initial conditions for packages install/removal."""
         root = self._package_tree
 
@@ -394,7 +406,6 @@ class MainLogic(object):
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
             newest_installed_Java_version = java.version
-        latest_available_Java_version = configuration.latest_available_java_version
         # java install/remove/upgrade options are never visible
 
         newest_installed_LO_version = ""
@@ -405,15 +416,6 @@ class MainLogic(object):
                     office.version,
                     newest_installed_LO_version,
                 )
-        # Initialy among not installed LibreOffice core packages
-        # (direct children of Java) there is ONLY one such package, that
-        # is the one recommended for installation
-        # (latest version there is or a specific one if downgrading)
-        recommended_LO_version = ""
-        for office in LibreOfficeS:
-            if office.is_installed is False:
-                recommended_LO_version = office.version
-                break
 
         newest_installed_Clipart_version = ""
         clipartS = [c for c in root.children if "Clipart" in c.family]
@@ -423,11 +425,6 @@ class MainLogic(object):
                     clipart.version,
                     newest_installed_LO_version,
                 )
-        recommended_Clipart_version = ""
-        for clipart in clipartS:
-            if clipart.is_installed is False:
-                recommended_Clipart_version = clipart.version
-                break
 
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
@@ -556,11 +553,8 @@ class MainLogic(object):
                 package.is_remove_opt_enabled = False
 
         return (
-            latest_available_Java_version,
             newest_installed_Java_version,
-            recommended_LO_version,
             newest_installed_LO_version,
-            recommended_Clipart_version,
             newest_installed_Clipart_version,
         )
 
@@ -639,6 +633,7 @@ class MainLogic(object):
                 "checksum": "",
             },
         ]
+        recommended_Java_ver = configuration.latest_available_java_version
         available_virtual_packages.append(java_core_vp)
 
         # Decide which version should be recommended for installation
@@ -647,6 +642,7 @@ class MainLogic(object):
             msg += f"Downgrade of LibreOffice to version {LO_ver} is recommended. "
         else:
             LO_ver = configuration.latest_available_LO_version
+        recommended_LO_ver = LO_ver
         LO_minor_ver = PCLOS.make_minor_ver(LO_ver)
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
@@ -713,12 +709,19 @@ class MainLogic(object):
                 "checksum": "",
             },
         ]
+        recommended_Clip_ver = configuration.latest_available_clipart_version
         available_virtual_packages.append(clipart_core_vp)
 
         log.debug(f">>PRETENDING<< available software:")
         for p in available_virtual_packages:
             log.debug(f"                                 *  {p}")
-        return (available_virtual_packages, msg)
+        return (
+            available_virtual_packages,
+            recommended_Java_ver,
+            recommended_LO_ver,
+            recommended_Clip_ver,
+            msg,
+        )
 
     def _detect_installed_software(self):
         installed_virtual_packages = []
