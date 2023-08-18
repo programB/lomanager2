@@ -183,9 +183,11 @@ class Adapter(QObject):
                 for p in to_remove:
                     text += "- " + p + "\n"
             self._main_view.confirm_apply_view.info_box.setText(text)
+            self._main_view.confirm_apply_view.apply_button.setEnabled(True)
         else:
             text = "No changes to apply"
             self._main_view.confirm_apply_view.info_box.setText(text)
+            self._main_view.confirm_apply_view.apply_button.setEnabled(False)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
