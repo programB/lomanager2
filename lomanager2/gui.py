@@ -149,7 +149,7 @@ class ConfirmApplyDialog(QDialog):
         self.setWindowTitle("Apply changes")
         main_layout = QVBoxLayout()
 
-        self.info_box = QTextEdit()
+        self.info_box = QLabel()
         self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
         self.checkbox_force_java_download = QCheckBox("Download Java")
 
