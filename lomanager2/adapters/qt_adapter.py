@@ -130,6 +130,15 @@ class Adapter(QObject):
             self.warning_signal.emit(self._main_model.get_warnings())
 
     def _choose_dir_and_install_from_local_copy(self):
+        text = (
+            "Following procedure will inspect the chosen directory to find "
+            + "out if LibreOffice can be installed using packages therein.\n"
+            + "Please note that if check is successful any "
+            + "already installed Office will be removed with all its "
+            + "language packages."
+        )
+        self._main_view.confirm_local_copy_view.info_box.setText(text)
+        self._main_view.confirm_local_copy_view.info_box.setWordWrap(True)
         # Ask the user for directory with saved packages
         if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
             log.debug("Ok clicked: Installing from local copy...")
