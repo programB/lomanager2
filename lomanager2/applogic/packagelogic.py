@@ -72,8 +72,8 @@ class MainLogic(object):
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if normal installation was not blocked
-        if self.global_flags.block_network_install is True:
+        # Check if normal procedure for making changes was not blocked
+        if self.global_flags.block_normal_procedure is True:
             msg = "Modifications were blocked"
             self.inform_user(msg, isOK=False)
             return
@@ -437,14 +437,14 @@ class MainLogic(object):
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             self.inform_user(msg, isOK=False)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = (
@@ -463,13 +463,13 @@ class MainLogic(object):
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             self.inform_user(msg, isOK=False)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             msg = (
                 "Office is running and as a result you "
@@ -494,7 +494,7 @@ class MainLogic(object):
             ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
-                    self.global_flags.block_network_install = True
+                    self.global_flags.block_normal_procedure = True
                     msg = (
                         "The OS is not fully updated "
                         "and as a result installations are blocked. "
@@ -503,7 +503,7 @@ class MainLogic(object):
                     )
                     self.inform_user(msg, isOK=False)
             else:
-                self.global_flags.block_network_install = True
+                self.global_flags.block_normal_procedure = True
                 msg = (
                     "Failed to check update status \n"
                     "and as a result you won't be able to install "
@@ -517,7 +517,7 @@ class MainLogic(object):
         step.end(msg)
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             msg = (
                 "You are running outdated version of "
                 "this program! "
@@ -789,7 +789,7 @@ class MainLogic(object):
         block_any_install = (
             True
             if (
-                self.global_flags.block_network_install
+                self.global_flags.block_normal_procedure
                 or self.global_flags.block_local_copy_install
             )
             else False
@@ -1023,7 +1023,7 @@ class MainLogic(object):
         progress_percentage,
         step,
     ):
-        # At this point network_install and local_copy_install
+        # At this point normal changes procedure and local_copy_install
         # procedures converge and thus use the same function
 
         # STEP

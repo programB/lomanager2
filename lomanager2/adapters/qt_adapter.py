@@ -296,7 +296,7 @@ class Adapter(QObject):
 
         if (
             self._is_starting_procedures_allowed
-            and not self._main_model.global_flags.block_network_install
+            and not self._main_model.global_flags.block_normal_procedure
         ):
             is_apply_enabled = True
         else:

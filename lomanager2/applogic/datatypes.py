@@ -246,7 +246,7 @@ class SignalFlags(object):
         self.block_viewing_installed = False
         self.block_viewing_available = False
         self.block_removal = False
-        self.block_network_install = False
+        self.block_normal_procedure = False
         self.block_local_copy_install = False
         self.block_checking_4_updates = False
         self.ready_to_apply_changes = False
