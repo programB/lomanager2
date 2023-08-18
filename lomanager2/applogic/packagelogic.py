@@ -431,8 +431,6 @@ class MainLogic(object):
         """
 
         step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
-        # TODO: Add logging
-        info_list = []
         msg = ""
 
         step.start("Looking for running package managers")
@@ -443,7 +441,7 @@ class MainLogic(object):
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -457,8 +455,8 @@ class MainLogic(object):
                 "manager: PID\n"
             )
             for manager, pids in running_managers.items():
-                msg = msg + manager + ": " + str(pids) + "  "
-            info_list.append(msg)
+                msg += manager + ": " + str(pids) + "  "
+            self.inform_user(msg, isOK=False)
         step.end(msg)
 
         step.start("Looking for running Office")
@@ -468,7 +466,7 @@ class MainLogic(object):
             self.global_flags.block_network_install = True
             self.global_flags.block_local_copy_install = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_network_install = True
@@ -482,8 +480,8 @@ class MainLogic(object):
                 "Office: PID\n"
             )
             for office, pids in running_office_suits.items():
-                msg = msg + office + ": " + str(pids) + "  "
-            info_list.append(msg)
+                msg += office + ": " + str(pids) + "  "
+            self.inform_user(msg, isOK=False)
         step.end(msg)
 
         # no running manager prevents access to system rpm database
@@ -503,7 +501,7 @@ class MainLogic(object):
                         "Update your system and restart "
                         "this program."
                     )
-                    info_list.append(msg)
+                    self.inform_user(msg, isOK=False)
             else:
                 self.global_flags.block_network_install = True
                 msg = (
@@ -514,8 +512,8 @@ class MainLogic(object):
                     "and restart this program."
                 )
                 if explanation:
-                    msg = msg + "\n" + explanation
-                info_list.append(msg)
+                    msg += "\n" + explanation
+                self.inform_user(msg, isOK=False)
         step.end(msg)
 
         if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
@@ -528,9 +526,8 @@ class MainLogic(object):
                 "Update your system and restart "
                 "this program."
             )
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
 
-        self.warnings = info_list.copy()
         self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):
