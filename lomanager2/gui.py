@@ -191,8 +191,7 @@ class LocalCopyInstallDialog(QDialog):
         self.setWindowTitle("Install from local copy")
         main_layout = QVBoxLayout()
 
-        # PAGE 128
-        self.info_box = QTextEdit()
+        self.info_box = QLabel()
 
         file_input_layout = QHBoxLayout()
         self.initial_dir = "/"
