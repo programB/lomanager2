@@ -211,7 +211,7 @@ class MainLogic(object):
         status = self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
-            keep_packages=keep_packages,
+            create_offline_copy=keep_packages,
             progress_description=progress_description,
             progress_percentage=progress,
             step=step,
@@ -403,11 +403,12 @@ class MainLogic(object):
 
         if is_modification_needed is True:
             # Go ahead and make changes
-            # (files provided by the user SHOULD NOT be removed - keep them)
+            # (files provided by the user SHOULD NOT be removed
+            #  - DO NOT overwrite them by creating an offline copy)
             output = self._make_changes(
                 virtual_packages,
                 rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
-                keep_packages=True,
+                create_offline_copy=False,
                 progress_description=progress_description,
                 progress_percentage=progress,
                 step=step,
@@ -1018,7 +1019,7 @@ class MainLogic(object):
         self,
         virtual_packages,
         rpms_and_tgzs_to_use,
-        keep_packages,
+        create_offline_copy,
         progress_description,
         progress_percentage,
         step,
@@ -1166,7 +1167,7 @@ class MainLogic(object):
 
         # STEP
         # Should downloaded packages be kept ?
-        if keep_packages is True:
+        if create_offline_copy is True:
             step.start("Saving packages...")
 
             is_saved, msg = PCLOS.move_dir(
