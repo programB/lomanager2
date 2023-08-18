@@ -269,12 +269,23 @@ class Adapter(QObject):
         self.GUI_locks_signal.emit()
 
     def _show_warnings(self):
-        info = "Due to issues below this program will not be able to perform some operations:\n\n"
-        for i, warning in enumerate(self._main_model.warnings):
-            info = info + str(i + 1) + ") " + warning + "\n\n"
-        self._main_view.info_dialog.setWindowTitle("Warning")
-        self._main_view.info_dialog.setText(info)
-        self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
+        error_icon = QMessageBox.Icon.Critical
+        good_icon = QMessageBox.Icon.Information
+        warnings_icon = QMessageBox.Icon.Warning
+
+        if len(self._main_model.warnings) == 1:
+            isOK, msg = self._main_model.warnings[0]
+            icon = good_icon if isOK else error_icon
+            title = "Success" if isOK else "Problem"
+        else:
+            msg = ""
+            for i, warning in enumerate(self._main_model.warnings):
+                msg += str(i + 1) + ") " + warning[1] + "\n\n"
+            icon = warnings_icon
+            title = "Warning"
+        self._main_view.info_dialog.setWindowTitle(title)
+        self._main_view.info_dialog.setText(msg)
+        self._main_view.info_dialog.setIcon(icon)
         self._main_view.info_dialog.show()
 
     def change_GUI_locks(self):

@@ -63,7 +63,7 @@ class MainLogic(object):
             log.info(msg)
         else:
             log.error(msg)
-        self.warnings.append(msg)
+        self.warnings.append((isOK, msg))
 
     def apply_changes(self, *args, **kwargs):
         # Check if we can proceed with applying changes
