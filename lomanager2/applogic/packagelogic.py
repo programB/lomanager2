@@ -59,31 +59,44 @@ class MainLogic(object):
         self.warnings = []
         return warnings
 
+    def inform_user(self, msg: str, isOK: bool):
+        if isOK:
+            log.info(msg)
+        else:
+            log.error(msg)
+        self.warnings.append(msg)
+
     def apply_changes(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
         statusfunc = statusfunc_closure(callbacks=kwargs)
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply changes.")
+            msg = "Not ready to apply changes"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if normal installation was not blocked
         if self.global_flags.block_network_install is True:
-            return statusfunc(isOK=False, msg="Modifications were blocked.")
+            msg = "Modifications were blocked"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
         else:
-            return statusfunc(isOK=False, msg="keep_packages argument is obligatory")
+            msg = "keep_packages argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if force_java_download option was passed
         if "force_java_download" in kwargs.keys():
             force_java_download = kwargs["force_java_download"]
         else:
-            return statusfunc(
-                isOK=False, msg="force_java_download argument is obligatory"
-            )
+            msg = "force_java_download argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -143,16 +156,14 @@ class MainLogic(object):
         step.start("Cleaning temporary directories...")
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
+            msg = "Failed to (re)create working directory: " + msg_w
+            self.inform_user(msg, isOK=False)
+            return
         is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
         if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
+            msg = "Failed to (re)create verified directory: " + msg_v
+            self.inform_user(msg, isOK=False)
+            return
         else:
             directories = [
                 configuration.working_dir,
@@ -174,11 +185,10 @@ class MainLogic(object):
                 packages_to_download
             )
             if is_enough is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Insufficient disk space to download selected "
-                    f"packages. Needed: {needed}. Available {available}\n",
-                )
+                msg = "Insufficient disk space to download selected "
+                f"packages. Needed: {needed}. Available {available}"
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...disk space OK")
 
             # STEP
@@ -192,10 +202,9 @@ class MainLogic(object):
             )
 
             if is_every_pkg_collected is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to download requested packages.\n" + msg,
-                )
+                msg = "Failed to download requested packages: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             else:
                 step.end("...done collecting files")
         # No need to download anything - just uninstalling
@@ -212,6 +221,9 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
+        msg = "All changes successfully applied"
+        self.inform_user(msg, isOK=True)
+        return
 
     def install_from_local_copy(self, *args, **kwargs):
         # Callback function for reporting the status of the procedure
@@ -219,19 +231,23 @@ class MainLogic(object):
 
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply changes.")
+            msg = "Not ready to apply changes"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation was blocked.")
+            msg = "Local copy installation was blocked"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if local copy directory was passed
         if "local_copy_folder" in kwargs.keys():
             local_copy_directory = kwargs["local_copy_folder"]
         else:
-            return statusfunc(
-                isOK=False, msg="local_copy_folder argument is obligatory"
-            )
+            msg = "local_copy_folder argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -259,16 +275,14 @@ class MainLogic(object):
         step.start("Cleaning temporary directories...")
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
+            msg = "Failed to (re)create working directory: " + msg_w
+            self.inform_user(msg, isOK=False)
+            return
         is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
         if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
+            msg = "Failed to (re)create verified directory: " + msg_v
+            self.inform_user(msg, isOK=False)
+            return
         else:
             directories = [
                 configuration.working_dir,
@@ -288,10 +302,9 @@ class MainLogic(object):
 
         # local_copy_directory exists?
         if not pathlib.Path(local_copy_directory).is_dir():
-            return statusfunc(
-                isOK=False,
-                msg="Could not find directory with saved packages.",
-            )
+            msg = "Could not find directory with saved packages"
+            self.inform_user(msg, isOK=False)
+            return
 
         # STEP
         # Perform verification of local copy directory
@@ -321,11 +334,10 @@ class MainLogic(object):
             # This is possible only if Java is present in the OS or
             # can be installed from local_copy_directory
             if not java.is_installed and not Java_local_copy["isPresent"]:
-                return statusfunc(
-                    isOK=False,
-                    msg="Java is not installed in the system and was not "
-                    "found in the directory provided.",
-                )
+                msg = "Java is not installed in the system and was not "
+                "found in the directory provided"
+                self.inform_user(msg, isOK=False)
+                return
             elif not java.is_installed and Java_local_copy["isPresent"]:
                 log.info("Java packages found will be installed.")
                 rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
@@ -409,9 +421,13 @@ class MainLogic(object):
                 progress_percentage=progress,
                 step=step,
             )
-            return output
+            msg = "All changes successfully applied"
+            self.inform_user(msg, isOK=True)
+            return
         else:
-            return statusfunc(isOK=False, msg="Nothing to install. Check logs.")
+            msg = "Nothing to install. Check logs."
+            self.inform_user(msg, isOK=False)
+            return
 
     def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
@@ -576,8 +592,9 @@ class MainLogic(object):
         )
         self.global_flags.ready_to_apply_changes = True
         if msg:
-            return statusfunc(isOK=False, msg=msg)
-        return statusfunc(isOK=True, msg="")
+            self.inform_user(msg, isOK=False)
+            return
+        return
 
     # -- end Public interface for MainLogic
 
@@ -1045,10 +1062,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Java installation failed. " + msg,
-                )
+                msg = "Java installation failed: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done installing Java")
         # No Java install requested
         else:
@@ -1086,10 +1102,9 @@ class MainLogic(object):
             # TODO: Can office_uninstall procedure be made to have dry-run option
             #       to make sure that uninstall is atomic (all or none)?
             if is_removed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to remove Office components.\n" + msg,
-                )
+                msg = "Failed to remove Office components: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done removing selected Office components")
         # No Office packages marked for removal
         else:
@@ -1110,10 +1125,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to install Office components.\n" + msg,
-                )
+                msg = "Failed to install Office components: " + msg
+                self.inform_user(msg, isOK=False)
+                return
 
             step.end("...done installing selected Office components")
         # No Office packages marked for install
@@ -1137,10 +1151,9 @@ class MainLogic(object):
             )
 
             if is_removed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to remove Clipart library.\n" + msg,
-                )
+                msg = "Failed to remove Clipart library: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done removing Clipart library")
         # Clipart was not marked for removal
         else:
@@ -1157,10 +1170,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Openclipart installation failed. " + msg,
-                )
+                msg = "Openclipart installation failed: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done installing Clipart library")
         # Clipart was not marked for install
         else:
@@ -1175,10 +1187,9 @@ class MainLogic(object):
                 configuration.verified_dir, configuration.offline_copy_dir
             )
             if is_saved is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to save packages.\n" + msg,
-                )
+                msg = "Failed to save packages: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             else:
                 msg = f"All changes successful. Packages saved to {configuration.offline_copy_dir}"
                 log.info(msg)
