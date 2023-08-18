@@ -149,7 +149,7 @@ class ConfirmApplyDialog(QDialog):
         self.setWindowTitle("Apply changes")
         main_layout = QVBoxLayout()
 
-        self.info_box = QTextEdit()
+        self.info_box = QLabel()
         self.checkbox_keep_packages = QCheckBox("Keep downloaded packages")
         self.checkbox_force_java_download = QCheckBox("Download Java")
 
@@ -191,8 +191,7 @@ class LocalCopyInstallDialog(QDialog):
         self.setWindowTitle("Install from local copy")
         main_layout = QVBoxLayout()
 
-        # PAGE 128
-        self.info_box = QTextEdit()
+        self.info_box = QLabel()
 
         file_input_layout = QHBoxLayout()
         self.initial_dir = "/"

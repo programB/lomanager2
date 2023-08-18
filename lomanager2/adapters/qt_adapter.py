@@ -26,9 +26,8 @@ class Adapter(QObject):
     overall_progress_description_signal = Signal(str)
     overall_progress_signal = Signal(int)
     refresh_signal = Signal()
-    status_signal = Signal(dict)
     worker_ready_signal = Signal()
-    warning_signal = Signal()
+    warning_signal = Signal(list)
     init_signal = Signal()
     GUI_locks_signal = Signal()
 
@@ -75,12 +74,6 @@ class Adapter(QObject):
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
 
-        # # Check if there are any limitation on this program's
-        # # operations as a result of problems detected
-        # # during initial system verification
-        # if self._main_model.any_limitations:
-        #     self.warning_signal.emit()
-
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
         # TODO: Implement - does not exist yet
@@ -115,9 +108,6 @@ class Adapter(QObject):
         # TODO: test connect "refresh" (custom signal)
         self.refresh_signal.connect(self._refresh_package_menu_state)
 
-        # Internal Signal: Shows dialog with information returned by procedures
-        self.status_signal.connect(self._display_status_information)
-
         # Internal Signal: Locks/Unlocks GUI elements
         self.GUI_locks_signal.connect(self.change_GUI_locks)
 
@@ -134,15 +124,21 @@ class Adapter(QObject):
         log.debug("Refreshing!")
         self._main_model.refresh_state()
         self._package_menu_viewmodel.layoutChanged.emit()
-        # Check if there are any limitation on this program's
-        # operations as a result of problems detected
-        # during initial system verification
-        # if self._main_model.any_limitations:
-        #     self.warning_signal.emit()
+        # Check if there are any messages that should
+        # be shown to the user
         if self._main_model.warnings:
-            self.warning_signal.emit()
+            self.warning_signal.emit(self._main_model.get_warnings())
 
     def _choose_dir_and_install_from_local_copy(self):
+        text = (
+            "Following procedure will inspect the chosen directory to find "
+            + "out if LibreOffice can be installed using packages therein.\n"
+            + "Please note that if check is successful any "
+            + "already installed Office will be removed with all its "
+            + "language packages."
+        )
+        self._main_view.confirm_local_copy_view.info_box.setText(text)
+        self._main_view.confirm_local_copy_view.info_box.setWordWrap(True)
         # Ask the user for directory with saved packages
         if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
             log.debug("Ok clicked: Installing from local copy...")
@@ -155,7 +151,6 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=selected_dir,
-                report_status=self.status_signal.emit,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -184,6 +179,24 @@ class Adapter(QObject):
         self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
             fjd_state
         )
+        to_install, to_remove = self._main_model.get_planned_changes()
+        if to_install or to_remove:
+            text = ""
+            if to_install:
+                text += "Following components will be installed:\n"
+                for p in to_install:
+                    text += "- " + p + "\n"
+            text += "\n"
+            if to_remove:
+                text += "Following components will be removed:\n"
+                for p in to_remove:
+                    text += "- " + p + "\n"
+            self._main_view.confirm_apply_view.info_box.setText(text)
+            self._main_view.confirm_apply_view.apply_button.setEnabled(True)
+        else:
+            text = "No changes to apply"
+            self._main_view.confirm_apply_view.info_box.setText(text)
+            self._main_view.confirm_apply_view.apply_button.setEnabled(False)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
@@ -203,8 +216,7 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
-                force_java_download = self._force_java_download,
-                report_status=self.status_signal.emit,
+                force_java_download=self._force_java_download,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -274,27 +286,24 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
         self.GUI_locks_signal.emit()
 
-    def _display_status_information(self, status: dict):
-        if "explanation" in status.keys() and "is_OK" in status.keys():
-            info = status["explanation"]
-            if status["is_OK"] is True and info != "":
-                self._main_view.info_dialog.setWindowTitle("Success")
-                self._main_view.info_dialog.setText(info)
-                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Information)
-                self._main_view.info_dialog.exec()
-            if status["is_OK"] is False:
-                self._main_view.info_dialog.setWindowTitle("Problem")
-                self._main_view.info_dialog.setText(info)
-                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
-                self._main_view.info_dialog.exec()
+    def _show_warnings(self, warnings):
+        error_icon = QMessageBox.Icon.Critical
+        good_icon = QMessageBox.Icon.Information
+        warnings_icon = QMessageBox.Icon.Warning
 
-    def _show_warnings(self):
-        info = "Due to issues below this program will not be able to perform some operations:\n\n"
-        for i, warning in enumerate(self._main_model.warnings):
-            info = info + str(i + 1) + ") " + warning + "\n\n"
-        self._main_view.info_dialog.setWindowTitle("Warning")
-        self._main_view.info_dialog.setText(info)
-        self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
+        if len(warnings) == 1:
+            isOK, msg = warnings[0]
+            icon = good_icon if isOK else error_icon
+            title = "Success" if isOK else "Problem"
+        else:
+            msg = ""
+            for i, warning in enumerate(warnings):
+                msg += str(i + 1) + ") " + warning[1] + "\n\n"
+            icon = warnings_icon
+            title = "Warning"
+        self._main_view.info_dialog.setWindowTitle(title)
+        self._main_view.info_dialog.setText(msg)
+        self._main_view.info_dialog.setIcon(icon)
         self._main_view.info_dialog.show()
 
     def change_GUI_locks(self):
@@ -305,7 +314,7 @@ class Adapter(QObject):
 
         if (
             self._is_starting_procedures_allowed
-            and not self._main_model.global_flags.block_network_install
+            and not self._main_model.global_flags.block_normal_procedure
         ):
             is_apply_enabled = True
         else:
@@ -325,7 +334,6 @@ class Adapter(QObject):
         print("init signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._main_model.flags_logic,
-            report_status=self.status_signal.emit,
             progress_description=self.progress_description_signal.emit,
             progress_percentage=self.progress_signal.emit,
             overall_progress_description=self.overall_progress_description_signal.emit,

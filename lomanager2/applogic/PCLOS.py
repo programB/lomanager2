@@ -155,7 +155,6 @@ def get_system_users() -> list[HumanUser]:
 
 
 def is_live_session_active() -> bool:
-    # TODO: Verify implementation
     return pathlib.Path("/union").exists()
 
 
@@ -208,11 +207,6 @@ def check_system_update_status() -> tuple[bool, bool, str]:
         explanation = output
         log.error(output)
     return (check_successful, system_updated, explanation)
-
-
-def is_lomanager2_latest(lomanger2_version: str) -> bool:
-    # TODO: Implement
-    return True
 
 
 def free_space_in_dir(dir: pathlib.Path) -> int:

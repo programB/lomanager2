@@ -13,7 +13,6 @@ from .callbacks import (
     OverallProgressReporter,
     progress_closure,
     progress_description_closure,
-    statusfunc_closure,
 )
 
 
@@ -59,31 +58,47 @@ class MainLogic(object):
         self.warnings = []
         return warnings
 
-    def apply_changes(self, *args, **kwargs):
-        # Callback function for reporting the status of the procedure
-        statusfunc = statusfunc_closure(callbacks=kwargs)
+    def inform_user(self, msg: str, isOK: bool):
+        if isOK:
+            log.info(msg)
+        else:
+            log.error(msg)
+        self.warnings.append((isOK, msg))
 
+    def get_planned_changes(self):
+        return (
+            self._package_menu.info_to_install,
+            self._package_menu.info_to_remove,
+        )
+
+    def apply_changes(self, *args, **kwargs):
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply changes.")
+            msg = "Not ready to apply changes"
+            self.inform_user(msg, isOK=False)
+            return
 
-        # Check if normal installation was not blocked
-        if self.global_flags.block_network_install is True:
-            return statusfunc(isOK=False, msg="Modifications were blocked.")
+        # Check if normal procedure for making changes was not blocked
+        if self.global_flags.block_normal_procedure is True:
+            msg = "Modifications were blocked"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
         else:
-            return statusfunc(isOK=False, msg="keep_packages argument is obligatory")
+            msg = "keep_packages argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if force_java_download option was passed
         if "force_java_download" in kwargs.keys():
             force_java_download = kwargs["force_java_download"]
         else:
-            return statusfunc(
-                isOK=False, msg="force_java_download argument is obligatory"
-            )
+            msg = "force_java_download argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -124,34 +139,110 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        status = self._install(
-            keep_packages=keep_packages,
-            statusfunc=statusfunc,
+
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
+        collected_files = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            msg = "Failed to (re)create working directory: " + msg_w
+            self.inform_user(msg, isOK=False)
+            return
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            msg = "Failed to (re)create verified directory: " + msg_v
+            self.inform_user(msg, isOK=False)
+            return
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
+
+        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
+        # Some packages need to be downloaded
+        if packages_to_download:
+            # STEP
+            step.start("Checking free disk space for download...")
+            is_enough, needed, available = self._space_for_download(
+                packages_to_download
+            )
+            if is_enough is False:
+                msg = "Insufficient disk space to download selected "
+                f"packages. Needed: {needed}. Available {available}"
+                self.inform_user(msg, isOK=False)
+                return
+            step.end("...disk space OK")
+
+            # STEP
+            step.start("Collecting packages...")
+
+            # Run collect_packages procedure
+            is_every_pkg_collected, msg, collected_files = self._collect_packages(
+                packages_to_download,
+                progress_description=progress_description,
+                progress_percentage=progress,
+            )
+
+            if is_every_pkg_collected is False:
+                msg = "Failed to download requested packages: " + msg
+                self.inform_user(msg, isOK=False)
+                return
+            else:
+                step.end("...done collecting files")
+        # No need to download anything - just uninstalling
+        else:
+            step.skip()
+
+        # Uninstall/Upgrade/Install packages
+        self._make_changes(
+            virtual_packages,
+            rpms_and_tgzs_to_use=collected_files,
+            create_offline_copy=keep_packages,
             progress_description=progress_description,
             progress_percentage=progress,
             step=step,
         )
-        return status
 
     def install_from_local_copy(self, *args, **kwargs):
-        # Callback function for reporting the status of the procedure
-        statusfunc = statusfunc_closure(callbacks=kwargs)
-
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
-            return statusfunc(isOK=False, msg="Not ready to apply changes.")
+            msg = "Not ready to apply changes"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
-            return statusfunc(isOK=False, msg="Local copy installation was blocked.")
+            msg = "Local copy installation was blocked"
+            self.inform_user(msg, isOK=False)
+            return
 
         # Check if local copy directory was passed
         if "local_copy_folder" in kwargs.keys():
             local_copy_directory = kwargs["local_copy_folder"]
         else:
-            return statusfunc(
-                isOK=False, msg="local_copy_folder argument is obligatory"
-            )
+            msg = "local_copy_folder argument is obligatory"
+            self.inform_user(msg, isOK=False)
+            return
 
         # We are good to go
         # Create helper objects for progress reporting
@@ -163,14 +254,171 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
         log.info("Applying changes...")
-        status = self._local_copy_install_procedure(
-            local_copy_directory=local_copy_directory,
-            statusfunc=statusfunc,
-            progress_description=progress_description,
-            progress_percentage=progress,
-            step=step,
-        )
-        return status
+
+        is_modification_needed = False
+        rpms_and_tgzs_to_use = {
+            "files_to_install": {
+                "Java": [],
+                "LibreOffice-core": [],
+                "LibreOffice-langs": [],
+                "Clipart": [],
+            },
+        }
+
+        # STEP
+        # clean up working directory and verified copies directory
+        step.start("Cleaning temporary directories...")
+        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_cleaned_w is False:
+            msg = "Failed to (re)create working directory: " + msg_w
+            self.inform_user(msg, isOK=False)
+            return
+        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_cleaned_v is False:
+            msg = "Failed to (re)create verified directory: " + msg_v
+            self.inform_user(msg, isOK=False)
+            return
+        else:
+            directories = [
+                configuration.working_dir,
+                configuration.verified_dir.joinpath("Java_rpms"),
+                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
+                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
+                configuration.verified_dir.joinpath("Clipart_rpms"),
+            ]
+            for dir in directories:
+                PCLOS.create_dir(dir)
+        step.end("...done cleaning temporary directories")
+
+        # Take current state of package tree and create packages list
+        virtual_packages = []
+        self._package_tree.get_subtree(virtual_packages)
+        virtual_packages.remove(self._package_tree)
+
+        # local_copy_directory exists?
+        if not pathlib.Path(local_copy_directory).is_dir():
+            msg = "Could not find directory with saved packages"
+            self.inform_user(msg, isOK=False)
+            return
+
+        # STEP
+        # Perform verification of local copy directory
+        step.start("Scanning local copy directory for packages...")
+        (
+            Java_local_copy,
+            LibreOffice_core_local_copy,
+            LibreOffice_langs_local_copy,
+            Clipart_local_copy,
+        ) = self._verify_local_copy(local_copy_directory)
+        step.end("...finished local copy directory scanning")
+
+        # STEP
+        step.start("Deciding what to install/remove...")
+        # First, for every package, reset any 'request' flags that the user
+        # may have set manually in the menu before changing mind and
+        # choosing to install from local copy.
+        # The logic of what should be installed/removed follows
+        java = [c for c in self._package_tree.children if "Java" in c.family][0]
+        for package in virtual_packages:
+            package.is_marked_for_removal = False
+            package.is_marked_for_install = False
+            package.is_marked_for_download = False
+
+        if LibreOffice_core_local_copy["isPresent"]:
+            # We are assuming the user wants to install it.
+            # This is possible only if Java is present in the OS or
+            # can be installed from local_copy_directory
+            if not java.is_installed and not Java_local_copy["isPresent"]:
+                msg = "Java is not installed in the system and was not "
+                "found in the directory provided"
+                self.inform_user(msg, isOK=False)
+                return
+            elif not java.is_installed and Java_local_copy["isPresent"]:
+                log.info("Java packages found will be installed.")
+                rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
+                    "rpm_abs_paths"
+                ]
+            elif java.is_installed and not Java_local_copy["isPresent"]:
+                log.debug("Java already installed.")
+            else:
+                log.debug(
+                    "Java was found in the local copy directory but Java is "
+                    "already installed so it won't be reinstalled."
+                )
+
+            # Reaching this point means Java is or will be installed
+            log.info("LibreOffice packages found will be installed.")
+            # No complex checks/comparisons for Office. To make sure
+            # nothing gets messed up simply remove every Office package
+            # that is installed.
+            # (That includes OO, LO and any langpacks)
+            log.debug("Marking ALL existing Office packages for removal.")
+            for package in virtual_packages:
+                if (
+                    package.family == "OpenOffice"
+                    or package.family == "LibreOffice"
+                    and package.is_installed
+                ):
+                    package.is_marked_for_removal = True
+
+            rpms_and_tgzs_to_use["files_to_install"][
+                "LibreOffice-core"
+            ] = LibreOffice_core_local_copy["tgz_abs_paths"]
+
+            if LibreOffice_langs_local_copy["isPresent"]:
+                # There are also some language packs that can be installed
+                log.info("LibreOffice langpack(s) found will be installed too.")
+                rpms_and_tgzs_to_use["files_to_install"][
+                    "LibreOffice-langs"
+                ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
+
+            # Signal that changes are needed
+            is_modification_needed = is_modification_needed or True
+        else:
+            log.info(
+                "LibreOffice core package wasn't found in the local copy "
+                "directory and so LibreOffice will not be installed."
+                "(LibreOffice langpacks or Java won't be installed "
+                "either even if present in the local copy directory)."
+            )
+            is_modification_needed = is_modification_needed or False
+
+        if Clipart_local_copy["isPresent"]:
+            log.info("Openclipart packages found will be installed.")
+            for package in virtual_packages:
+                if package.family == "Clipart" and package.is_installed:
+                    log.debug("Installed Clipart installation marked for removal")
+                    # Clipart is already installed.
+                    # Simply remove it and install the one from local copy
+                    package.is_marked_for_removal = True
+
+            rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
+                "rpm_abs_paths"
+            ]
+            is_modification_needed = is_modification_needed or True
+        else:
+            log.info(
+                "Openclipart packages were not found in the local copy "
+                "directory so Openclipart will not be installed."
+            )
+            is_modification_needed = is_modification_needed or False
+        step.end()
+
+        if is_modification_needed is True:
+            # Go ahead and make changes
+            # (files provided by the user SHOULD NOT be removed
+            #  - DO NOT overwrite them by creating an offline copy)
+            self._make_changes(
+                virtual_packages,
+                rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
+                create_offline_copy=False,
+                progress_description=progress_description,
+                progress_percentage=progress,
+                step=step,
+            )
+        else:
+            msg = "Nothing to install. Check logs."
+            self.inform_user(msg, isOK=False)
 
     def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
@@ -183,22 +431,20 @@ class MainLogic(object):
         """
 
         step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
-        # TODO: Add logging
-        info_list = []
         msg = ""
 
         step.start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = (
@@ -209,21 +455,21 @@ class MainLogic(object):
                 "manager: PID\n"
             )
             for manager, pids in running_managers.items():
-                msg = msg + manager + ": " + str(pids) + "  "
-            info_list.append(msg)
+                msg += manager + ": " + str(pids) + "  "
+            self.inform_user(msg, isOK=False)
         step.end(msg)
 
         step.start("Looking for running Office")
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
-            self.global_flags.block_network_install = True
+            self.global_flags.block_normal_procedure = True
             self.global_flags.block_local_copy_install = True
             msg = (
                 "Office is running and as a result you "
@@ -234,8 +480,8 @@ class MainLogic(object):
                 "Office: PID\n"
             )
             for office, pids in running_office_suits.items():
-                msg = msg + office + ": " + str(pids) + "  "
-            info_list.append(msg)
+                msg += office + ": " + str(pids) + "  "
+            self.inform_user(msg, isOK=False)
         step.end(msg)
 
         # no running manager prevents access to system rpm database
@@ -248,16 +494,16 @@ class MainLogic(object):
             ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
-                    self.global_flags.block_network_install = True
+                    self.global_flags.block_normal_procedure = True
                     msg = (
                         "The OS is not fully updated "
                         "and as a result installations are blocked. "
                         "Update your system and restart "
                         "this program."
                     )
-                    info_list.append(msg)
+                    self.inform_user(msg, isOK=False)
             else:
-                self.global_flags.block_network_install = True
+                self.global_flags.block_normal_procedure = True
                 msg = (
                     "Failed to check update status \n"
                     "and as a result you won't be able to install "
@@ -266,28 +512,24 @@ class MainLogic(object):
                     "and restart this program."
                 )
                 if explanation:
-                    msg = msg + "\n" + explanation
-                info_list.append(msg)
+                    msg += "\n" + explanation
+                self.inform_user(msg, isOK=False)
         step.end(msg)
 
-        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self.global_flags.block_network_install = True
+        if PCLOS.is_live_session_active():
             msg = (
-                "You are running outdated version of "
-                "this program! "
-                "As a result you won't be able to install "
-                "any packages."
-                "Update your system and restart "
-                "this program."
+                "OS is running in live session mode.\n "
+                + "All modifications made will be lost on reboot unless you "
+                + "intall the system on a permanent drive. Also note that in "
+                + "live sesssion mode LibreOffice may fail to install due "
+                + "to inssufficient virtual disk space."
             )
-            info_list.append(msg)
+            self.inform_user(msg, isOK=False)
 
-        self.warnings = info_list.copy()
         self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
-        statusfunc = statusfunc_closure(callbacks=kwargs)
         msg = ""
 
         step.start("Detecting installed software")
@@ -335,8 +577,7 @@ class MainLogic(object):
         )
         self.global_flags.ready_to_apply_changes = True
         if msg:
-            return statusfunc(isOK=False, msg=msg)
-        return statusfunc(isOK=True, msg="")
+            self.inform_user(msg, isOK=False)
 
     # -- end Public interface for MainLogic
 
@@ -544,7 +785,7 @@ class MainLogic(object):
         block_any_install = (
             True
             if (
-                self.global_flags.block_network_install
+                self.global_flags.block_normal_procedure
                 or self.global_flags.block_local_copy_install
             )
             else False
@@ -769,115 +1010,16 @@ class MainLogic(object):
             log.debug(f"                             *  {p}")
         return installed_virtual_packages
 
-    def _install(
-        self,
-        keep_packages,
-        statusfunc,
-        progress_description,
-        progress_percentage,
-        step,
-    ) -> dict:
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
-        collected_files = {
-            "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-        }
-
-        # STEP
-        # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
-        else:
-            directories = [
-                configuration.working_dir,
-                configuration.verified_dir.joinpath("Java_rpms"),
-                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
-                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
-                configuration.verified_dir.joinpath("Clipart_rpms"),
-            ]
-            for dir in directories:
-                PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
-
-        packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        # Some packages need to be downloaded
-        if packages_to_download:
-            # STEP
-            step.start("Checking free disk space for download...")
-            is_enough, needed, available = self._space_for_download(
-                packages_to_download
-            )
-            if is_enough is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Insufficient disk space to download selected "
-                    f"packages. Needed: {needed}. Available {available}\n",
-                )
-            step.end("...disk space OK")
-
-            # STEP
-            step.start("Collecting packages...")
-
-            # Run collect_packages procedure
-            is_every_pkg_collected, msg, collected_files = self._collect_packages(
-                packages_to_download,
-                progress_description=progress_description,
-                progress_percentage=progress_percentage,
-            )
-
-            if is_every_pkg_collected is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to download requested packages.\n" + msg,
-                )
-            else:
-                step.end("...done collecting files")
-        # No need to download anything - just uninstalling
-        else:
-            step.skip()
-
-        # Uninstall/Upgrade/Install packages
-        status = self._make_changes(
-            virtual_packages,
-            rpms_and_tgzs_to_use=collected_files,
-            keep_packages=keep_packages,
-            statusfunc=statusfunc,
-            progress_description=progress_description,
-            progress_percentage=progress_percentage,
-            step=step,
-        )
-        return status
-
     def _make_changes(
         self,
         virtual_packages,
         rpms_and_tgzs_to_use,
-        keep_packages,
-        statusfunc,
+        create_offline_copy,
         progress_description,
         progress_percentage,
         step,
     ):
-        # At this point network_install and local_copy_install
+        # At this point normal changes procedure and local_copy_install
         # procedures converge and thus use the same function
 
         # STEP
@@ -902,10 +1044,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Java installation failed. " + msg,
-                )
+                msg = "Java installation failed: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done installing Java")
         # No Java install requested
         else:
@@ -943,10 +1084,9 @@ class MainLogic(object):
             # TODO: Can office_uninstall procedure be made to have dry-run option
             #       to make sure that uninstall is atomic (all or none)?
             if is_removed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to remove Office components.\n" + msg,
-                )
+                msg = "Failed to remove Office components: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done removing selected Office components")
         # No Office packages marked for removal
         else:
@@ -967,10 +1107,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to install Office components.\n" + msg,
-                )
+                msg = "Failed to install Office components: " + msg
+                self.inform_user(msg, isOK=False)
+                return
 
             step.end("...done installing selected Office components")
         # No Office packages marked for install
@@ -994,10 +1133,9 @@ class MainLogic(object):
             )
 
             if is_removed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to remove Clipart library.\n" + msg,
-                )
+                msg = "Failed to remove Clipart library: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done removing Clipart library")
         # Clipart was not marked for removal
         else:
@@ -1014,10 +1152,9 @@ class MainLogic(object):
                 progress_percentage,
             )
             if is_installed is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Openclipart installation failed. " + msg,
-                )
+                msg = "Openclipart installation failed: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             step.end("...done installing Clipart library")
         # Clipart was not marked for install
         else:
@@ -1025,28 +1162,27 @@ class MainLogic(object):
 
         # STEP
         # Should downloaded packages be kept ?
-        if keep_packages is True:
+        if create_offline_copy is True:
             step.start("Saving packages...")
 
             is_saved, msg = PCLOS.move_dir(
                 configuration.verified_dir, configuration.offline_copy_dir
             )
             if is_saved is False:
-                return statusfunc(
-                    isOK=False,
-                    msg="Failed to save packages.\n" + msg,
-                )
+                msg = "Failed to save packages: " + msg
+                self.inform_user(msg, isOK=False)
+                return
             else:
-                msg = f"All changes successful. Packages saved to {configuration.offline_copy_dir}"
-                log.info(msg)
+                msg = (
+                    "All changes successful\n"
+                    + f"Packages saved to {configuration.offline_copy_dir}"
+                )
+                self.inform_user(msg, isOK=True)
             step.end("...done saving packages")
         else:
-            step.skip()
             msg = f"All changes successful"
-            log.info(msg)
-
-        status = {"is_OK": True, "explanation": msg}
-        return status
+            self.inform_user(msg, isOK=True)
+            step.skip()
 
     def _collect_packages(
         self,
@@ -1672,183 +1808,6 @@ class MainLogic(object):
 
         return (True, "Openclipart successfully installed")
 
-    def _local_copy_install_procedure(
-        self,
-        local_copy_directory,
-        statusfunc,
-        progress_description,
-        progress_percentage,
-        step,
-    ) -> dict:
-        is_modification_needed = False
-        rpms_and_tgzs_to_use = {
-            "files_to_install": {
-                "Java": [],
-                "LibreOffice-core": [],
-                "LibreOffice-langs": [],
-                "Clipart": [],
-            },
-        }
-
-        # STEP
-        # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create working directory.\n" + msg_w,
-            )
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
-            return statusfunc(
-                isOK=False,
-                msg="Failed to (re)create verified directory.\n" + msg_v,
-            )
-        else:
-            directories = [
-                configuration.working_dir,
-                configuration.verified_dir.joinpath("Java_rpms"),
-                configuration.verified_dir.joinpath("LibreOffice-core_tgzs"),
-                configuration.verified_dir.joinpath("LibreOffice-langs_tgzs"),
-                configuration.verified_dir.joinpath("Clipart_rpms"),
-            ]
-            for dir in directories:
-                PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
-
-        # Take current state of package tree and create packages list
-        virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
-
-        # local_copy_directory exists?
-        if not pathlib.Path(local_copy_directory).is_dir():
-            return statusfunc(
-                isOK=False,
-                msg="Could not find directory with saved packages.",
-            )
-
-        # STEP
-        # Perform verification of local copy directory
-        step.start("Scanning local copy directory for packages...")
-        (
-            Java_local_copy,
-            LibreOffice_core_local_copy,
-            LibreOffice_langs_local_copy,
-            Clipart_local_copy,
-        ) = self._verify_local_copy(local_copy_directory)
-        step.end("...finished local copy directory scanning")
-
-        # STEP
-        step.start("Deciding what to install/remove...")
-        # First, for every package, reset any 'request' flags that the user
-        # may have set manually in the menu before changing mind and
-        # choosing to install from local copy.
-        # The logic of what should be installed/removed follows
-        java = [c for c in self._package_tree.children if "Java" in c.family][0]
-        for package in virtual_packages:
-            package.is_marked_for_removal = False
-            package.is_marked_for_install = False
-            package.is_marked_for_download = False
-
-        if LibreOffice_core_local_copy["isPresent"]:
-            # We are assuming the user wants to install it.
-            # This is possible only if Java is present in the OS or
-            # can be installed from local_copy_directory
-            if not java.is_installed and not Java_local_copy["isPresent"]:
-                return statusfunc(
-                    isOK=False,
-                    msg="Java is not installed in the system and was not "
-                    "found in the directory provided.",
-                )
-            elif not java.is_installed and Java_local_copy["isPresent"]:
-                log.info("Java packages found will be installed.")
-                rpms_and_tgzs_to_use["files_to_install"]["Java"] = Java_local_copy[
-                    "rpm_abs_paths"
-                ]
-            elif java.is_installed and not Java_local_copy["isPresent"]:
-                log.debug("Java already installed.")
-            else:
-                log.debug(
-                    "Java was found in the local copy directory but Java is "
-                    "already installed so it won't be reinstalled."
-                )
-
-            # Reaching this point means Java is or will be installed
-            log.info("LibreOffice packages found will be installed.")
-            # No complex checks/comparisons for Office. To make sure
-            # nothing gets messed up simply remove every Office package
-            # that is installed.
-            # (That includes OO, LO and any langpacks)
-            log.debug("Marking ALL existing Office packages for removal.")
-            for package in virtual_packages:
-                if (
-                    package.family == "OpenOffice"
-                    or package.family == "LibreOffice"
-                    and package.is_installed
-                ):
-                    package.is_marked_for_removal = True
-
-            rpms_and_tgzs_to_use["files_to_install"][
-                "LibreOffice-core"
-            ] = LibreOffice_core_local_copy["tgz_abs_paths"]
-
-            if LibreOffice_langs_local_copy["isPresent"]:
-                # There are also some language packs that can be installed
-                log.info("LibreOffice langpack(s) found will be installed too.")
-                rpms_and_tgzs_to_use["files_to_install"][
-                    "LibreOffice-langs"
-                ] = LibreOffice_langs_local_copy["tgz_abs_paths"]
-
-            # Signal that changes are needed
-            is_modification_needed = is_modification_needed or True
-        else:
-            log.info(
-                "LibreOffice core package wasn't found in the local copy "
-                "directory and so LibreOffice will not be installed."
-                "(LibreOffice langpacks or Java won't be installed "
-                "either even if present in the local copy directory)."
-            )
-            is_modification_needed = is_modification_needed or False
-
-        if Clipart_local_copy["isPresent"]:
-            log.info("Openclipart packages found will be installed.")
-            for package in virtual_packages:
-                if package.family == "Clipart" and package.is_installed:
-                    log.debug("Installed Clipart installation marked for removal")
-                    # Clipart is already installed.
-                    # Simply remove it and install the one from local copy
-                    package.is_marked_for_removal = True
-
-            rpms_and_tgzs_to_use["files_to_install"]["Clipart"] = Clipart_local_copy[
-                "rpm_abs_paths"
-            ]
-            is_modification_needed = is_modification_needed or True
-        else:
-            log.info(
-                "Openclipart packages were not found in the local copy "
-                "directory so Openclipart will not be installed."
-            )
-            is_modification_needed = is_modification_needed or False
-        step.end()
-
-        if is_modification_needed is True:
-            # Go ahead and make changes
-            # (files provided by the user SHOULD NOT be removed - keep them)
-            output = self._make_changes(
-                virtual_packages,
-                rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
-                keep_packages=True,
-                statusfunc=statusfunc,
-                progress_description=progress_description,
-                progress_percentage=progress_percentage,
-                step=step,
-            )
-            return output
-        else:
-            return statusfunc(isOK=False, msg="Nothing to install. Check logs.")
-
     def _verify_local_copy(
         self,
         local_copy_directory: str,
@@ -2122,6 +2081,9 @@ class ManualSelectionLogic(object):
         # Object representing items in the menu
         self.root = root_node
 
+        self.info_to_install = []
+        self.info_to_remove = []
+
     # Public methods
     def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
         """Gets any field in the package menu (at row and column)
@@ -2241,6 +2203,21 @@ class ManualSelectionLogic(object):
             is_logic_applied = self._apply_install_logic(package, value)
         else:
             is_logic_applied = False
+
+        def format(package):
+            if package.is_langpack():
+                return (
+                    package.family
+                    + " "
+                    + package.version
+                    + " language: "
+                    + package.kind
+                )
+            else:
+                return package.family + " " + package.version + " core"
+
+        self.info_to_install = [format(p) for p in packages if p.is_marked_for_install]
+        self.info_to_remove = [format(p) for p in packages if p.is_marked_for_removal]
 
         return is_logic_applied
 
