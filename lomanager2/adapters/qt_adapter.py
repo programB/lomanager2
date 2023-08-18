@@ -26,7 +26,6 @@ class Adapter(QObject):
     overall_progress_description_signal = Signal(str)
     overall_progress_signal = Signal(int)
     refresh_signal = Signal()
-    status_signal = Signal(dict)
     worker_ready_signal = Signal()
     warning_signal = Signal()
     init_signal = Signal()
@@ -115,9 +114,6 @@ class Adapter(QObject):
         # TODO: test connect "refresh" (custom signal)
         self.refresh_signal.connect(self._refresh_package_menu_state)
 
-        # Internal Signal: Shows dialog with information returned by procedures
-        self.status_signal.connect(self._display_status_information)
-
         # Internal Signal: Locks/Unlocks GUI elements
         self.GUI_locks_signal.connect(self.change_GUI_locks)
 
@@ -155,7 +151,6 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.install_from_local_copy,
                 local_copy_folder=selected_dir,
-                report_status=self.status_signal.emit,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -203,8 +198,7 @@ class Adapter(QObject):
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._main_model.apply_changes,
                 keep_packages=self._keep_packages,
-                force_java_download = self._force_java_download,
-                report_status=self.status_signal.emit,
+                force_java_download=self._force_java_download,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -274,20 +268,6 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
         self.GUI_locks_signal.emit()
 
-    def _display_status_information(self, status: dict):
-        if "explanation" in status.keys() and "is_OK" in status.keys():
-            info = status["explanation"]
-            if status["is_OK"] is True and info != "":
-                self._main_view.info_dialog.setWindowTitle("Success")
-                self._main_view.info_dialog.setText(info)
-                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Information)
-                self._main_view.info_dialog.exec()
-            if status["is_OK"] is False:
-                self._main_view.info_dialog.setWindowTitle("Problem")
-                self._main_view.info_dialog.setText(info)
-                self._main_view.info_dialog.setIcon(QMessageBox.Icon.Warning)
-                self._main_view.info_dialog.exec()
-
     def _show_warnings(self):
         info = "Due to issues below this program will not be able to perform some operations:\n\n"
         for i, warning in enumerate(self._main_model.warnings):
@@ -325,7 +305,6 @@ class Adapter(QObject):
         print("init signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._main_model.flags_logic,
-            report_status=self.status_signal.emit,
             progress_description=self.progress_description_signal.emit,
             progress_percentage=self.progress_signal.emit,
             overall_progress_description=self.overall_progress_description_signal.emit,

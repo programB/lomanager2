@@ -13,7 +13,6 @@ from .callbacks import (
     OverallProgressReporter,
     progress_closure,
     progress_description_closure,
-    statusfunc_closure,
 )
 
 
@@ -67,9 +66,6 @@ class MainLogic(object):
         self.warnings.append(msg)
 
     def apply_changes(self, *args, **kwargs):
-        # Callback function for reporting the status of the procedure
-        statusfunc = statusfunc_closure(callbacks=kwargs)
-
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
@@ -216,7 +212,6 @@ class MainLogic(object):
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
             keep_packages=keep_packages,
-            statusfunc=statusfunc,
             progress_description=progress_description,
             progress_percentage=progress,
             step=step,
@@ -226,9 +221,6 @@ class MainLogic(object):
         return
 
     def install_from_local_copy(self, *args, **kwargs):
-        # Callback function for reporting the status of the procedure
-        statusfunc = statusfunc_closure(callbacks=kwargs)
-
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
@@ -416,7 +408,6 @@ class MainLogic(object):
                 virtual_packages,
                 rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
                 keep_packages=True,
-                statusfunc=statusfunc,
                 progress_description=progress_description,
                 progress_percentage=progress,
                 step=step,
@@ -544,7 +535,6 @@ class MainLogic(object):
 
     def refresh_state(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
-        statusfunc = statusfunc_closure(callbacks=kwargs)
         msg = ""
 
         step.start("Detecting installed software")
@@ -1032,7 +1022,6 @@ class MainLogic(object):
         virtual_packages,
         rpms_and_tgzs_to_use,
         keep_packages,
-        statusfunc,
         progress_description,
         progress_percentage,
         step,
