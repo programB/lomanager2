@@ -155,7 +155,6 @@ def get_system_users() -> list[HumanUser]:
 
 
 def is_live_session_active() -> bool:
-    # TODO: Verify implementation
     return pathlib.Path("/union").exists()
 
 

@@ -516,6 +516,16 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
         step.end(msg)
 
+        if PCLOS.is_live_session_active():
+            msg = (
+                "OS is running in live session mode.\n "
+                + "All modifications made will be lost on reboot unless you "
+                + "intall the system on a permanent drive. Also note that in "
+                + "live sesssion mode LibreOffice may fail to install due "
+                + "to inssufficient virtual disk space."
+            )
+            self.inform_user(msg, isOK=False)
+
         self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):
