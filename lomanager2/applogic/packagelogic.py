@@ -516,18 +516,6 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
         step.end(msg)
 
-        if not PCLOS.is_lomanager2_latest(configuration.lomanger2_version):
-            self.global_flags.block_normal_procedure = True
-            msg = (
-                "You are running outdated version of "
-                "this program! "
-                "As a result you won't be able to install "
-                "any packages."
-                "Update your system and restart "
-                "this program."
-            )
-            self.inform_user(msg, isOK=False)
-
         self.refresh_state(*args, **kwargs)
 
     def refresh_state(self, *args, **kwargs):

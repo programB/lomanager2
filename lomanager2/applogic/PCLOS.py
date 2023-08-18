@@ -210,11 +210,6 @@ def check_system_update_status() -> tuple[bool, bool, str]:
     return (check_successful, system_updated, explanation)
 
 
-def is_lomanager2_latest(lomanger2_version: str) -> bool:
-    # TODO: Implement
-    return True
-
-
 def free_space_in_dir(dir: pathlib.Path) -> int:
     """Return free disk space for the partition holding dir.
 
