@@ -65,6 +65,12 @@ class MainLogic(object):
             log.error(msg)
         self.warnings.append((isOK, msg))
 
+    def get_planned_changes(self):
+        return (
+            self._package_menu.info_to_install,
+            self._package_menu.info_to_remove,
+        )
+
     def apply_changes(self, *args, **kwargs):
         # Check if we can proceed with applying changes
         if self.global_flags.ready_to_apply_changes is False:
@@ -2086,6 +2092,9 @@ class ManualSelectionLogic(object):
         # Object representing items in the menu
         self.root = root_node
 
+        self.info_to_install = []
+        self.info_to_remove = []
+
     # Public methods
     def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
         """Gets any field in the package menu (at row and column)
@@ -2205,6 +2214,21 @@ class ManualSelectionLogic(object):
             is_logic_applied = self._apply_install_logic(package, value)
         else:
             is_logic_applied = False
+
+        def format(package):
+            if package.is_langpack():
+                return (
+                    package.family
+                    + " "
+                    + package.version
+                    + " language: "
+                    + package.kind
+                )
+            else:
+                return package.family + " " + package.version + " core"
+
+        self.info_to_install = [format(p) for p in packages if p.is_marked_for_install]
+        self.info_to_remove = [format(p) for p in packages if p.is_marked_for_removal]
 
         return is_logic_applied
 

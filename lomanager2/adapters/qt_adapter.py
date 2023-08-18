@@ -170,6 +170,22 @@ class Adapter(QObject):
         self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
             fjd_state
         )
+        to_install, to_remove = self._main_model.get_planned_changes()
+        if to_install or to_remove:
+            text = ""
+            if to_install:
+                text += "Following components will be installed:\n"
+                for p in to_install:
+                    text += "- " + p + "\n"
+            text += "\n"
+            if to_remove:
+                text += "Following components will be removed:\n"
+                for p in to_remove:
+                    text += "- " + p + "\n"
+            self._main_view.confirm_apply_view.info_box.setText(text)
+        else:
+            text = "No changes to apply"
+            self._main_view.confirm_apply_view.info_box.setText(text)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
