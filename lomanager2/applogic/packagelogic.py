@@ -214,7 +214,7 @@ class MainLogic(object):
             step.skip()
 
         # Uninstall/Upgrade/Install packages
-        status = self._make_changes(
+        self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
             create_offline_copy=keep_packages,
@@ -222,9 +222,6 @@ class MainLogic(object):
             progress_percentage=progress,
             step=step,
         )
-        msg = "All changes successfully applied"
-        self.inform_user(msg, isOK=True)
-        return
 
     def install_from_local_copy(self, *args, **kwargs):
         # Check if we can proceed with applying changes
@@ -411,7 +408,7 @@ class MainLogic(object):
             # Go ahead and make changes
             # (files provided by the user SHOULD NOT be removed
             #  - DO NOT overwrite them by creating an offline copy)
-            output = self._make_changes(
+            self._make_changes(
                 virtual_packages,
                 rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
                 create_offline_copy=False,
@@ -419,13 +416,9 @@ class MainLogic(object):
                 progress_percentage=progress,
                 step=step,
             )
-            msg = "All changes successfully applied"
-            self.inform_user(msg, isOK=True)
-            return
         else:
             msg = "Nothing to install. Check logs."
             self.inform_user(msg, isOK=False)
-            return
 
     def flags_logic(self, *args, **kwargs):
         """'Rises' flags indicating some operations will not be available
@@ -587,8 +580,6 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = True
         if msg:
             self.inform_user(msg, isOK=False)
-            return
-        return
 
     # -- end Public interface for MainLogic
 
@@ -1184,16 +1175,16 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             else:
-                msg = f"All changes successful. Packages saved to {configuration.offline_copy_dir}"
-                log.info(msg)
+                msg = (
+                    "All changes successful\n"
+                    + f"Packages saved to {configuration.offline_copy_dir}"
+                )
+                self.inform_user(msg, isOK=True)
             step.end("...done saving packages")
         else:
-            step.skip()
             msg = f"All changes successful"
-            log.info(msg)
-
-        status = {"is_OK": True, "explanation": msg}
-        return status
+            self.inform_user(msg, isOK=True)
+            step.skip()
 
     def _collect_packages(
         self,
