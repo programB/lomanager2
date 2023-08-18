@@ -27,7 +27,7 @@ class Adapter(QObject):
     overall_progress_signal = Signal(int)
     refresh_signal = Signal()
     worker_ready_signal = Signal()
-    warning_signal = Signal()
+    warning_signal = Signal(list)
     init_signal = Signal()
     GUI_locks_signal = Signal()
 
@@ -73,12 +73,6 @@ class Adapter(QObject):
         # Flags blocking parts of the interface during certain operations
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
-
-        # # Check if there are any limitation on this program's
-        # # operations as a result of problems detected
-        # # during initial system verification
-        # if self._main_model.any_limitations:
-        #     self.warning_signal.emit()
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_viewmodel)
@@ -130,13 +124,10 @@ class Adapter(QObject):
         log.debug("Refreshing!")
         self._main_model.refresh_state()
         self._package_menu_viewmodel.layoutChanged.emit()
-        # Check if there are any limitation on this program's
-        # operations as a result of problems detected
-        # during initial system verification
-        # if self._main_model.any_limitations:
-        #     self.warning_signal.emit()
+        # Check if there are any messages that should
+        # be shown to the user
         if self._main_model.warnings:
-            self.warning_signal.emit()
+            self.warning_signal.emit(self._main_model.get_warnings())
 
     def _choose_dir_and_install_from_local_copy(self):
         # Ask the user for directory with saved packages
@@ -268,18 +259,18 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
         self.GUI_locks_signal.emit()
 
-    def _show_warnings(self):
+    def _show_warnings(self, warnings):
         error_icon = QMessageBox.Icon.Critical
         good_icon = QMessageBox.Icon.Information
         warnings_icon = QMessageBox.Icon.Warning
 
-        if len(self._main_model.warnings) == 1:
-            isOK, msg = self._main_model.warnings[0]
+        if len(warnings) == 1:
+            isOK, msg = warnings[0]
             icon = good_icon if isOK else error_icon
             title = "Success" if isOK else "Problem"
         else:
             msg = ""
-            for i, warning in enumerate(self._main_model.warnings):
+            for i, warning in enumerate(warnings):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
             icon = warnings_icon
             title = "Warning"
