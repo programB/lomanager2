@@ -13,12 +13,19 @@ class PackageMenuViewModel(QAbstractTableModel):
         super().__init__()
 
         self._main_logic = main_logic
+        self.last_refresh_timestamp = 0
+        self.package_list = []
 
-    def get_package_list(self):
-        packages = []
-        self._main_logic._package_tree.get_subtree(packages)
-        packages.remove(self._main_logic._package_tree)
-        return packages
+    def rebuild_package_list(self):
+        """Rebuilds package list if it's outdated"""
+        if (
+            self._main_logic.refresh_timestamp > self.last_refresh_timestamp
+            or self.package_list == []
+        ):
+            self.package_list = []
+            self._main_logic._package_tree.get_subtree(self.package_list)
+            self.package_list.remove(self._main_logic._package_tree)
+            self.last_refresh_timestamp = self._main_logic.refresh_timestamp
 
     # -- start "Getters" --
     def data(self, index, role) -> Any:
@@ -44,10 +51,9 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        # pf_base, pf_vis, pf_enabled = self._main_logic.get_PackageMenu_field(
-        #     row, column
-        # )
-        package = self.get_package_list()[row]
+        self.rebuild_package_list()
+        package = self.package_list[row]
+
         if column == 0:
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
         elif column == 1:
@@ -149,13 +155,8 @@ class PackageMenuViewModel(QAbstractTableModel):
         int
             Number of rows
         """
-
-        # TODO: should this be done this way?
-        #       app logic does not have any notion
-        #       of "rows" or their number.
-        #       It may be just the issue of naming
-        #       like main_logic.get_PackageMenu_number_of_packages
-        return self._main_logic.get_PackageMenu_row_count()
+        self.rebuild_package_list()
+        return len(self.package_list)
 
     def columnCount(self, index) -> int:
         """Tells how many columns of data there are.

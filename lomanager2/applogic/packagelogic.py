@@ -1,3 +1,4 @@
+import time
 import re
 import pathlib
 import urllib.request, urllib.error
@@ -31,6 +32,7 @@ class MainLogic(object):
         self._package_menu = ManualSelectionLogic(
             self._package_tree, "", "", "", "", "", ""
         )
+        self.refresh_timestamp = 0
 
     # -- Public interface for MainLogic
 
@@ -576,6 +578,7 @@ class MainLogic(object):
             newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
+        self.refresh_timestamp = time.time()
         if msg:
             self.inform_user(msg, isOK=False)
 
