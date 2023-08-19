@@ -67,21 +67,18 @@ class PackageMenuViewModel(QAbstractTableModel):
                 package.is_remove_opt_enabled,
             )
         elif column == 4:
-            # Notion of upgrade logic is deprecated
-            pf_base, pf_vis, pf_enabled = (False, False, False)
-        elif column == 5:
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_install,
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
-        elif column == 6:
+        elif column == 5:
             pf_base, pf_vis, pf_enabled = (
                 package.is_installed,
                 True,
                 True,
             )
-        elif column == 7:
+        elif column == 6:
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_download,
                 True,
@@ -169,10 +166,10 @@ class PackageMenuViewModel(QAbstractTableModel):
         Returns
         -------
         int
-          Currently table showing packages is thought to have 8 columns,
+          Currently table showing packages is thought to have 7 columns,
           see headerData for their names.
         """
-        return 8
+        return 7
 
     def headerData(self, section: int, orientation, role) -> str | None:
         """Returns descriptions for each column in the data.
@@ -200,7 +197,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
                 if section == 0:
-                    return "Office suit"
+                    return "Program name"
                 elif section == 1:
                     return "virtual package type"
                 elif section == 2:
@@ -208,12 +205,10 @@ class PackageMenuViewModel(QAbstractTableModel):
                 elif section == 3:
                     return "marked for removal?"
                 elif section == 4:
-                    return "marked for upgrade?"
-                elif section == 5:
                     return "marked for install?"
-                elif section == 6:
+                elif section == 5:
                     return "is installed?"
-                elif section == 7:
+                elif section == 6:
                     return "is marked for download?"
                 else:
                     return None
@@ -257,7 +252,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         self.rebuild_package_list()
         package = self.package_list[row]
 
-        # Only data in columns mark_for_removal|upgrade|install
+        # Only data in columns mark_for_removal|install
         # can be modified and they only accept boolean values
         # Also this method will not be called for other columns
         # because the flags() method already
@@ -280,10 +275,6 @@ class PackageMenuViewModel(QAbstractTableModel):
                     package, value_as_bool
                 )
             elif column == 4:
-                # Notion of upgrade logic is deprecated
-                # return False
-                is_logic_applied = False
-            elif column == 5:
                 is_logic_applied = self._main_logic._package_menu._apply_install_logic(
                     package, value_as_bool
                 )
@@ -308,7 +299,7 @@ class PackageMenuViewModel(QAbstractTableModel):
     def flags(self, index):
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
-        # Only allow mark_for_removal|upgrade|install fields to be editable
+        # Only allow mark_for_removal|install fields to be editable
         # Columns 0,1 and 3 can't be edited
         if index.column() >= 3:
             existing_flags = QAbstractItemModel.flags(self, index)

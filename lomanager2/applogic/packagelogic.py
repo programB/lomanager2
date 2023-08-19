@@ -197,7 +197,7 @@ class MainLogic(object):
         else:
             step.skip()
 
-        # Uninstall/Upgrade/Install packages
+        # Uninstall/Install packages
         self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
@@ -633,7 +633,7 @@ class MainLogic(object):
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
             newest_installed_Java_version = java.version
-        # java install/remove/upgrade options are never visible
+        # java install/remove options are never visible
 
         newest_installed_LO_version = ""
         LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
@@ -672,7 +672,7 @@ class MainLogic(object):
                 package.is_remove_opt_visible = True
 
         # 3)
-        # Java removal (or upgrade to newer versio) is not supported
+        # Java removal (or upgrade to newer version) is not supported
         # by this program. This should be done by a proper package manager
         # like Synaptic
         if java.is_installed:
