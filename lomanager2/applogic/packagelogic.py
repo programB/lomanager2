@@ -2126,45 +2126,45 @@ class ManualSelectionLogic(object):
 
         # Never keep the reference to package list
         packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        package = packages[row]
+        # self.root.get_subtree(packages)
+        # packages.remove(self.root)
+        # package = packages[row]
 
-        if column == 0:
-            return (package.family, True, False)
-        elif column == 1:
-            return (package.kind, True, False)
-        elif column == 2:
-            return (package.version, True, False)
-        elif column == 3:
-            return (
-                package.is_marked_for_removal,
-                package.is_remove_opt_visible,
-                package.is_remove_opt_enabled,
-            )
-        elif column == 4:
-            # Notion of upgrade logic is deprecated
-            return (False, False, False)
-        elif column == 5:
-            return (
-                package.is_marked_for_install,
-                package.is_install_opt_visible,
-                package.is_install_opt_enabled,
-            )
-        elif column == 6:
-            return (
-                package.is_installed,
-                True,
-                True,
-            )
-        elif column == 7:
-            return (
-                package.is_marked_for_download,
-                True,
-                True,
-            )
-        else:
-            return (None, None, None)
+        # if column == 0:
+        #     return (package.family, True, False)
+        # elif column == 1:
+        #     return (package.kind, True, False)
+        # elif column == 2:
+        #     return (package.version, True, False)
+        # elif column == 3:
+        #     return (
+        #         package.is_marked_for_removal,
+        #         package.is_remove_opt_visible,
+        #         package.is_remove_opt_enabled,
+        #     )
+        # elif column == 4:
+        #     # Notion of upgrade logic is deprecated
+        #     return (False, False, False)
+        # elif column == 5:
+        #     return (
+        #         package.is_marked_for_install,
+        #         package.is_install_opt_visible,
+        #         package.is_install_opt_enabled,
+        #     )
+        # elif column == 6:
+        #     return (
+        #         package.is_installed,
+        #         True,
+        #         True,
+        #     )
+        # elif column == 7:
+        #     return (
+        #         package.is_marked_for_download,
+        #         True,
+        #         True,
+        #     )
+        # else:
+        #     return (None, None, None)
 
     def set_package_field(self, row: int, column: int, value: bool) -> bool:
         """Sets (marked for ...) flags for package applying dependencies logic

@@ -14,6 +14,12 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         self._main_logic = main_logic
 
+    def get_package_list(self):
+        packages = []
+        self._main_logic._package_tree.get_subtree(packages)
+        packages.remove(self._main_logic._package_tree)
+        return packages
+
     # -- start "Getters" --
     def data(self, index, role) -> Any:
         """Returns data item as requested by the View.
@@ -37,9 +43,46 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         row = index.row()
         column = index.column()
-        pf_base, pf_vis, pf_enabled = self._main_logic.get_PackageMenu_field(
-            row, column
-        )
+
+        # pf_base, pf_vis, pf_enabled = self._main_logic.get_PackageMenu_field(
+        #     row, column
+        # )
+        package = self.get_package_list()[row]
+        if column == 0:
+            pf_base, pf_vis, pf_enabled = (package.family, True, False)
+        elif column == 1:
+            pf_base, pf_vis, pf_enabled = (package.kind, True, False)
+        elif column == 2:
+            pf_base, pf_vis, pf_enabled = (package.version, True, False)
+        elif column == 3:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_removal,
+                package.is_remove_opt_visible,
+                package.is_remove_opt_enabled,
+            )
+        elif column == 4:
+            # Notion of upgrade logic is deprecated
+            pf_base, pf_vis, pf_enabled = (False, False, False)
+        elif column == 5:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_install,
+                package.is_install_opt_visible,
+                package.is_install_opt_enabled,
+            )
+        elif column == 6:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_installed,
+                True,
+                True,
+            )
+        elif column == 7:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_download,
+                True,
+                True,
+            )
+        else:
+            pf_base, pf_vis, pf_enabled = (None, None, None)
 
         if role == Qt.ItemDataRole.DisplayRole:
             # This will be either
