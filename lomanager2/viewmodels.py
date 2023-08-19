@@ -260,6 +260,9 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
+        self.rebuild_package_list()
+        package = self.package_list[row]
+
         # Only data in columns mark_for_removal|upgrade|install
         # can be modified and they only accept boolean values
         # Also this method will not be called for other columns
@@ -277,13 +280,21 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             # This is the place to send the entered value to the underlining
-            # object holding the data (PackageMenu) ...
-            s = self._main_logic.set_PackageMenu_field(
-                row,
-                column,
-                value_as_bool,
-            )
-
+            # object holding the data
+            if column == 3:
+                is_logic_applied = self._main_logic._package_menu._apply_removal_logic(
+                    package, value_as_bool
+                )
+            elif column == 4:
+                # Notion of upgrade logic is deprecated
+                # return False
+                is_logic_applied = False
+            elif column == 5:
+                is_logic_applied = self._main_logic._package_menu._apply_install_logic(
+                    package, value_as_bool
+                )
+            else:
+                is_logic_applied = False
             # ... and then inform the View that it should update its
             # state because data has changed.
             # Redraw ENTIRE View as the underlining PackageMenu logic
@@ -293,7 +304,7 @@ class PackageMenuViewModel(QAbstractTableModel):
             # self.dataChanged.emit(index, index, role)
             # as it causes only the altered cell to be redrawn by the View
 
-            if s:  # desired state was set successfully
+            if is_logic_applied:  # desired state was set successfully
                 return True
         return False  # invalid index OR something went wrong when setting
 

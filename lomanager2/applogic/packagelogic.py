@@ -2189,25 +2189,25 @@ class ManualSelectionLogic(object):
           Request succeeded True/False
         """
 
-        is_logic_applied = False
+        # is_logic_applied = False
         # Never keep the reference to package list
         packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        package = packages[row]
+        # self.root.get_subtree(packages)
+        # packages.remove(self.root)
+        # package = packages[row]
 
-        if column == 3:
-            is_logic_applied = self._apply_removal_logic(package, value)
-        elif column == 4:
-            # Notion of upgrade logic is deprecated
-            # return False
-            is_logic_applied = False
-        elif column == 5:
-            is_logic_applied = self._apply_install_logic(package, value)
-        else:
-            is_logic_applied = False
+        # if column == 3:
+        #     is_logic_applied = self._apply_removal_logic(package, value)
+        # elif column == 4:
+        #     # Notion of upgrade logic is deprecated
+        #     # return False
+        #     is_logic_applied = False
+        # elif column == 5:
+        #     is_logic_applied = self._apply_install_logic(package, value)
+        # else:
+        #     is_logic_applied = False
 
-        return is_logic_applied
+        # return is_logic_applied
 
     def get_row_count(self) -> int:
         """Returns number of rows of the packages menu
