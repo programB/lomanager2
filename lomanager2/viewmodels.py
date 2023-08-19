@@ -271,11 +271,11 @@ class PackageMenuViewModel(QAbstractTableModel):
             # This is the place to send the entered value to the underlining
             # object holding the data
             if column == 3:
-                is_logic_applied = self._main_logic._package_menu._apply_removal_logic(
+                is_logic_applied = self._main_logic.change_removal_mark(
                     package, value_as_bool
                 )
             elif column == 4:
-                is_logic_applied = self._main_logic._package_menu._apply_install_logic(
+                is_logic_applied = self._main_logic.change_install_mark(
                     package, value_as_bool
                 )
             else:

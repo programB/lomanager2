@@ -26,15 +26,21 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
+        self.refresh_timestamp = 0
         self.warnings = []
         self.global_flags = SignalFlags()
         self.package_tree_root = VirtualPackage("master-node", "", "")
+
         self._package_menu = ManualSelectionLogic(
             self.package_tree_root, "", "", "", "", "", ""
         )
-        self.refresh_timestamp = 0
 
     # -- Public interface for MainLogic
+    def change_removal_mark(self, package: VirtualPackage, mark: bool) -> bool:
+        return self._package_menu.apply_removal_logic(package, mark)
+
+    def change_install_mark(self, package: VirtualPackage, mark: bool) -> bool:
+        return self._package_menu.apply_install_logic(package, mark)
 
     def get_warnings(self):
         warnings = deepcopy(self.warnings)
@@ -2073,10 +2079,8 @@ class ManualSelectionLogic(object):
         self.info_to_install = []
         self.info_to_remove = []
 
-    # Public methods
-
-    # Private methods
-    def _apply_install_logic(self, package: VirtualPackage, mark: bool):
+    # -- Public interface for ManualSelectionLogic
+    def apply_install_logic(self, package: VirtualPackage, mark: bool):
         """Marks package for install changing flags of other packages accordingly
 
         This procedure will mark requested package for install and make
@@ -2195,7 +2199,7 @@ class ManualSelectionLogic(object):
         self._update_changes_info()
         return is_apply_install_successul
 
-    def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
+    def apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
         """Marks package for removal changing flags of other packages accordingly
 
         This procedure will mark requested package for removal and make
@@ -2265,6 +2269,9 @@ class ManualSelectionLogic(object):
         self._update_changes_info()
         return is_apply_removal_successul
 
+    # -- end Public interface for ManualSelectionLogic
+
+    # -- Private methods of ManualSelectionLogic
     def _decide_what_to_download(self):
         # Never keep the reference to package list
         packages = []
@@ -2300,3 +2307,5 @@ class ManualSelectionLogic(object):
         self.info_to_remove = [
             pretty_name(p) for p in packages if p.is_marked_for_removal
         ]
+
+    # -- end Private methods of ManualSelectionLogic
