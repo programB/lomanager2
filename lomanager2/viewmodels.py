@@ -159,26 +159,20 @@ class PackageMenuViewModel(QAbstractTableModel):
         return len(self.package_list)
 
     def columnCount(self, index) -> int:
-        """Tells how many columns of data there are.
+        """Returns the number of columns the table should show
 
         Parameters
         ----------
         index : QModelIndex | QPeristentModelIndex
-            Points to a specific data item in data model
+            Required by Qt but not used
 
         Returns
         -------
         int
-            Number of rows
+          Currently table showing packages is thought to have 8 columns,
+          see headerData for their names.
         """
-
-        # TODO: this defiantly should not be done this way
-        #       main_logic does not have any notion of columns!
-        #       The translation between what the data are and how to
-        #       represent them as a table should be done here.
-        #       Leaving for now as this requires changes
-        #       in MainLogic and PackageMenu
-        return self._main_logic.get_PackageMenu_column_count()
+        return 8
 
     def headerData(self, section: int, orientation, role) -> str | None:
         """Returns descriptions for each column in the data.
