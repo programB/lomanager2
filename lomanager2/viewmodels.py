@@ -23,8 +23,8 @@ class PackageMenuViewModel(QAbstractTableModel):
             or self.package_list == []
         ):
             self.package_list = []
-            self._main_logic._package_tree.get_subtree(self.package_list)
-            self.package_list.remove(self._main_logic._package_tree)
+            self._main_logic.package_tree_root.get_subtree(self.package_list)
+            self.package_list.remove(self._main_logic.package_tree_root)
             self.last_refresh_timestamp = self._main_logic.refresh_timestamp
 
     # -- start "Getters" --

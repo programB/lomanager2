@@ -28,9 +28,9 @@ class MainLogic(object):
     def __init__(self) -> None:
         self.warnings = []
         self.global_flags = SignalFlags()
-        self._package_tree = VirtualPackage("master-node", "", "")
+        self.package_tree_root = VirtualPackage("master-node", "", "")
         self._package_menu = ManualSelectionLogic(
-            self._package_tree, "", "", "", "", "", ""
+            self.package_tree_root, "", "", "", "", "", ""
         )
         self.refresh_timestamp = 0
 
@@ -91,7 +91,9 @@ class MainLogic(object):
         step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Mark Java for download if the user requests that
-        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java_package = [
+            c for c in self.package_tree_root.children if "Java" in c.family
+        ][0]
         if force_java_download is True:
             java_package.is_marked_for_download = True
             # TODO: If force_java_download is set by the user it most likely
@@ -125,8 +127,8 @@ class MainLogic(object):
         log.info("Applying changes...")
 
         virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
+        self.package_tree_root.get_subtree(virtual_packages)
+        virtual_packages.remove(self.package_tree_root)
 
         collected_files = {
             "files_to_install": {
@@ -276,8 +278,8 @@ class MainLogic(object):
 
         # Take current state of package tree and create packages list
         virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
+        self.package_tree_root.get_subtree(virtual_packages)
+        virtual_packages.remove(self.package_tree_root)
 
         # local_copy_directory exists?
         if not pathlib.Path(local_copy_directory).is_dir():
@@ -302,7 +304,7 @@ class MainLogic(object):
         # may have set manually in the menu before changing mind and
         # choosing to install from local copy.
         # The logic of what should be installed/removed follows
-        java = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java = [c for c in self.package_tree_root.children if "Java" in c.family][0]
         for package in virtual_packages:
             package.is_marked_for_removal = False
             package.is_marked_for_install = False
@@ -535,7 +537,7 @@ class MainLogic(object):
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         self._build_dependency_tree(joint_package_list)
-        log.debug("TREE \n" + self._package_tree.tree_representation())
+        log.debug("TREE \n" + self.package_tree_root.tree_representation())
         step.end()
 
         step.start("Applying restrictions")
@@ -551,7 +553,7 @@ class MainLogic(object):
         step.end()
 
         self._package_menu = ManualSelectionLogic(
-            root_node=self._package_tree,
+            root_node=self.package_tree_root,
             latest_Java_version=recommended_Java_ver,
             newest_Java_version=newest_Java_ver,
             recommended_LO_version=recommended_LO_ver,
@@ -570,8 +572,8 @@ class MainLogic(object):
     def _build_dependency_tree(self, packageS: list[VirtualPackage]):
         # Make master node forget its children
         # (this will hopefully delete all descendent virtual package objects)
-        self._package_tree.children = []
-        current_parent = self._package_tree
+        self.package_tree_root.children = []
+        current_parent = self.package_tree_root
 
         # 1st tier: Link Java and Clipart to top level package
         already_handled = []
@@ -624,7 +626,7 @@ class MainLogic(object):
         recommended_Clipart_version,
     ) -> tuple[str, str, str]:
         """Decides on initial conditions for packages install/removal."""
-        root = self._package_tree
+        root = self.package_tree_root
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
@@ -1016,7 +1018,9 @@ class MainLogic(object):
         # Java needs to be installed?
         # (Nonte that Java may have been downloaded as a result of
         #  force_java_download but not actually marked for install)
-        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java_package = [
+            c for c in self.package_tree_root.children if "Java" in c.family
+        ][0]
         if (
             java_package.is_marked_for_install
             and rpms_and_tgzs_to_use["files_to_install"]["Java"]
