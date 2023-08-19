@@ -2207,21 +2207,6 @@ class ManualSelectionLogic(object):
         else:
             is_logic_applied = False
 
-        def format(package):
-            if package.is_langpack():
-                return (
-                    package.family
-                    + " "
-                    + package.version
-                    + " language: "
-                    + package.kind
-                )
-            else:
-                return package.family + " " + package.version + " core"
-
-        self.info_to_install = [format(p) for p in packages if p.is_marked_for_install]
-        self.info_to_remove = [format(p) for p in packages if p.is_marked_for_removal]
-
         return is_logic_applied
 
     def get_row_count(self) -> int:
@@ -2365,6 +2350,7 @@ class ManualSelectionLogic(object):
             is_apply_install_successul = True
 
         self._decide_what_to_download()
+        self._update_changes_info()
         return is_apply_install_successul
 
     def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
@@ -2434,6 +2420,7 @@ class ManualSelectionLogic(object):
             is_apply_removal_successul = True
 
         self._decide_what_to_download()
+        self._update_changes_info()
         return is_apply_removal_successul
 
     def _decide_what_to_download(self):
@@ -2447,3 +2434,27 @@ class ManualSelectionLogic(object):
                 package.is_marked_for_download = True
             else:
                 package.is_marked_for_download = False
+
+    def _update_changes_info(self):
+        def pretty_name(package):
+            if package.is_langpack():
+                return (
+                    package.family
+                    + " "
+                    + package.version
+                    + " language: "
+                    + package.kind
+                )
+            else:
+                return package.family + " " + package.version + " core"
+
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        self.info_to_install = [
+            pretty_name(p) for p in packages if p.is_marked_for_install
+        ]
+        self.info_to_remove = [
+            pretty_name(p) for p in packages if p.is_marked_for_removal
+        ]
