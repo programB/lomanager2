@@ -86,37 +86,17 @@ class LangsModalWindow(QDialog):
         # -- end define Langs View
 
         # -- define other GUI elements (not belonging to Langs View)
-        flag_OK = QDialogButtonBox.StandardButton.Ok
-        flag_Cancel = QDialogButtonBox.StandardButton.Cancel
-        buttons = flag_OK | flag_Cancel
+        flag_OK = QDialogButtonBox.StandardButton.Close
+        buttons = flag_OK
         self.buttonBox = QDialogButtonBox(buttons)
         # -- end define other GUI elements (not belonging to Langs View)
         modal_layout.addWidget(self.langs_view)
         modal_layout.addWidget(self.buttonBox)
 
         self.setLayout(modal_layout)
-        # TODO: should this be connected in the Adapter?
-        # TODO: how to handle user pressing Cancel ?
-        #       The viewmodel will pass selections made to the
-        #       model/logic the moment user clicks the checkboxes
-        #       in the table without waiting for any confirmation
-        #       button being clicked.
-        #       One way would be to replace this OK|Cancel
-        #       with just OK. User would then have to deselect
-        #       whatever he selected to go back to original state
-        #       of selections rather then Cancel button providing
-        #       this function for him (but this is kind of cheating).
-        #       Other solution is to make some kind of copy/buffer
-        #       of the selection and show this to the user instead
-        #       of the view connected to the viewmodel.
-        #       Then upon clicking the buffer will be passed/(replayed
-        #       element by element onto the viewmodel)
-        #       Cancel will simply clear the buffer without
-        #       involving viewmodel.
-        #       But where to put this logic?
-        #       - In the adapter?
-        #       - in the viewmodel (how then to route the signals there)
-        self.buttonBox.accepted.connect(self.accept)
+        # To close the window some signal has to be emitted.
+        # Close button sends reject signal but this not used
+        # to take any meaningful actions.
         self.buttonBox.rejected.connect(self.reject)
 
 
