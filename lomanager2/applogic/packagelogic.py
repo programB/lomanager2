@@ -1,3 +1,4 @@
+import time
 import re
 import pathlib
 import urllib.request, urllib.error
@@ -25,32 +26,21 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
+        self.refresh_timestamp = 0
         self.warnings = []
         self.global_flags = SignalFlags()
-        self._package_tree = VirtualPackage("master-node", "", "")
+        self.package_tree_root = VirtualPackage("master-node", "", "")
+
         self._package_menu = ManualSelectionLogic(
-            self._package_tree, "", "", "", "", "", ""
+            self.package_tree_root, "", "", "", "", "", ""
         )
 
     # -- Public interface for MainLogic
+    def change_removal_mark(self, package: VirtualPackage, mark: bool) -> bool:
+        return self._package_menu.apply_removal_logic(package, mark)
 
-    def get_PackageMenu_field(self, row, column):
-        # self._package_menu.DO_SOMETHING
-        return self._package_menu.get_package_field(row, column)
-
-    # TODO: This method should either be renamed or not exist
-    #       See rowCount method of PackageMenuViewModel
-    def get_PackageMenu_row_count(self):
-        return self._package_menu.get_row_count()
-
-    # TODO: This method should not exist
-    #       See coulmnCount method of PackageMenuViewModel
-    def get_PackageMenu_column_count(self):
-        return self._package_menu.get_column_count()
-
-    def set_PackageMenu_field(self, row, column, value_as_bool):
-        # 1) call PackageMenu method to
-        return self._package_menu.set_package_field(row, column, value_as_bool)
+    def change_install_mark(self, package: VirtualPackage, mark: bool) -> bool:
+        return self._package_menu.apply_install_logic(package, mark)
 
     def get_warnings(self):
         warnings = deepcopy(self.warnings)
@@ -107,7 +97,9 @@ class MainLogic(object):
         step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Mark Java for download if the user requests that
-        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java_package = [
+            c for c in self.package_tree_root.children if "Java" in c.family
+        ][0]
         if force_java_download is True:
             java_package.is_marked_for_download = True
             # TODO: If force_java_download is set by the user it most likely
@@ -141,8 +133,8 @@ class MainLogic(object):
         log.info("Applying changes...")
 
         virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
+        self.package_tree_root.get_subtree(virtual_packages)
+        virtual_packages.remove(self.package_tree_root)
 
         collected_files = {
             "files_to_install": {
@@ -213,7 +205,7 @@ class MainLogic(object):
         else:
             step.skip()
 
-        # Uninstall/Upgrade/Install packages
+        # Uninstall/Install packages
         self._make_changes(
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
@@ -292,8 +284,8 @@ class MainLogic(object):
 
         # Take current state of package tree and create packages list
         virtual_packages = []
-        self._package_tree.get_subtree(virtual_packages)
-        virtual_packages.remove(self._package_tree)
+        self.package_tree_root.get_subtree(virtual_packages)
+        virtual_packages.remove(self.package_tree_root)
 
         # local_copy_directory exists?
         if not pathlib.Path(local_copy_directory).is_dir():
@@ -318,7 +310,7 @@ class MainLogic(object):
         # may have set manually in the menu before changing mind and
         # choosing to install from local copy.
         # The logic of what should be installed/removed follows
-        java = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java = [c for c in self.package_tree_root.children if "Java" in c.family][0]
         for package in virtual_packages:
             package.is_marked_for_removal = False
             package.is_marked_for_install = False
@@ -551,7 +543,7 @@ class MainLogic(object):
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         self._build_dependency_tree(joint_package_list)
-        log.debug("TREE \n" + self._package_tree.tree_representation())
+        log.debug("TREE \n" + self.package_tree_root.tree_representation())
         step.end()
 
         step.start("Applying restrictions")
@@ -567,7 +559,7 @@ class MainLogic(object):
         step.end()
 
         self._package_menu = ManualSelectionLogic(
-            root_node=self._package_tree,
+            root_node=self.package_tree_root,
             latest_Java_version=recommended_Java_ver,
             newest_Java_version=newest_Java_ver,
             recommended_LO_version=recommended_LO_ver,
@@ -576,6 +568,7 @@ class MainLogic(object):
             newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
+        self.refresh_timestamp = time.time()
         if msg:
             self.inform_user(msg, isOK=False)
 
@@ -585,8 +578,8 @@ class MainLogic(object):
     def _build_dependency_tree(self, packageS: list[VirtualPackage]):
         # Make master node forget its children
         # (this will hopefully delete all descendent virtual package objects)
-        self._package_tree.children = []
-        current_parent = self._package_tree
+        self.package_tree_root.children = []
+        current_parent = self.package_tree_root
 
         # 1st tier: Link Java and Clipart to top level package
         already_handled = []
@@ -639,7 +632,7 @@ class MainLogic(object):
         recommended_Clipart_version,
     ) -> tuple[str, str, str]:
         """Decides on initial conditions for packages install/removal."""
-        root = self._package_tree
+        root = self.package_tree_root
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
@@ -648,7 +641,7 @@ class MainLogic(object):
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
             newest_installed_Java_version = java.version
-        # java install/remove/upgrade options are never visible
+        # java install/remove options are never visible
 
         newest_installed_LO_version = ""
         LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
@@ -687,7 +680,7 @@ class MainLogic(object):
                 package.is_remove_opt_visible = True
 
         # 3)
-        # Java removal (or upgrade to newer versio) is not supported
+        # Java removal (or upgrade to newer version) is not supported
         # by this program. This should be done by a proper package manager
         # like Synaptic
         if java.is_installed:
@@ -1031,7 +1024,9 @@ class MainLogic(object):
         # Java needs to be installed?
         # (Nonte that Java may have been downloaded as a result of
         #  force_java_download but not actually marked for install)
-        java_package = [c for c in self._package_tree.children if "Java" in c.family][0]
+        java_package = [
+            c for c in self.package_tree_root.children if "Java" in c.family
+        ][0]
         if (
             java_package.is_marked_for_install
             and rpms_and_tgzs_to_use["files_to_install"]["Java"]
@@ -2084,169 +2079,8 @@ class ManualSelectionLogic(object):
         self.info_to_install = []
         self.info_to_remove = []
 
-    # Public methods
-    def get_package_field(self, row: int, column: int) -> Tuple[Any, Any, Any]:
-        """Gets any field in the package menu (at row and column)
-
-        This method is used to represent underlying package data as
-        a table with rows representing each package the user can request
-        operation on and various columns showing the status of this operations.
-        This virtual table is thought to consist of 6 columns (0-5):
-        |Software name|package type|version|...
-        ...|removal flags|upgrade flags|install flags|
-
-        Each row-column combination leads to a field that is described by
-        a tuple of 3 parameters. For columns 0-2 it is the string (either kind
-        family or version) and 2 filler boolean values that don't carry meaning
-        For columns 3-5 returned is a tuple of 3 (out of 4 existing) flags
-        of the virtual package shown in this row.
-        These are accordingly:
-            is_marked_for_(removal/upgrade/install)
-            is_(remove/upgrade/install)_opt_visible
-            is_(remove/upgrade/install)_opt_enabled
-
-        virtual package flags:
-            removable/upgradable/installable
-            are treated as private and never returned
-
-
-        Parameters
-        ----------
-        row : int
-          row of the package list
-        column : int
-          column of the package list
-
-        Returns
-        -------
-        Tuple[Any, Any, Any]
-          (string, bool, bool) - for columns 0,1,2 (bools are just fillers)
-          (bool, bool, bool) - for columns 3,4,5 (visible) package flags
-        """
-
-        # Never keep the reference to package list
-        packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        package = packages[row]
-
-        if column == 0:
-            return (package.family, True, False)
-        elif column == 1:
-            return (package.kind, True, False)
-        elif column == 2:
-            return (package.version, True, False)
-        elif column == 3:
-            return (
-                package.is_marked_for_removal,
-                package.is_remove_opt_visible,
-                package.is_remove_opt_enabled,
-            )
-        elif column == 4:
-            # Notion of upgrade logic is deprecated
-            return (False, False, False)
-        elif column == 5:
-            return (
-                package.is_marked_for_install,
-                package.is_install_opt_visible,
-                package.is_install_opt_enabled,
-            )
-        elif column == 6:
-            return (
-                package.is_installed,
-                True,
-                True,
-            )
-        elif column == 7:
-            return (
-                package.is_marked_for_download,
-                True,
-                True,
-            )
-        else:
-            return (None, None, None)
-
-    def set_package_field(self, row: int, column: int, value: bool) -> bool:
-        """Sets (marked for ...) flags for package applying dependencies logic
-
-        Parameters
-        ----------
-        row : int
-          Selected package as row in the package menu
-
-        column : int
-          Selected flag as column
-
-        value : bool
-          Requested flag value: True - mark, False - unmark
-
-        Returns
-        -------
-        bool
-          Request succeeded True/False
-        """
-
-        is_logic_applied = False
-        # Never keep the reference to package list
-        packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        package = packages[row]
-
-        if column == 3:
-            is_logic_applied = self._apply_removal_logic(package, value)
-        elif column == 4:
-            # Notion of upgrade logic is deprecated
-            # return False
-            is_logic_applied = False
-        elif column == 5:
-            is_logic_applied = self._apply_install_logic(package, value)
-        else:
-            is_logic_applied = False
-
-        def format(package):
-            if package.is_langpack():
-                return (
-                    package.family
-                    + " "
-                    + package.version
-                    + " language: "
-                    + package.kind
-                )
-            else:
-                return package.family + " " + package.version + " core"
-
-        self.info_to_install = [format(p) for p in packages if p.is_marked_for_install]
-        self.info_to_remove = [format(p) for p in packages if p.is_marked_for_removal]
-
-        return is_logic_applied
-
-    def get_row_count(self) -> int:
-        """Returns number of rows of the packages menu
-
-        Returns
-        -------
-        int
-          number of rows
-        """
-        # Never keep the reference to package list
-        packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        return len(packages)
-
-    def get_column_count(self) -> int:
-        """Returns number of columns of the package menu
-
-        Returns
-        -------
-        int
-          Currently package menu is thought as having 6 columns
-        """
-        return 8
-
-    # Private methods
-    def _apply_install_logic(self, package: VirtualPackage, mark: bool):
+    # -- Public interface for ManualSelectionLogic
+    def apply_install_logic(self, package: VirtualPackage, mark: bool):
         """Marks package for install changing flags of other packages accordingly
 
         This procedure will mark requested package for install and make
@@ -2362,9 +2196,10 @@ class ManualSelectionLogic(object):
             is_apply_install_successul = True
 
         self._decide_what_to_download()
+        self._update_changes_info()
         return is_apply_install_successul
 
-    def _apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
+    def apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
         """Marks package for removal changing flags of other packages accordingly
 
         This procedure will mark requested package for removal and make
@@ -2431,8 +2266,12 @@ class ManualSelectionLogic(object):
             is_apply_removal_successul = True
 
         self._decide_what_to_download()
+        self._update_changes_info()
         return is_apply_removal_successul
 
+    # -- end Public interface for ManualSelectionLogic
+
+    # -- Private methods of ManualSelectionLogic
     def _decide_what_to_download(self):
         # Never keep the reference to package list
         packages = []
@@ -2444,3 +2283,29 @@ class ManualSelectionLogic(object):
                 package.is_marked_for_download = True
             else:
                 package.is_marked_for_download = False
+
+    def _update_changes_info(self):
+        def pretty_name(package):
+            if package.is_langpack():
+                return (
+                    package.family
+                    + " "
+                    + package.version
+                    + " language: "
+                    + package.kind
+                )
+            else:
+                return package.family + " " + package.version + " core"
+
+        # Never keep the reference to package list
+        packages = []
+        self.root.get_subtree(packages)
+        packages.remove(self.root)
+        self.info_to_install = [
+            pretty_name(p) for p in packages if p.is_marked_for_install
+        ]
+        self.info_to_remove = [
+            pretty_name(p) for p in packages if p.is_marked_for_removal
+        ]
+
+    # -- end Private methods of ManualSelectionLogic

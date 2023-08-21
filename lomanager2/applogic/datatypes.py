@@ -66,7 +66,7 @@ class VirtualPackage(Node):
     flags/attributes. These describe whether:
         - the package is currently installed
         - the package was marked for specific operation
-          (install/removal/upgrade)
+          (install/removal)
         - if it can be marked for such operation,
         - should the operation be visible to the user and
         - should it be in enabled state
@@ -87,9 +87,6 @@ class VirtualPackage(Node):
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
     is_marked_for_removal : bool
-    is_upgrade_opt_visible : bool
-    is_upgrade_opt_enabled : bool
-    is_marked_for_upgrade : bool
     is_install_opt_visible : bool
     is_install_opt_enabled : bool
     is_marked_for_install : bool
@@ -131,10 +128,6 @@ class VirtualPackage(Node):
         self.is_remove_opt_visible = False
         self.is_remove_opt_enabled = False
         self.is_marked_for_removal = False
-        # Upgrade flags
-        self.is_upgrade_opt_visible = False
-        self.is_upgrade_opt_enabled = False
-        self.is_marked_for_upgrade = False
         # Install flags
         self.is_install_opt_visible = False
         self.is_install_opt_enabled = False
@@ -161,58 +154,22 @@ class VirtualPackage(Node):
         self.is_remove_opt_visible = True
         self.is_remove_opt_enabled = True
 
-    def allow_upgrade(self) -> None:
-        """Set upgrade flags to allow upgrade but don't mark for it
-
-        This also disallows package install. A package can either
-        be eligible for install or upgrade never both.
-        """
-
-        self.is_install_opt_visible = False
-        self.is_install_opt_enabled = False
-        self.is_upgrade_opt_visible = True
-        self.is_upgrade_opt_enabled = True
-
     def allow_install(self) -> None:
-        """Set install flags to allow install but don't mark for it
-
-        This also disallows package install. A package can either
-        be eligible for install or upgrade never both.
-        """
+        """Set install flags to allow install but don't mark for it"""
 
         self.is_install_opt_visible = True
         self.is_install_opt_enabled = True
-        self.is_upgrade_opt_visible = False
-        self.is_upgrade_opt_enabled = False
 
     def mark_for_removal(self) -> None:
-        """Checks is_marked_for_removal flag and unchecks the others
-
-        that is is_marked_for_upgrade and is_marked_for_install
-        """
+        """Checks is_marked_for_removal flag and unchecks the others"""
 
         self.is_marked_for_removal = True
-        self.is_marked_for_upgrade = False
-        self.is_marked_for_install = False
-
-    def mark_for_upgrade(self) -> None:
-        """Checks is_marked_for_upgrade flag and unchecks the others
-
-        that is is_marked_for_install and is_marked_for_removal
-        """
-
-        self.is_marked_for_removal = False
-        self.is_marked_for_upgrade = True
         self.is_marked_for_install = False
 
     def mark_for_install(self) -> None:
-        """Checks is_marked_for_install flag and unchecks the others
-
-        that is is_marked_for_removal and is_marked_for_upgrade
-        """
+        """Checks is_marked_for_install flag and unchecks the others"""
 
         self.is_marked_for_removal = False
-        self.is_marked_for_upgrade = False
         self.is_marked_for_install = True
 
     def is_langpack(self) -> bool:

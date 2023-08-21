@@ -13,6 +13,19 @@ class PackageMenuViewModel(QAbstractTableModel):
         super().__init__()
 
         self._main_logic = main_logic
+        self.last_refresh_timestamp = 0
+        self.package_list = []
+
+    def rebuild_package_list(self):
+        """Rebuilds package list if it's outdated"""
+        if (
+            self._main_logic.refresh_timestamp > self.last_refresh_timestamp
+            or self.package_list == []
+        ):
+            self.package_list = []
+            self._main_logic.package_tree_root.get_subtree(self.package_list)
+            self.package_list.remove(self._main_logic.package_tree_root)
+            self.last_refresh_timestamp = self._main_logic.refresh_timestamp
 
     # -- start "Getters" --
     def data(self, index, role) -> Any:
@@ -37,9 +50,42 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         row = index.row()
         column = index.column()
-        pf_base, pf_vis, pf_enabled = self._main_logic.get_PackageMenu_field(
-            row, column
-        )
+
+        self.rebuild_package_list()
+        package = self.package_list[row]
+
+        if column == 0:
+            pf_base, pf_vis, pf_enabled = (package.family, True, False)
+        elif column == 1:
+            pf_base, pf_vis, pf_enabled = (package.kind, True, False)
+        elif column == 2:
+            pf_base, pf_vis, pf_enabled = (package.version, True, False)
+        elif column == 3:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_removal,
+                package.is_remove_opt_visible,
+                package.is_remove_opt_enabled,
+            )
+        elif column == 4:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_install,
+                package.is_install_opt_visible,
+                package.is_install_opt_enabled,
+            )
+        elif column == 5:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_installed,
+                True,
+                True,
+            )
+        elif column == 6:
+            pf_base, pf_vis, pf_enabled = (
+                package.is_marked_for_download,
+                True,
+                True,
+            )
+        else:
+            pf_base, pf_vis, pf_enabled = (None, None, None)
 
         if role == Qt.ItemDataRole.DisplayRole:
             # This will be either
@@ -106,35 +152,24 @@ class PackageMenuViewModel(QAbstractTableModel):
         int
             Number of rows
         """
-
-        # TODO: should this be done this way?
-        #       app logic does not have any notion
-        #       of "rows" or their number.
-        #       It may be just the issue of naming
-        #       like main_logic.get_PackageMenu_number_of_packages
-        return self._main_logic.get_PackageMenu_row_count()
+        self.rebuild_package_list()
+        return len(self.package_list)
 
     def columnCount(self, index) -> int:
-        """Tells how many columns of data there are.
+        """Returns the number of columns the table should show
 
         Parameters
         ----------
         index : QModelIndex | QPeristentModelIndex
-            Points to a specific data item in data model
+            Required by Qt but not used
 
         Returns
         -------
         int
-            Number of rows
+          Currently table showing packages is thought to have 7 columns,
+          see headerData for their names.
         """
-
-        # TODO: this defiantly should not be done this way
-        #       main_logic does not have any notion of columns!
-        #       The translation between what the data are and how to
-        #       represent them as a table should be done here.
-        #       Leaving for now as this requires changes
-        #       in MainLogic and PackageMenu
-        return self._main_logic.get_PackageMenu_column_count()
+        return 7
 
     def headerData(self, section: int, orientation, role) -> str | None:
         """Returns descriptions for each column in the data.
@@ -162,7 +197,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
                 if section == 0:
-                    return "Office suit"
+                    return "Program name"
                 elif section == 1:
                     return "virtual package type"
                 elif section == 2:
@@ -170,12 +205,10 @@ class PackageMenuViewModel(QAbstractTableModel):
                 elif section == 3:
                     return "marked for removal?"
                 elif section == 4:
-                    return "marked for upgrade?"
-                elif section == 5:
                     return "marked for install?"
-                elif section == 6:
+                elif section == 5:
                     return "is installed?"
-                elif section == 7:
+                elif section == 6:
                     return "is marked for download?"
                 else:
                     return None
@@ -216,7 +249,10 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        # Only data in columns mark_for_removal|upgrade|install
+        self.rebuild_package_list()
+        package = self.package_list[row]
+
+        # Only data in columns mark_for_removal|install
         # can be modified and they only accept boolean values
         # Also this method will not be called for other columns
         # because the flags() method already
@@ -233,13 +269,17 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             # This is the place to send the entered value to the underlining
-            # object holding the data (PackageMenu) ...
-            s = self._main_logic.set_PackageMenu_field(
-                row,
-                column,
-                value_as_bool,
-            )
-
+            # object holding the data
+            if column == 3:
+                is_logic_applied = self._main_logic.change_removal_mark(
+                    package, value_as_bool
+                )
+            elif column == 4:
+                is_logic_applied = self._main_logic.change_install_mark(
+                    package, value_as_bool
+                )
+            else:
+                is_logic_applied = False
             # ... and then inform the View that it should update its
             # state because data has changed.
             # Redraw ENTIRE View as the underlining PackageMenu logic
@@ -249,7 +289,7 @@ class PackageMenuViewModel(QAbstractTableModel):
             # self.dataChanged.emit(index, index, role)
             # as it causes only the altered cell to be redrawn by the View
 
-            if s:  # desired state was set successfully
+            if is_logic_applied:  # desired state was set successfully
                 return True
         return False  # invalid index OR something went wrong when setting
 
@@ -259,7 +299,7 @@ class PackageMenuViewModel(QAbstractTableModel):
     def flags(self, index):
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
-        # Only allow mark_for_removal|upgrade|install fields to be editable
+        # Only allow mark_for_removal|install fields to be editable
         # Columns 0,1 and 3 can't be edited
         if index.column() >= 3:
             existing_flags = QAbstractItemModel.flags(self, index)
