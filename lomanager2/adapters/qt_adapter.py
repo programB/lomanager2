@@ -10,7 +10,7 @@ from pysidecompat import (
 
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
-from viewmodels import PackageMenuViewModel
+from viewmodels import PackageMenuViewModel, MainPackageMenuRenderModel
 from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
@@ -68,6 +68,9 @@ class Adapter(QObject):
         self._package_menu_viewmodel = PackageMenuViewModel(
             self._main_model, column_names
         )
+        self._package_menu_rendermodel = MainPackageMenuRenderModel(
+            self._package_menu_view
+        )
         # TODO: Does not exist yet - Implement
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 
@@ -85,7 +88,9 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
 
     def _bind_views_to_viewmodels(self):
-        self._package_menu_view.setModel(self._package_menu_viewmodel)
+        # self._package_menu_view.setModel(self._package_menu_viewmodel)
+        self._package_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
+        self._package_menu_view.setModel(self._package_menu_rendermodel)
         # TODO: Implement - does not exist yet
         # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
 
