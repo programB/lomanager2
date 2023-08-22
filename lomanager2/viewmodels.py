@@ -58,7 +58,11 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        package = self.get_package_list()[row]
+        packageS = self.get_package_list()
+        if packageS:
+            package = packageS[row]
+        else:
+            return
 
         if column == 0:
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
@@ -206,7 +210,11 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        package = self.get_package_list()[row]
+        packageS = self.get_package_list()
+        if packageS:
+            package = packageS[row]
+        else:
+            return False
 
         # Only data in columns mark_for_removal|install
         # can be modified and they only accept boolean values
