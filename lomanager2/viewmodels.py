@@ -158,20 +158,8 @@ class PackageMenuViewModel(QAbstractTableModel):
         return len(self.get_package_list())
 
     def columnCount(self, index=QModelIndex()) -> int:
-        """Returns the number of columns the table should show
-
-        Parameters
-        ----------
-        index : QModelIndex | QPeristentModelIndex
-            Required by Qt but not used
-
-        Returns
-        -------
-        int
-          Currently table showing packages is thought to have 7 columns,
-          see headerData for their names.
-        """
-        return 7
+        """Returns the number of columns the table has"""
+        return len(self._column_names)
 
     def headerData(self, section: int, orientation, role) -> str | None:
         """Returns name of each column in the table."""
