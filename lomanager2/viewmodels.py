@@ -5,14 +5,17 @@ from pysidecompat import (
     QAbstractItemModel,  # pyright: ignore
     QAbstractTableModel,  # pyright: ignore
     Qt,  # pyright: ignore
+    QModelIndex,  # pyright: ignore
 )
 
 
 class PackageMenuViewModel(QAbstractTableModel):
-    def __init__(self, main_logic):
+    def __init__(self, main_logic, column_names):
         super().__init__()
 
         self._main_logic = main_logic
+        self._column_names = column_names
+
         self.last_refresh_timestamp = 0
         self._package_list = []
 
@@ -154,7 +157,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         """
         return len(self.get_package_list())
 
-    def columnCount(self, index) -> int:
+    def columnCount(self, index=QModelIndex()) -> int:
         """Returns the number of columns the table should show
 
         Parameters
@@ -171,46 +174,15 @@ class PackageMenuViewModel(QAbstractTableModel):
         return 7
 
     def headerData(self, section: int, orientation, role) -> str | None:
-        """Returns descriptions for each column in the data.
+        """Returns name of each column in the table."""
 
-        Parameters
-        ----------
-        orientation : Orientation
-            Orientation of the header as requested by the View,
-            either Horizontal or Vertical
-
-        role : DisplayRole
-           Each data item in data model may have many data elements
-           associated with it. role, passed in by the View, indicates
-           to the model which element of the data item is needed.
-
-        section : int
-            Column number
-
-        Returns
-        -------
-        str | None
-            Column description (depends on role and section)
-        """
-
-        if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Orientation.Horizontal:
-                if section == 0:
-                    return "Program name"
-                elif section == 1:
-                    return "virtual package type"
-                elif section == 2:
-                    return "version"
-                elif section == 3:
-                    return "marked for removal?"
-                elif section == 4:
-                    return "marked for install?"
-                elif section == 5:
-                    return "is installed?"
-                elif section == 6:
-                    return "is marked for download?"
-                else:
-                    return None
+        if (
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
+        ):
+            if section < self.columnCount():
+                return self._column_names[section]
+            return "not implemented"
 
     # -- end "Getters" --
 

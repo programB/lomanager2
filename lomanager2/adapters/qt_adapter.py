@@ -55,7 +55,18 @@ class Adapter(QObject):
         # to the underlying application logic.
         # This is done here explicitly although PackageMenuViewModel
         # has to now the details of methods exposed by MainLogic
-        self._package_menu_viewmodel = PackageMenuViewModel(self._main_model)
+        column_names = [
+            "Program name",
+            "virtual package type",
+            "version",
+            "marked for removal?",
+            "marked for install?",
+            "is installed?",
+            "is marked for download?",
+        ]
+        self._package_menu_viewmodel = PackageMenuViewModel(
+            self._main_model, column_names
+        )
         # TODO: Does not exist yet - Implement
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
 

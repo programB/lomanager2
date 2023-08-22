@@ -32,6 +32,7 @@ if PySide6_spec is not None:
         Signal,
         Slot,
         QThread,
+        QModelIndex,
     )
 elif PySide2_spec is not None:
     print("Using PySide2")
@@ -63,6 +64,7 @@ elif PySide2_spec is not None:
         Signal,
         Slot,
         QThread,
+        QModelIndex,
     )
 else:
     print("Neither PySide2 nor PySide6 Qt bindings where found")
