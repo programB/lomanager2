@@ -152,18 +152,7 @@ class PackageMenuViewModel(QAbstractTableModel):
                     return font
 
     def rowCount(self, index) -> int:
-        """Tells how many rows of data there are.
-
-        Parameters
-        ----------
-        index : QModelIndex | QPeristentModelIndex
-            Points to a specific data item in data model
-
-        Returns
-        -------
-        int
-            Number of rows
-        """
+        """Returns number of rows the table has"""
         return len(self.get_package_list())
 
     def columnCount(self, index=QModelIndex()) -> int:
