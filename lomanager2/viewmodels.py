@@ -14,18 +14,19 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         self._main_logic = main_logic
         self.last_refresh_timestamp = 0
-        self.package_list = []
+        self._package_list = []
 
-    def rebuild_package_list(self):
+    def get_package_list(self):
         """Rebuilds package list if it's outdated"""
         if (
             self._main_logic.refresh_timestamp > self.last_refresh_timestamp
-            or self.package_list == []
+            or self._package_list == []
         ):
-            self.package_list = []
-            self._main_logic.package_tree_root.get_subtree(self.package_list)
-            self.package_list.remove(self._main_logic.package_tree_root)
+            self._package_list = []
+            self._main_logic.package_tree_root.get_subtree(self._package_list)
+            self._package_list.remove(self._main_logic.package_tree_root)
             self.last_refresh_timestamp = self._main_logic.refresh_timestamp
+        return self._package_list
 
     # -- start "Getters" --
     def data(self, index, role) -> Any:
@@ -51,8 +52,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        self.rebuild_package_list()
-        package = self.package_list[row]
+        package = self.get_package_list()[row]
 
         if column == 0:
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
@@ -152,8 +152,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         int
             Number of rows
         """
-        self.rebuild_package_list()
-        return len(self.package_list)
+        return len(self.get_package_list())
 
     def columnCount(self, index) -> int:
         """Returns the number of columns the table should show
@@ -249,8 +248,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        self.rebuild_package_list()
-        package = self.package_list[row]
+        package = self.get_package_list()[row]
 
         # Only data in columns mark_for_removal|install
         # can be modified and they only accept boolean values
