@@ -273,9 +273,14 @@ class MainPackageMenuRenderModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, row, parent):
         if "Java" in self.sourceModel().index(row, 0, parent).data():
             return False
-        if self.sourceModel().index(row, 1, parent).data() != "core-packages":
+        elif (
+            self.sourceModel().index(row, 1, parent).data() == "core-packages"
+            or self.sourceModel().index(row, 6, parent).data()
+        ):
+            # show any core package and any installed lang package
+            return True
+        else:
             return False
-        return True
 
 
 class LanguageMenuRenderModel(QSortFilterProxyModel):
@@ -283,6 +288,10 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
         super(LanguageMenuRenderModel, self).__init__(parent)
 
     def filterAcceptsRow(self, row, parent):
-        if self.sourceModel().index(row, 1, parent).data() == "core-packages":
-            return False
-        return True
+        if (
+            self.sourceModel().index(row, 1, parent).data() != "core-packages"
+            and self.sourceModel().index(row, 6, parent).data() is False
+        ):
+            # show any core package and any uninstalled lang package
+            return True
+        return False
