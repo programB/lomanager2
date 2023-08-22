@@ -287,3 +287,13 @@ class MainPackageMenuRenderModel(QSortFilterProxyModel):
         if self.sourceModel().index(row, 1, parent).data() != "core-packages":
             return False
         return True
+
+
+class LanguageMenuRenderModel(QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super(LanguageMenuRenderModel, self).__init__(parent)
+
+    def filterAcceptsRow(self, row, parent):
+        if self.sourceModel().index(row, 1, parent).data() == "core-packages":
+            return False
+        return True

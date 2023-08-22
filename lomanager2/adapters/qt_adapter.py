@@ -10,7 +10,11 @@ from pysidecompat import (
 
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
-from viewmodels import PackageMenuViewModel, MainPackageMenuRenderModel
+from viewmodels import (
+    PackageMenuViewModel,
+    MainPackageMenuRenderModel,
+    LanguageMenuRenderModel,
+)
 from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
@@ -73,6 +77,9 @@ class Adapter(QObject):
         )
         # TODO: Does not exist yet - Implement
         # extra_langs_menu_viewmodel = LangsMenuViewModel()
+        self._language_menu_rendermodel = LanguageMenuRenderModel(
+            self._extra_langs_view
+        )
 
         # Extra variables that can be set by the user in GUI
         # Initialize local _keep_packages variable from configuration
@@ -94,6 +101,8 @@ class Adapter(QObject):
         self._package_menu_view.hideColumn(self.column_names.index("language name"))
         # TODO: Implement - does not exist yet
         # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
+        self._language_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
+        self._extra_langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
         # Option: Local copy installation
