@@ -58,6 +58,7 @@ class Adapter(QObject):
         column_names = [
             "Program name",
             "virtual package type",
+            "language name",
             "version",
             "marked for removal?",
             "marked for install?",

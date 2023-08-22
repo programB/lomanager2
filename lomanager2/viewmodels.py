@@ -8,6 +8,8 @@ from pysidecompat import (
     QModelIndex,  # pyright: ignore
 )
 
+from lolangs import supported_langs
+
 
 class PackageMenuViewModel(QAbstractTableModel):
     def __init__(self, main_logic, column_names):
@@ -62,26 +64,32 @@ class PackageMenuViewModel(QAbstractTableModel):
         elif column == 1:
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
         elif column == 2:
-            pf_base, pf_vis, pf_enabled = (package.version, True, False)
+            pf_base, pf_vis, pf_enabled = (
+                supported_langs.get(package.kind),
+                True,
+                False,
+            )
         elif column == 3:
+            pf_base, pf_vis, pf_enabled = (package.version, True, False)
+        elif column == 4:
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_removal,
                 package.is_remove_opt_visible,
                 package.is_remove_opt_enabled,
             )
-        elif column == 4:
+        elif column == 5:
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_install,
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
-        elif column == 5:
+        elif column == 6:
             pf_base, pf_vis, pf_enabled = (
                 package.is_installed,
                 True,
                 True,
             )
-        elif column == 6:
+        elif column == 7:
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_download,
                 True,
@@ -92,14 +100,14 @@ class PackageMenuViewModel(QAbstractTableModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             # This will be either
-            # strings for first 3 columns
-            # or marked/unmarked condition for the later 3
+            # strings for first 4 columns
+            # or marked/unmarked condition for the rest
             return pf_base
 
         if role == Qt.ItemDataRole.CheckStateRole:
             # Check/Uncheck the cell in the View
             # based on package base field
-            if column >= 3:
+            if column >= 4:
                 if pf_base is True:
                     return Qt.CheckState.Checked
                 if pf_base is False:
@@ -109,7 +117,7 @@ class PackageMenuViewModel(QAbstractTableModel):
             # Set background of the cell to darker
             # shade of grey if the operation is in
             # non enabled state
-            if column >= 3:
+            if column >= 4:
                 if pf_enabled is False and pf_vis is True:
                     return QtGui.QColor("#484544")  # dark grey
                 if pf_enabled is True and pf_vis is True:
@@ -123,7 +131,7 @@ class PackageMenuViewModel(QAbstractTableModel):
             # red   - if the option is not marked
             # BUT
             # grey - if the operation is in non enabled state
-            if column >= 3:
+            if column >= 4:
                 if pf_enabled is False:
                     return QtGui.QColor("#635f5e")  # "middle" grey
                 if pf_enabled is True:
@@ -215,7 +223,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         # Also this method will not be called for other columns
         # because the flags() method already
         # prevents the user from modifying other columns.
-        if column >= 3:
+        if column >= 4:
             if value.upper() == "TRUE" or value == "1":
                 value_as_bool = True
             elif value.upper() == "FALSE" or value == "0":
@@ -228,11 +236,11 @@ class PackageMenuViewModel(QAbstractTableModel):
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             # This is the place to send the entered value to the underlining
             # object holding the data
-            if column == 3:
+            if column == 4:
                 is_logic_applied = self._main_logic.change_removal_mark(
                     package, value_as_bool
                 )
-            elif column == 4:
+            elif column == 5:
                 is_logic_applied = self._main_logic.change_install_mark(
                     package, value_as_bool
                 )
@@ -258,8 +266,8 @@ class PackageMenuViewModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
         # Only allow mark_for_removal|install fields to be editable
-        # Columns 0,1 and 3 can't be edited
-        if index.column() >= 3:
+        # Columns 0,1,2 and 3 can't be edited
+        if index.column() >= 4:
             existing_flags = QAbstractItemModel.flags(self, index)
             return existing_flags | Qt.ItemFlag.ItemIsEditable
         return QAbstractItemModel.flags(self, index)
