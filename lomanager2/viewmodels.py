@@ -223,6 +223,8 @@ class PackageMenuViewModel(QAbstractTableModel):
         else:
             return False
 
+        self.layoutAboutToBeChanged.emit()
+
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             # This is the place to send the entered value to the underlining
             # object holding the data

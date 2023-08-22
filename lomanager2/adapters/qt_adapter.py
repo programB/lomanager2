@@ -153,7 +153,11 @@ class Adapter(QObject):
 
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
+        # Refresh package tree
         self._main_model.refresh_state()
+        # Inform model that underlying data source has finished changing
+        self._package_menu_viewmodel.endResetModel()
+        # and make it refresh itself
         self._package_menu_viewmodel.layoutChanged.emit()
         # Check if there are any messages that should
         # be shown to the user
@@ -287,6 +291,10 @@ class Adapter(QObject):
 
         # Change cursor
         self._main_view.setCursor(Qt.WaitCursor)
+
+        # Let the model know the data it currently has
+        # will become invalid 
+        self._package_menu_viewmodel.beginResetModel()
 
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
