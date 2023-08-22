@@ -55,7 +55,7 @@ class Adapter(QObject):
         # to the underlying application logic.
         # This is done here explicitly although PackageMenuViewModel
         # has to now the details of methods exposed by MainLogic
-        column_names = [
+        self.column_names = [
             "Program name",
             "virtual package type",
             "language name",
@@ -66,7 +66,7 @@ class Adapter(QObject):
             "is marked for download?",
         ]
         self._package_menu_viewmodel = PackageMenuViewModel(
-            self._main_model, column_names
+            self._main_model, self.column_names
         )
         self._package_menu_rendermodel = MainPackageMenuRenderModel(
             self._package_menu_view
@@ -91,6 +91,7 @@ class Adapter(QObject):
         # self._package_menu_view.setModel(self._package_menu_viewmodel)
         self._package_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
         self._package_menu_view.setModel(self._package_menu_rendermodel)
+        self._package_menu_view.hideColumn(self.column_names.index("language name"))
         # TODO: Implement - does not exist yet
         # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
 
