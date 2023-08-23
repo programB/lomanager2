@@ -268,43 +268,41 @@ class PackageMenuViewModel(QAbstractTableModel):
         # Also this method will not be called for other columns
         # because the flags() method already
         # prevents the user from modifying other columns.
-        if column >= 4:
-            if value.upper() == "TRUE" or value == "1":
-                value_as_bool = True
-            elif value.upper() == "FALSE" or value == "0":
-                value_as_bool = False
-            else:
-                return False
+        if value.upper() == "TRUE" or value == "1":
+            value_as_bool = True
+        elif value.upper() == "FALSE" or value == "0":
+            value_as_bool = False
         else:
             return False
 
-        self.layoutAboutToBeChanged.emit()
-
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
-            # This is the place to send the entered value to the underlining
-            # object holding the data
             if column == column_idx.get("marked_for_removal"):
+                # Critically important! Warn views/viewmodels that underlying
+                # data will change
+                self.layoutAboutToBeChanged.emit()
+
+                # Request data change from the applogic
                 is_logic_applied = self._main_logic.change_removal_mark(
                     package, value_as_bool
                 )
+
+                # Tell the views to redraw themselves ENTIRELY
+                # (not just the cell changed here)
+                self.layoutChanged.emit()
+
+                # Finally
+                return is_logic_applied
+
             elif column == column_idx.get("marked_for_install"):
+                self.layoutAboutToBeChanged.emit()
                 is_logic_applied = self._main_logic.change_install_mark(
                     package, value_as_bool
                 )
+                self.layoutChanged.emit()
+                return is_logic_applied
             else:
-                is_logic_applied = False
-            # ... and then inform the View that it should update its
-            # state because data has changed.
-            # Redraw ENTIRE View as the underlining PackageMenu logic
-            # may have altered other cells - not just the one changed here.
-            self.layoutChanged.emit()
-            # Do not use:
-            # self.dataChanged.emit(index, index, role)
-            # as it causes only the altered cell to be redrawn by the View
-
-            if is_logic_applied:  # desired state was set successfully
-                return True
-        return False  # invalid index OR something went wrong when setting
+                return False
+        return False
 
     def setHeaderData(self, section, orientation, value, role) -> bool:
         return super().setHeaderData(section, orientation, value, role)
