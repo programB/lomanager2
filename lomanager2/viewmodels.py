@@ -1,4 +1,5 @@
 from typing import Any
+from functools import cmp_to_key
 
 from pysidecompat import (
     QtGui,  # pyright: ignore
@@ -10,6 +11,7 @@ from pysidecompat import (
 )
 
 from lolangs import supported_langs
+from applogic.datatypes import compare_versions
 
 
 class PackageMenuViewModel(QAbstractTableModel):
@@ -28,11 +30,45 @@ class PackageMenuViewModel(QAbstractTableModel):
             self._main_logic.refresh_timestamp > self.last_refresh_timestamp
             or self._package_list == []
         ):
-            self._package_list = []
-            self._main_logic.package_tree_root.get_subtree(self._package_list)
-            self._package_list.remove(self._main_logic.package_tree_root)
+            self._package_list = self._build_sorted_list(
+                root=self._main_logic.package_tree_root
+            )
             self.last_refresh_timestamp = self._main_logic.refresh_timestamp
         return self._package_list
+
+    def _build_sorted_list(self, root):
+        """Sort package list according to arbitrary criteria
+
+        Any Java goes first followed by OpenOffice core packages sorted
+        by version (newest first). Then LibreOffice core (LO cores sorted
+        by version) immediately followed by its langpacks (sorted by country code)
+        Finally Clipart core packages (newest first).
+        """
+
+        OOfficeS = []
+        LOfficeS = []
+        JavaS = [child for child in root.children if child.family == "Java"]
+        if JavaS:
+            java = JavaS[0]
+            for office in java.children:
+                if office.family == "OpenOffice":
+                    OOfficeS.append(office)
+                if office.family == "LibreOffice":
+                    LOfficeS.append(office)
+                    for lang in office.children:
+                        LOfficeS.append(lang)
+
+            # sort core packages by version
+            OOfficeS.sort(key=cmp_to_key(compare_versions))
+            LOfficeS.sort(key=cmp_to_key(compare_versions))
+            # sort langpacks by language code
+            # (this sorting is safe, already sorted core packages will not move)
+            LOfficeS.sort(key=lambda p: p.kind if p.is_langpack() else "a")
+
+        ClipartS = [child for child in root.children if child.family == "Clipart"]
+        ClipartS.sort(key=cmp_to_key(compare_versions))
+
+        return JavaS + OOfficeS + LOfficeS + ClipartS
 
     # -- start "Getters" --
     def data(self, index, role) -> Any:
