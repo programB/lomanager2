@@ -13,6 +13,18 @@ from pysidecompat import (
 from lolangs import supported_langs
 from applogic.datatypes import compare_versions
 
+column_idx = {
+    "family": 0,
+    "kind": 1,
+    "language_code": 1,
+    "language_name": 2,
+    "version": 3,
+    "marked_for_removal": 4,
+    "marked_for_install": 5,
+    "installed": 6,
+    "marked_for_download": 7,
+}
+
 
 class PackageMenuViewModel(QAbstractTableModel):
     def __init__(self, main_logic, column_names):
@@ -100,37 +112,37 @@ class PackageMenuViewModel(QAbstractTableModel):
         else:
             return
 
-        if column == 0:
+        if column == column_idx.get("family"):
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
-        elif column == 1:
+        elif column == column_idx.get("kind"):
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
-        elif column == 2:
+        elif column == column_idx.get("language_name"):
             pf_base, pf_vis, pf_enabled = (
                 supported_langs.get(package.kind),
                 True,
                 False,
             )
-        elif column == 3:
+        elif column == column_idx.get("version"):
             pf_base, pf_vis, pf_enabled = (package.version, True, False)
-        elif column == 4:
+        elif column == column_idx.get("marked_for_removal"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_removal,
                 package.is_remove_opt_visible,
                 package.is_remove_opt_enabled,
             )
-        elif column == 5:
+        elif column == column_idx.get("marked_for_install"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_install,
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
-        elif column == 6:
+        elif column == column_idx.get("installed"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_installed,
                 True,
                 True,
             )
-        elif column == 7:
+        elif column == column_idx.get("marked_for_download"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_download,
                 True,
@@ -164,7 +176,7 @@ class PackageMenuViewModel(QAbstractTableModel):
             # green - if the option is marked
             # red   - if the option is not marked
             # BUT
-            # grey - if the operation is disabled 
+            # grey - if the operation is disabled
             if isinstance(pf_base, bool):
                 if pf_enabled is False:
                     return QtGui.QColor("#635f5e")  # "middle" grey
@@ -251,7 +263,7 @@ class PackageMenuViewModel(QAbstractTableModel):
         else:
             return False
 
-        # Only data in columns mark_for_removal|install
+        # Only data in columns marked_for_removal|install
         # can be modified and they only accept boolean values
         # Also this method will not be called for other columns
         # because the flags() method already
@@ -271,11 +283,11 @@ class PackageMenuViewModel(QAbstractTableModel):
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             # This is the place to send the entered value to the underlining
             # object holding the data
-            if column == 4:
+            if column == column_idx.get("marked_for_removal"):
                 is_logic_applied = self._main_logic.change_removal_mark(
                     package, value_as_bool
                 )
-            elif column == 5:
+            elif column == column_idx.get("marked_for_install"):
                 is_logic_applied = self._main_logic.change_install_mark(
                     package, value_as_bool
                 )
@@ -298,11 +310,12 @@ class PackageMenuViewModel(QAbstractTableModel):
         return super().setHeaderData(section, orientation, value, role)
 
     def flags(self, index):
-        if not index.isValid():
+        if index.isValid() is False:
             return Qt.ItemFlag.ItemIsEnabled
-        # Only allow mark_for_removal|install fields to be editable
-        # Columns 0,1,2 and 3 can't be edited
-        if index.column() >= 4:
+        # Only allow marked_for_removal|install fields to be editable
+        if index.column() == column_idx.get(
+            "marked_for_removal"
+        ) or index.column() == column_idx.get("marked_for_install"):
             existing_flags = QAbstractItemModel.flags(self, index)
             return existing_flags | Qt.ItemFlag.ItemIsEditable
         return QAbstractItemModel.flags(self, index)
@@ -317,11 +330,13 @@ class MainPackageMenuRenderModel(QSortFilterProxyModel):
         self.setSourceModel(model)
 
     def filterAcceptsRow(self, row, parent):
-        if "Java" in self.sourceModel().index(row, 0, parent).data():
+        sm = self.sourceModel
+        if "Java" in sm().index(row, column_idx.get("family"), parent).data():
+            # don't show Java
             return False
         elif (
-            self.sourceModel().index(row, 1, parent).data() == "core-packages"
-            or self.sourceModel().index(row, 6, parent).data()
+            sm().index(row, column_idx.get("kind"), parent).data() == "core-packages"
+            or sm().index(row, column_idx.get("installed"), parent).data() is True
         ):
             # show any core package and any installed lang package
             return True
@@ -337,9 +352,10 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
         self.setFilterKeyColumn(-1)
 
     def filterAcceptsRow(self, row, parent):
+        sm = self.sourceModel
         if (
-            self.sourceModel().index(row, 1, parent).data() != "core-packages"
-            and self.sourceModel().index(row, 6, parent).data() is False
+            sm().index(row, column_idx.get("kind"), parent).data() != "core-packages"
+            and sm().index(row, column_idx.get("installed"), parent).data() is False
         ):
             # show any NOT installed lang package
             return True
