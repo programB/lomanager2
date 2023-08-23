@@ -140,25 +140,18 @@ class PackageMenuViewModel(QAbstractTableModel):
             pf_base, pf_vis, pf_enabled = (None, None, None)
 
         if role == Qt.ItemDataRole.DisplayRole:
-            # This will be either
-            # strings for first 4 columns
-            # or marked/unmarked condition for the rest
             return pf_base
 
         if role == Qt.ItemDataRole.CheckStateRole:
-            # Check/Uncheck the cell in the View
-            # based on package base field
-            if column >= 4:
-                if pf_base is True:
-                    return Qt.CheckState.Checked
-                if pf_base is False:
-                    return Qt.CheckState.Unchecked
+            # Display checked/uncheck box for cells holding boolen
+            if isinstance(pf_base, bool):
+                return Qt.CheckState.Checked if pf_base else Qt.CheckState.Unchecked
 
         if role == Qt.ItemDataRole.BackgroundRole:
             # Set background of the cell to darker
-            # shade of grey if the operation is in
-            # non enabled state
-            if column >= 4:
+            # shade of grey if the operation disabled
+            # but black if visibility is set to false
+            if isinstance(pf_base, bool):
                 if pf_enabled is False and pf_vis is True:
                     return QtGui.QColor("#484544")  # dark grey
                 if pf_enabled is True and pf_vis is True:
@@ -171,8 +164,8 @@ class PackageMenuViewModel(QAbstractTableModel):
             # green - if the option is marked
             # red   - if the option is not marked
             # BUT
-            # grey - if the operation is in non enabled state
-            if column >= 4:
+            # grey - if the operation is disabled 
+            if isinstance(pf_base, bool):
                 if pf_enabled is False:
                     return QtGui.QColor("#635f5e")  # "middle" grey
                 if pf_enabled is True:
@@ -185,8 +178,8 @@ class PackageMenuViewModel(QAbstractTableModel):
             # Make text in the cell bold
             # if package enabled condition is True
             # (it will be default non-bold for when condition is False)
-            font = QtGui.QFont()
-            if column >= 3:
+            if isinstance(pf_base, bool):
+                font = QtGui.QFont()
                 if pf_enabled is True:
                     font.setBold(True)
                     return font
