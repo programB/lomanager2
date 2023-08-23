@@ -145,6 +145,9 @@ class Adapter(QObject):
         self._extra_langs_view.hideColumn(self.column_names.index("version"))
         self._extra_langs_view.hideColumn(self.column_names.index("is installed?"))
         self._extra_langs_view.hideColumn(
+            self.column_names.index("marked for removal?")
+        )
+        self._extra_langs_view.hideColumn(
             self.column_names.index("is marked for download?")
         )
 
