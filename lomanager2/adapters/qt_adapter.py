@@ -87,6 +87,7 @@ class Adapter(QObject):
 
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
+        self._preset_views()
 
         # Flags blocking parts of the interface during certain operations
         self._is_packages_selecting_allowed = True
@@ -94,15 +95,7 @@ class Adapter(QObject):
 
     def _bind_views_to_viewmodels(self):
         self._package_menu_view.setModel(self._package_menu_rendermodel)
-        self._package_menu_view.hideColumn(self.column_names.index("language name"))
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
-        self._extra_langs_view.setSortingEnabled(True)
-        self._extra_langs_view.hideColumn(self.column_names.index("Program name"))
-        self._extra_langs_view.hideColumn(self.column_names.index("version"))
-        self._extra_langs_view.hideColumn(self.column_names.index("is installed?"))
-        self._extra_langs_view.hideColumn(
-            self.column_names.index("is marked for download?")
-        )
 
     def _connect_signals_and_slots(self):
         # Option: Local copy installation
@@ -144,6 +137,16 @@ class Adapter(QObject):
 
         # Internal Signal: Shows dialog with initial system state
         self.init_signal.connect(self._run_flags_logic)
+
+    def _preset_views(self):
+        self._package_menu_view.hideColumn(self.column_names.index("language name"))
+        self._extra_langs_view.setSortingEnabled(True)
+        self._extra_langs_view.hideColumn(self.column_names.index("Program name"))
+        self._extra_langs_view.hideColumn(self.column_names.index("version"))
+        self._extra_langs_view.hideColumn(self.column_names.index("is installed?"))
+        self._extra_langs_view.hideColumn(
+            self.column_names.index("is marked for download?")
+        )
 
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
