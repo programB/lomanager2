@@ -319,8 +319,9 @@ class PackageMenuViewModel(QAbstractTableModel):
 
 # Custom Proxy Model
 class MainPackageMenuRenderModel(QSortFilterProxyModel):
-    def __init__(self, parent=None):
+    def __init__(self, model, parent=None):
         super(MainPackageMenuRenderModel, self).__init__(parent)
+        self.setSourceModel(model)
 
     def filterAcceptsRow(self, row, parent):
         if "Java" in self.sourceModel().index(row, 0, parent).data():
@@ -336,8 +337,9 @@ class MainPackageMenuRenderModel(QSortFilterProxyModel):
 
 
 class LanguageMenuRenderModel(QSortFilterProxyModel):
-    def __init__(self, parent=None):
+    def __init__(self, model, parent=None):
         super(LanguageMenuRenderModel, self).__init__(parent)
+        self.setSourceModel(model)
         self.setSortRole(Qt.ItemDataRole.UserRole + 1)
         self.setFilterKeyColumn(-1)
 

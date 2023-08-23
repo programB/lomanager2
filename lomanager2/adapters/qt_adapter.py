@@ -73,12 +73,10 @@ class Adapter(QObject):
             self._main_model, self.column_names
         )
         self._package_menu_rendermodel = MainPackageMenuRenderModel(
-            self._package_menu_view
+            model=self._package_menu_viewmodel, parent=self._package_menu_view
         )
-        # TODO: Does not exist yet - Implement
-        # extra_langs_menu_viewmodel = LangsMenuViewModel()
         self._language_menu_rendermodel = LanguageMenuRenderModel(
-            self._extra_langs_view
+            model=self._package_menu_viewmodel, parent=self._extra_langs_view
         )
 
         # Extra variables that can be set by the user in GUI
@@ -95,13 +93,8 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
 
     def _bind_views_to_viewmodels(self):
-        # self._package_menu_view.setModel(self._package_menu_viewmodel)
-        self._package_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
         self._package_menu_view.setModel(self._package_menu_rendermodel)
         self._package_menu_view.hideColumn(self.column_names.index("language name"))
-        # TODO: Implement - does not exist yet
-        # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
-        self._language_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
         self._extra_langs_view.setSortingEnabled(True)
         self._extra_langs_view.hideColumn(self.column_names.index("Program name"))
@@ -294,7 +287,7 @@ class Adapter(QObject):
         self._main_view.setCursor(Qt.WaitCursor)
 
         # Let the model know the data it currently has
-        # will become invalid 
+        # will become invalid
         self._package_menu_viewmodel.beginResetModel()
 
         # Start self._procedure_thread created in either
