@@ -155,6 +155,12 @@ class PackageMenuViewModel(QAbstractTableModel):
                     font.setBold(True)
                     return font
 
+        if role == Qt.ItemDataRole.UserRole + 1:
+            if isinstance(pf_base, str) or isinstance(pf_base, bool):
+                return pf_base
+            else:
+                return ""
+
     def rowCount(self, index) -> int:
         """Returns number of rows the table has"""
         return len(self.get_package_list())
@@ -296,12 +302,14 @@ class MainPackageMenuRenderModel(QSortFilterProxyModel):
 class LanguageMenuRenderModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(LanguageMenuRenderModel, self).__init__(parent)
+        self.setSortRole(Qt.ItemDataRole.UserRole + 1)
+        self.setFilterKeyColumn(-1)
 
     def filterAcceptsRow(self, row, parent):
         if (
             self.sourceModel().index(row, 1, parent).data() != "core-packages"
             and self.sourceModel().index(row, 6, parent).data() is False
         ):
-            # show any core package and any uninstalled lang package
+            # show any NOT installed lang package
             return True
         return False

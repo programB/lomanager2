@@ -103,6 +103,7 @@ class Adapter(QObject):
         # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
         self._language_menu_rendermodel.setSourceModel(self._package_menu_viewmodel)
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
+        self._extra_langs_view.setSortingEnabled(True)
         self._extra_langs_view.hideColumn(self.column_names.index("Program name"))
         self._extra_langs_view.hideColumn(self.column_names.index("version"))
         self._extra_langs_view.hideColumn(self.column_names.index("is installed?"))
