@@ -22,6 +22,49 @@ from configuration import logging as log
 checked = Qt.CheckState.Checked
 unchecked = Qt.CheckState.Unchecked
 
+columns = [
+    {
+        "name": "Program name",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "language code",
+        "show_in_main": True,
+        "show_in_langs": True,
+    },
+    {
+        "name": "language name",
+        "show_in_main": False,
+        "show_in_langs": True,
+    },
+    {
+        "name": "version",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for removal?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for install?",
+        "show_in_main": True,
+        "show_in_langs": True,
+    },
+    {
+        "name": "installed?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for download?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+]
+
 
 class Adapter(QObject):
     # Register custom signals
@@ -59,18 +102,9 @@ class Adapter(QObject):
         # to the underlying application logic.
         # This is done here explicitly although PackageMenuViewModel
         # has to now the details of methods exposed by MainLogic
-        self.column_names = [
-            "Program name",
-            "virtual package type",
-            "language name",
-            "version",
-            "marked for removal?",
-            "marked for install?",
-            "is installed?",
-            "is marked for download?",
-        ]
         self._package_menu_viewmodel = PackageMenuViewModel(
-            self._main_model, self.column_names
+            self._main_model,
+            column_names=[column.get("name") for column in columns],
         )
         self._package_menu_rendermodel = MainPackageMenuRenderModel(
             model=self._package_menu_viewmodel, parent=self._package_menu_view
@@ -139,17 +173,12 @@ class Adapter(QObject):
         self.init_signal.connect(self._run_flags_logic)
 
     def _preset_views(self):
-        self._package_menu_view.hideColumn(self.column_names.index("language name"))
+        for n, column in enumerate(columns):
+            if column.get("show_in_main") is False:
+                self._package_menu_view.hideColumn(n)
+            if column.get("show_in_langs") is False:
+                self._extra_langs_view.hideColumn(n)
         self._extra_langs_view.setSortingEnabled(True)
-        self._extra_langs_view.hideColumn(self.column_names.index("Program name"))
-        self._extra_langs_view.hideColumn(self.column_names.index("version"))
-        self._extra_langs_view.hideColumn(self.column_names.index("is installed?"))
-        self._extra_langs_view.hideColumn(
-            self.column_names.index("marked for removal?")
-        )
-        self._extra_langs_view.hideColumn(
-            self.column_names.index("is marked for download?")
-        )
 
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
