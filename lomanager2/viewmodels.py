@@ -1,31 +1,86 @@
 from typing import Any
+from functools import cmp_to_key
 
 from pysidecompat import (
     QtGui,  # pyright: ignore
     QAbstractItemModel,  # pyright: ignore
     QAbstractTableModel,  # pyright: ignore
+    QSortFilterProxyModel,  # pyright: ignore
     Qt,  # pyright: ignore
+    QModelIndex,  # pyright: ignore
 )
+
+from lolangs import supported_langs
+from applogic.datatypes import compare_versions
+
+column_idx = {
+    "family": 0,
+    "kind": 1,
+    "language_code": 1,
+    "language_name": 2,
+    "version": 3,
+    "marked_for_removal": 4,
+    "marked_for_install": 5,
+    "installed": 6,
+    "marked_for_download": 7,
+}
 
 
 class PackageMenuViewModel(QAbstractTableModel):
-    def __init__(self, main_logic):
+    def __init__(self, main_logic, column_names):
         super().__init__()
 
         self._main_logic = main_logic
-        self.last_refresh_timestamp = 0
-        self.package_list = []
+        self._column_names = column_names
 
-    def rebuild_package_list(self):
+        self.last_refresh_timestamp = 0
+        self._package_list = []
+
+    def get_package_list(self):
         """Rebuilds package list if it's outdated"""
         if (
             self._main_logic.refresh_timestamp > self.last_refresh_timestamp
-            or self.package_list == []
+            or self._package_list == []
         ):
-            self.package_list = []
-            self._main_logic.package_tree_root.get_subtree(self.package_list)
-            self.package_list.remove(self._main_logic.package_tree_root)
+            self._package_list = self._build_sorted_list(
+                root=self._main_logic.package_tree_root
+            )
             self.last_refresh_timestamp = self._main_logic.refresh_timestamp
+        return self._package_list
+
+    def _build_sorted_list(self, root):
+        """Sort package list according to arbitrary criteria
+
+        Any Java goes first followed by OpenOffice core packages sorted
+        by version (newest first). Then LibreOffice core (LO cores sorted
+        by version) immediately followed by its langpacks (sorted by country code)
+        Finally Clipart core packages (newest first).
+        """
+
+        OOfficeS = []
+        LOfficeS = []
+        JavaS = [child for child in root.children if child.family == "Java"]
+        if JavaS:
+            java = JavaS[0]
+            for office in java.children:
+                if office.family == "OpenOffice":
+                    OOfficeS.append(office)
+                if office.family == "LibreOffice":
+                    LOfficeS.append(office)
+                    for lang in office.children:
+                        LOfficeS.append(lang)
+
+            # sort core packages by version
+            OOfficeS.sort(key=cmp_to_key(compare_versions))
+            LOfficeS.sort(key=cmp_to_key(compare_versions))
+            # sort langpacks by language code
+            # (this sorting is safe, already sorted core packages will not move)
+            LOfficeS.sort(key=lambda p: p.kind if p.is_langpack() else "a")
+
+        ClipartS = [child for child in root.children if child.family == "Clipart"]
+        ClipartS.sort(key=cmp_to_key(compare_versions))
+
+        return JavaS + OOfficeS + LOfficeS + ClipartS
 
     # -- start "Getters" --
     def data(self, index, role) -> Any:
@@ -51,34 +106,43 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        self.rebuild_package_list()
-        package = self.package_list[row]
+        packageS = self.get_package_list()
+        if packageS:
+            package = packageS[row]
+        else:
+            return
 
-        if column == 0:
+        if column == column_idx.get("family"):
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
-        elif column == 1:
+        elif column == column_idx.get("kind"):
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
-        elif column == 2:
+        elif column == column_idx.get("language_name"):
+            pf_base, pf_vis, pf_enabled = (
+                supported_langs.get(package.kind),
+                True,
+                False,
+            )
+        elif column == column_idx.get("version"):
             pf_base, pf_vis, pf_enabled = (package.version, True, False)
-        elif column == 3:
+        elif column == column_idx.get("marked_for_removal"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_removal,
                 package.is_remove_opt_visible,
                 package.is_remove_opt_enabled,
             )
-        elif column == 4:
+        elif column == column_idx.get("marked_for_install"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_install,
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
-        elif column == 5:
+        elif column == column_idx.get("installed"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_installed,
                 True,
                 True,
             )
-        elif column == 6:
+        elif column == column_idx.get("marked_for_download"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_download,
                 True,
@@ -88,25 +152,18 @@ class PackageMenuViewModel(QAbstractTableModel):
             pf_base, pf_vis, pf_enabled = (None, None, None)
 
         if role == Qt.ItemDataRole.DisplayRole:
-            # This will be either
-            # strings for first 3 columns
-            # or marked/unmarked condition for the later 3
             return pf_base
 
         if role == Qt.ItemDataRole.CheckStateRole:
-            # Check/Uncheck the cell in the View
-            # based on package base field
-            if column >= 3:
-                if pf_base is True:
-                    return Qt.CheckState.Checked
-                if pf_base is False:
-                    return Qt.CheckState.Unchecked
+            # Display checked/uncheck box for cells holding boolen
+            if isinstance(pf_base, bool):
+                return Qt.CheckState.Checked if pf_base else Qt.CheckState.Unchecked
 
         if role == Qt.ItemDataRole.BackgroundRole:
             # Set background of the cell to darker
-            # shade of grey if the operation is in
-            # non enabled state
-            if column >= 3:
+            # shade of grey if the operation disabled
+            # but black if visibility is set to false
+            if isinstance(pf_base, bool):
                 if pf_enabled is False and pf_vis is True:
                     return QtGui.QColor("#484544")  # dark grey
                 if pf_enabled is True and pf_vis is True:
@@ -119,8 +176,8 @@ class PackageMenuViewModel(QAbstractTableModel):
             # green - if the option is marked
             # red   - if the option is not marked
             # BUT
-            # grey - if the operation is in non enabled state
-            if column >= 3:
+            # grey - if the operation is disabled
+            if isinstance(pf_base, bool):
                 if pf_enabled is False:
                     return QtGui.QColor("#635f5e")  # "middle" grey
                 if pf_enabled is True:
@@ -133,85 +190,36 @@ class PackageMenuViewModel(QAbstractTableModel):
             # Make text in the cell bold
             # if package enabled condition is True
             # (it will be default non-bold for when condition is False)
-            font = QtGui.QFont()
-            if column >= 3:
+            if isinstance(pf_base, bool):
+                font = QtGui.QFont()
                 if pf_enabled is True:
                     font.setBold(True)
                     return font
 
+        if role == Qt.ItemDataRole.UserRole + 1:
+            if isinstance(pf_base, str) or isinstance(pf_base, bool):
+                return pf_base
+            else:
+                return ""
+
     def rowCount(self, index) -> int:
-        """Tells how many rows of data there are.
+        """Returns number of rows the table has"""
+        return len(self.get_package_list())
 
-        Parameters
-        ----------
-        index : QModelIndex | QPeristentModelIndex
-            Points to a specific data item in data model
-
-        Returns
-        -------
-        int
-            Number of rows
-        """
-        self.rebuild_package_list()
-        return len(self.package_list)
-
-    def columnCount(self, index) -> int:
-        """Returns the number of columns the table should show
-
-        Parameters
-        ----------
-        index : QModelIndex | QPeristentModelIndex
-            Required by Qt but not used
-
-        Returns
-        -------
-        int
-          Currently table showing packages is thought to have 7 columns,
-          see headerData for their names.
-        """
-        return 7
+    def columnCount(self, index=QModelIndex()) -> int:
+        """Returns the number of columns the table has"""
+        return len(self._column_names)
 
     def headerData(self, section: int, orientation, role) -> str | None:
-        """Returns descriptions for each column in the data.
+        """Returns name of each column in the table."""
 
-        Parameters
-        ----------
-        orientation : Orientation
-            Orientation of the header as requested by the View,
-            either Horizontal or Vertical
-
-        role : DisplayRole
-           Each data item in data model may have many data elements
-           associated with it. role, passed in by the View, indicates
-           to the model which element of the data item is needed.
-
-        section : int
-            Column number
-
-        Returns
-        -------
-        str | None
-            Column description (depends on role and section)
-        """
-
-        if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Orientation.Horizontal:
-                if section == 0:
-                    return "Program name"
-                elif section == 1:
-                    return "virtual package type"
-                elif section == 2:
-                    return "version"
-                elif section == 3:
-                    return "marked for removal?"
-                elif section == 4:
-                    return "marked for install?"
-                elif section == 5:
-                    return "is installed?"
-                elif section == 6:
-                    return "is marked for download?"
-                else:
-                    return None
+        if (
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
+        ):
+            if section < self.columnCount():
+                return self._column_names[section]
+            return "not implemented"
 
     # -- end "Getters" --
 
@@ -249,61 +257,104 @@ class PackageMenuViewModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        self.rebuild_package_list()
-        package = self.package_list[row]
+        packageS = self.get_package_list()
+        if packageS:
+            package = packageS[row]
+        else:
+            return False
 
-        # Only data in columns mark_for_removal|install
+        # Only data in columns marked_for_removal|install
         # can be modified and they only accept boolean values
         # Also this method will not be called for other columns
         # because the flags() method already
         # prevents the user from modifying other columns.
-        if column >= 3:
-            if value.upper() == "TRUE" or value == "1":
-                value_as_bool = True
-            elif value.upper() == "FALSE" or value == "0":
-                value_as_bool = False
-            else:
-                return False
+        if value.upper() == "TRUE" or value == "1":
+            value_as_bool = True
+        elif value.upper() == "FALSE" or value == "0":
+            value_as_bool = False
         else:
             return False
 
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
-            # This is the place to send the entered value to the underlining
-            # object holding the data
-            if column == 3:
+            if column == column_idx.get("marked_for_removal"):
+                # Critically important! Warn views/viewmodels that underlying
+                # data will change
+                self.layoutAboutToBeChanged.emit()
+
+                # Request data change from the applogic
                 is_logic_applied = self._main_logic.change_removal_mark(
                     package, value_as_bool
                 )
-            elif column == 4:
+
+                # Tell the views to redraw themselves ENTIRELY
+                # (not just the cell changed here)
+                self.layoutChanged.emit()
+
+                # Finally
+                return is_logic_applied
+
+            elif column == column_idx.get("marked_for_install"):
+                self.layoutAboutToBeChanged.emit()
                 is_logic_applied = self._main_logic.change_install_mark(
                     package, value_as_bool
                 )
+                self.layoutChanged.emit()
+                return is_logic_applied
             else:
-                is_logic_applied = False
-            # ... and then inform the View that it should update its
-            # state because data has changed.
-            # Redraw ENTIRE View as the underlining PackageMenu logic
-            # may have altered other cells - not just the one changed here.
-            self.layoutChanged.emit()
-            # Do not use:
-            # self.dataChanged.emit(index, index, role)
-            # as it causes only the altered cell to be redrawn by the View
-
-            if is_logic_applied:  # desired state was set successfully
-                return True
-        return False  # invalid index OR something went wrong when setting
+                return False
+        return False
 
     def setHeaderData(self, section, orientation, value, role) -> bool:
         return super().setHeaderData(section, orientation, value, role)
 
     def flags(self, index):
-        if not index.isValid():
+        if index.isValid() is False:
             return Qt.ItemFlag.ItemIsEnabled
-        # Only allow mark_for_removal|install fields to be editable
-        # Columns 0,1 and 3 can't be edited
-        if index.column() >= 3:
+        # Only allow marked_for_removal|install fields to be editable
+        if index.column() == column_idx.get(
+            "marked_for_removal"
+        ) or index.column() == column_idx.get("marked_for_install"):
             existing_flags = QAbstractItemModel.flags(self, index)
             return existing_flags | Qt.ItemFlag.ItemIsEditable
         return QAbstractItemModel.flags(self, index)
 
     # -- end "Setters" --
+
+
+# Custom Proxy Model
+class MainPackageMenuRenderModel(QSortFilterProxyModel):
+    def __init__(self, model, parent=None):
+        super(MainPackageMenuRenderModel, self).__init__(parent)
+        self.setSourceModel(model)
+
+    def filterAcceptsRow(self, row, parent):
+        sm = self.sourceModel
+        if "Java" in sm().index(row, column_idx.get("family"), parent).data():
+            # don't show Java
+            return False
+        elif (
+            sm().index(row, column_idx.get("kind"), parent).data() == "core-packages"
+            or sm().index(row, column_idx.get("installed"), parent).data() is True
+        ):
+            # show any core package and any installed lang package
+            return True
+        else:
+            return False
+
+
+class LanguageMenuRenderModel(QSortFilterProxyModel):
+    def __init__(self, model, parent=None):
+        super(LanguageMenuRenderModel, self).__init__(parent)
+        self.setSourceModel(model)
+        self.setSortRole(Qt.ItemDataRole.UserRole + 1)
+        self.setFilterKeyColumn(-1)
+
+    def filterAcceptsRow(self, row, parent):
+        sm = self.sourceModel
+        if (
+            sm().index(row, column_idx.get("kind"), parent).data() != "core-packages"
+            and sm().index(row, column_idx.get("installed"), parent).data() is False
+        ):
+            # show any NOT installed lang package
+            return True
+        return False

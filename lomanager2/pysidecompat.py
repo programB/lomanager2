@@ -28,10 +28,12 @@ if PySide6_spec is not None:
         QObject,
         QAbstractItemModel,
         QAbstractTableModel,
+        QSortFilterProxyModel,
         Qt,
         Signal,
         Slot,
         QThread,
+        QModelIndex,
     )
 elif PySide2_spec is not None:
     print("Using PySide2")
@@ -59,10 +61,12 @@ elif PySide2_spec is not None:
         QObject,
         QAbstractItemModel,
         QAbstractTableModel,
+        QSortFilterProxyModel,
         Qt,
         Signal,
         Slot,
         QThread,
+        QModelIndex,
     )
 else:
     print("Neither PySide2 nor PySide6 Qt bindings where found")

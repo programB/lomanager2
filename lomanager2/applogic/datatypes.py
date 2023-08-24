@@ -198,6 +198,54 @@ class VirtualPackage(Node):
                 self.__dict__[prop] = False
 
 
+def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
+    """Compares versions of VirtualPackages
+
+    Meant for sorting. Returns -1,0,1 depending on which
+    version is newer.
+    Version string must be dot separated numbers eg. 4.56.7
+    Any version is newer then version being an empty string
+    If version strings are of different size (no. of blocks of numbers)
+    the shorter one gets padded with zeros before comparison
+
+    Parameters
+    ----------
+    p1,p2 : VirtualPackage
+
+    Returns
+    -------
+    -1: if p1 version > p2 version
+    +1: if p1 version < p2 version
+     0: if p1 version == p2 version
+    """
+
+    v1 = p1.version
+    v2 = p2.version
+    if v1 != v2:
+        if v1 == "":
+            return 1
+        elif v2 == "":
+            return -1
+        else:
+            v1_int = [int(i) for i in v1.split(".")]
+            v2_int = [int(i) for i in v2.split(".")]
+
+            # pad shorter list with zeros to match sizes
+            diff = abs(len(v1_int) - len(v2_int))
+            v1_int.extend([0] * diff) if len(v1_int) <= len(v2_int) else v2_int.extend(
+                [0] * diff
+            )
+
+            for i in range(len(v1_int)):
+                if v1_int[i] == v2_int[i]:
+                    continue
+                elif v1_int[i] > v2_int[i]:
+                    return -1
+                else:
+                    return 1
+    return 0
+
+
 class SignalFlags(object):
     def __init__(self) -> None:
         self.block_viewing_installed = False

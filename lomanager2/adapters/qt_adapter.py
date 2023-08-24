@@ -10,13 +10,60 @@ from pysidecompat import (
 
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
-from viewmodels import PackageMenuViewModel
+from viewmodels import (
+    PackageMenuViewModel,
+    MainPackageMenuRenderModel,
+    LanguageMenuRenderModel,
+)
 from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
 
 checked = Qt.CheckState.Checked
 unchecked = Qt.CheckState.Unchecked
+
+columns = [
+    {
+        "name": "Program name",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "language code",
+        "show_in_main": True,
+        "show_in_langs": True,
+    },
+    {
+        "name": "language name",
+        "show_in_main": False,
+        "show_in_langs": True,
+    },
+    {
+        "name": "version",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for removal?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for install?",
+        "show_in_main": True,
+        "show_in_langs": True,
+    },
+    {
+        "name": "installed?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+    {
+        "name": "marked for download?",
+        "show_in_main": True,
+        "show_in_langs": False,
+    },
+]
 
 
 class Adapter(QObject):
@@ -55,9 +102,16 @@ class Adapter(QObject):
         # to the underlying application logic.
         # This is done here explicitly although PackageMenuViewModel
         # has to now the details of methods exposed by MainLogic
-        self._package_menu_viewmodel = PackageMenuViewModel(self._main_model)
-        # TODO: Does not exist yet - Implement
-        # extra_langs_menu_viewmodel = LangsMenuViewModel()
+        self._package_menu_viewmodel = PackageMenuViewModel(
+            self._main_model,
+            column_names=[column.get("name") for column in columns],
+        )
+        self._package_menu_rendermodel = MainPackageMenuRenderModel(
+            model=self._package_menu_viewmodel, parent=self._package_menu_view
+        )
+        self._language_menu_rendermodel = LanguageMenuRenderModel(
+            model=self._package_menu_viewmodel, parent=self._extra_langs_view
+        )
 
         # Extra variables that can be set by the user in GUI
         # Initialize local _keep_packages variable from configuration
@@ -67,15 +121,15 @@ class Adapter(QObject):
 
         self._bind_views_to_viewmodels()
         self._connect_signals_and_slots()
+        self._preset_views()
 
         # Flags blocking parts of the interface during certain operations
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
 
     def _bind_views_to_viewmodels(self):
-        self._package_menu_view.setModel(self._package_menu_viewmodel)
-        # TODO: Implement - does not exist yet
-        # self._extra_langs_view.setModel(self._langs_menu_viewmodel)
+        self._package_menu_view.setModel(self._package_menu_rendermodel)
+        self._extra_langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
         # Option: Local copy installation
@@ -118,9 +172,21 @@ class Adapter(QObject):
         # Internal Signal: Shows dialog with initial system state
         self.init_signal.connect(self._run_flags_logic)
 
+    def _preset_views(self):
+        for n, column in enumerate(columns):
+            if column.get("show_in_main") is False:
+                self._package_menu_view.hideColumn(n)
+            if column.get("show_in_langs") is False:
+                self._extra_langs_view.hideColumn(n)
+        self._extra_langs_view.setSortingEnabled(True)
+
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
+        # Refresh package tree
         self._main_model.refresh_state()
+        # Inform model that underlying data source has finished changing
+        self._package_menu_viewmodel.endResetModel()
+        # and make it refresh itself
         self._package_menu_viewmodel.layoutChanged.emit()
         # Check if there are any messages that should
         # be shown to the user
@@ -254,6 +320,10 @@ class Adapter(QObject):
 
         # Change cursor
         self._main_view.setCursor(Qt.WaitCursor)
+
+        # Let the model know the data it currently has
+        # will become invalid
+        self._package_menu_viewmodel.beginResetModel()
 
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes
