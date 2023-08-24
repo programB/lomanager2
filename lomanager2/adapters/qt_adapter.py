@@ -92,6 +92,9 @@ class Adapter(QObject):
         self._software_view = self._app_main_view.software_view
         self._extra_langs_view = self._app_main_view.extra_langs_window.langs_view
         self._progress_view = self._app_main_view.progress_dialog
+        self._info_view = self._app_main_view.info_dialog
+        self._apply_changes_view = self._app_main_view.confirm_apply_dialog
+        self._local_copy_view = self._app_main_view.confirm_local_copy_dialog
 
         # Viewmodels
         # The viewmodel (PackageMenuViewModel) for the object responsible
@@ -201,14 +204,14 @@ class Adapter(QObject):
             + "already installed Office will be removed with all its "
             + "language packages."
         )
-        self._app_main_view.confirm_local_copy_dialog.info_box.setText(text)
-        self._app_main_view.confirm_local_copy_dialog.info_box.setWordWrap(True)
+        self._local_copy_view.info_box.setText(text)
+        self._local_copy_view.info_box.setWordWrap(True)
         # Ask the user for directory with saved packages
-        if self._app_main_view.confirm_local_copy_dialog.exec():  # opens a dialog
+        if self._local_copy_view.exec():  # opens a dialog
             log.debug("Ok clicked: Installing from local copy...")
 
             # Get the directory path set by the user
-            selected_dir = self._app_main_view.confirm_local_copy_dialog.selected_dir
+            selected_dir = self._local_copy_view.selected_dir
 
             # Create separate thread worker passing
             # MainLogic's method to execute along with needed variables
@@ -229,20 +232,18 @@ class Adapter(QObject):
         # Set initial state of keep_packages checkbox
         # (can be set in configuration)
         if self._keep_packages is True:
-            self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.setCheckState(
+            self._apply_changes_view.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Checked
             )
         else:
-            self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.setCheckState(
+            self._apply_changes_view.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Unchecked
             )
 
         # Set the initial state of the force_java_download checkbox
         # before displaying the dialog window
         fjd_state = checked if self._force_java_download else unchecked
-        self._app_main_view.confirm_apply_dialog.checkbox_force_java_download.setCheckState(
-            fjd_state
-        )
+        self._apply_changes_view.checkbox_force_java_download.setCheckState(fjd_state)
         to_install, to_remove = self._app_logic.get_planned_changes()
         if to_install or to_remove:
             text = ""
@@ -255,24 +256,24 @@ class Adapter(QObject):
                 text += "Following components will be removed:\n"
                 for p in to_remove:
                     text += "- " + p + "\n"
-            self._app_main_view.confirm_apply_dialog.info_box.setText(text)
-            self._app_main_view.confirm_apply_dialog.apply_button.setEnabled(True)
+            self._apply_changes_view.info_box.setText(text)
+            self._apply_changes_view.apply_button.setEnabled(True)
         else:
             text = "No changes to apply"
-            self._app_main_view.confirm_apply_dialog.info_box.setText(text)
-            self._app_main_view.confirm_apply_dialog.apply_button.setEnabled(False)
+            self._apply_changes_view.info_box.setText(text)
+            self._apply_changes_view.apply_button.setEnabled(False)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
         # - if the java should be downloaded (despite it being installed)
-        if self._app_main_view.confirm_apply_dialog.exec():
+        if self._apply_changes_view.exec():
             log.debug("Ok clicked. Applying changes...")
 
             self._keep_packages = (
-                self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.isChecked()
+                self._apply_changes_view.checkbox_keep_packages.isChecked()
             )
             self._force_java_download = (
-                self._app_main_view.confirm_apply_dialog.checkbox_force_java_download.isChecked()
+                self._apply_changes_view.checkbox_force_java_download.isChecked()
             )
 
             # Create separate thread worker passing
@@ -369,10 +370,10 @@ class Adapter(QObject):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
             icon = warnings_icon
             title = "Warning"
-        self._app_main_view.info_dialog.setWindowTitle(title)
-        self._app_main_view.info_dialog.setText(msg)
-        self._app_main_view.info_dialog.setIcon(icon)
-        self._app_main_view.info_dialog.show()
+        self._info_view.setWindowTitle(title)
+        self._info_view.setText(msg)
+        self._info_view.setIcon(icon)
+        self._info_view.show()
 
     def change_GUI_locks(self):
         if self._is_packages_selecting_allowed is True:
