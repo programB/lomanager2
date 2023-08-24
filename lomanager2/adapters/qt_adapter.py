@@ -374,28 +374,23 @@ class Adapter(QObject):
         self._info_view.show()
 
     def _lock_unlock_GUI(self):
-        if self._is_packages_selecting_allowed is True:
-            self._software_view.setEnabled(True)
-        else:
-            self._software_view.setEnabled(False)
-
-        if (
+        is_apply_changes_enabled = (
             self._is_starting_procedures_allowed
             and not self._app_logic.global_flags.block_normal_procedure
-        ):
-            is_apply_enabled = True
-        else:
-            is_apply_enabled = False
-        self._app_main_view.button_apply_changes.setEnabled(is_apply_enabled)
-
-        if (
+        )
+        is_local_install_enabled = (
             self._is_starting_procedures_allowed
             and not self._app_logic.global_flags.block_local_copy_install
-        ):
-            is_local_enabled = True
-        else:
-            is_local_enabled = False
-        self._app_main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
+        )
+        is_software_view_enabled = self._is_packages_selecting_allowed
+        is_langs_view_enabled = is_software_view_enabled 
+
+        self._app_main_view.button_apply_changes.setEnabled(is_apply_changes_enabled)
+        self._app_main_view.button_install_from_local_copy.setEnabled(
+            is_local_install_enabled
+        )
+        self._software_view.setEnabled(is_software_view_enabled)
+        self._langs_view.setEnabled(is_langs_view_enabled)
 
     def _check_system_state(self):
         print("check system state signal emitted")
