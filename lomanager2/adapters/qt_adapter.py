@@ -11,8 +11,8 @@ from pysidecompat import (
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
 from viewmodels import (
-    PackageMenuViewModel,
-    MainPackageMenuRenderModel,
+    SoftwareMenuModel,
+    SoftwareMenuRenderModel,
     LanguageMenuRenderModel,
 )
 from threads import ProcedureWorker
@@ -81,11 +81,14 @@ class Adapter(QObject):
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
 
-        # TODO:  Naming: too many different names for the same thing
-        #        logic/model/package_menu etc
-
         # Application's business logic
         self._app_logic = app_logic
+
+        # Model (interprets data from app logic to be digestible by views)
+        self._software_menu_model = SoftwareMenuModel(
+            self._app_logic,
+            column_names=[column.get("name") for column in columns],
+        )
 
         # Views
         self._app_main_view = main_view
@@ -96,24 +99,12 @@ class Adapter(QObject):
         self._apply_changes_view = self._app_main_view.confirm_apply_dialog
         self._local_copy_view = self._app_main_view.confirm_local_copy_dialog
 
-        # Viewmodels
-        # The viewmodel (PackageMenuViewModel) for the object responsible
-        # for dealing with packages selection _main_view
-        # is instantiated here.
-        # In turn MainLogic object (_main_model) is passed to
-        # PackageMenuViewModel constructor to link PackageMenuViewModel
-        # to the underlying application logic.
-        # This is done here explicitly although PackageMenuViewModel
-        # has to now the details of methods exposed by MainLogic
-        self._package_menu_viewmodel = PackageMenuViewModel(
-            self._app_logic,
-            column_names=[column.get("name") for column in columns],
-        )
-        self._package_menu_rendermodel = MainPackageMenuRenderModel(
-            model=self._package_menu_viewmodel, parent=self._software_view
+        # Render models (further filter/condition data before sending to views)
+        self._software_menu_rendermodel = SoftwareMenuRenderModel(
+            model=self._software_menu_model, parent=self._software_view
         )
         self._language_menu_rendermodel = LanguageMenuRenderModel(
-            model=self._package_menu_viewmodel, parent=self._extra_langs_view
+            model=self._software_menu_model, parent=self._extra_langs_view
         )
 
         # Extra variables that can be set by the user in GUI
@@ -122,7 +113,7 @@ class Adapter(QObject):
         self._force_java_download = False
         self._local_copy_folder = None
 
-        self._bind_views_to_viewmodels()
+        self._bind_views_to_models()
         self._connect_signals_and_slots()
         self._preset_views()
 
@@ -130,8 +121,8 @@ class Adapter(QObject):
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
 
-    def _bind_views_to_viewmodels(self):
-        self._software_view.setModel(self._package_menu_rendermodel)
+    def _bind_views_to_models(self):
+        self._software_view.setModel(self._software_menu_rendermodel)
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
@@ -188,9 +179,9 @@ class Adapter(QObject):
         # Refresh package tree
         self._app_logic.refresh_state()
         # Inform model that underlying data source has finished changing
-        self._package_menu_viewmodel.endResetModel()
+        self._software_menu_model.endResetModel()
         # and make it refresh itself
-        self._package_menu_viewmodel.layoutChanged.emit()
+        self._software_menu_model.layoutChanged.emit()
         # Check if there are any messages that should
         # be shown to the user
         if self._app_logic.warnings:
@@ -324,7 +315,7 @@ class Adapter(QObject):
 
         # Let the model know the data it currently has
         # will become invalid
-        self._package_menu_viewmodel.beginResetModel()
+        self._software_menu_model.beginResetModel()
 
         # Start self._procedure_thread created in either
         # _confirm_and_start_applying_changes

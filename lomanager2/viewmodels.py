@@ -26,7 +26,7 @@ column_idx = {
 }
 
 
-class PackageMenuViewModel(QAbstractTableModel):
+class SoftwareMenuModel(QAbstractTableModel):
     def __init__(self, app_logic, column_names):
         super().__init__()
 
@@ -322,9 +322,9 @@ class PackageMenuViewModel(QAbstractTableModel):
 
 
 # Custom Proxy Model
-class MainPackageMenuRenderModel(QSortFilterProxyModel):
+class SoftwareMenuRenderModel(QSortFilterProxyModel):
     def __init__(self, model, parent=None):
-        super(MainPackageMenuRenderModel, self).__init__(parent)
+        super(SoftwareMenuRenderModel, self).__init__(parent)
         self.setSourceModel(model)
 
     def filterAcceptsRow(self, row, parent):
