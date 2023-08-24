@@ -68,9 +68,6 @@ class AppMainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         self.setMinimumSize(900, 550)
 
-    def open_langs_selection_modal_window(self):
-        self.extra_langs_window.exec()
-
 
 class LangsModalWindow(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:

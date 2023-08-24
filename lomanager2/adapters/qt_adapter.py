@@ -73,10 +73,10 @@ class Adapter(QObject):
     overall_progress_description_signal = Signal(str)
     overall_progress_signal = Signal(int)
     refresh_signal = Signal()
-    worker_ready_signal = Signal()
-    warning_signal = Signal(list)
-    init_signal = Signal()
-    GUI_locks_signal = Signal()
+    thread_worker_ready_signal = Signal()
+    warnings_awaiting_signal = Signal(list)
+    check_system_state_signal = Signal()
+    lock_unlock_GUI_signal = Signal()
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -126,45 +126,39 @@ class Adapter(QObject):
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
-        # Option: Local copy installation
-        self._app_main_view.button_install_from_local_copy.clicked.connect(
-            self._choose_dir_and_install_from_local_copy
-        )
-
         # Option: Select additional language packs
-        self._app_main_view.button_add_langs.clicked.connect(
-            self._app_main_view.open_langs_selection_modal_window
-        )
+        self._app_main_view.button_add_langs.clicked.connect(self._add_langs)
 
         # Option: Apply changes
-        # TODO: Should this button be disabled
-        #       until the procedure is finished?
-        self._app_main_view.button_apply_changes.clicked.connect(
-            self._confirm_and_start_applying_changes
+        self._app_main_view.button_apply_changes.clicked.connect(self._apply_changes)
+
+        # Option: Local copy install
+        self._app_main_view.button_install_from_local_copy.clicked.connect(
+            self._install_from_local_copy
         )
 
         # Option: Quit the app
         # TODO: Some cleanup procedures should be called here first
         #       like eg. closing the log file.
-        #       ...and these should not be called directly of course
-        #       but _main_model should be providing that functions.
+        #       ...and these should not be done here directly
+        #       but through _app_logic
         self._app_main_view.button_quit.clicked.connect(self._app_main_view.close)
 
         # Internal Signal: Refresh state of the menu
         # TODO: test connect "refresh" (custom signal)
-        self.refresh_signal.connect(self._refresh_package_menu_state)
+        self.refresh_signal.connect(self._refresh)
 
         # Internal Signal: Locks/Unlocks GUI elements
-        self.GUI_locks_signal.connect(self.change_GUI_locks)
+        self.lock_unlock_GUI_signal.connect(self._lock_unlock_GUI)
 
         # Internal Signal: starts already prepared thread
-        self.worker_ready_signal.connect(self._start_procedure_thread)
+        self.thread_worker_ready_signal.connect(self._thread_start)
 
         # Internal Signal: Shows dialog with initial system state
-        self.warning_signal.connect(self._show_warnings)
+        self.warnings_awaiting_signal.connect(self._warnings_show)
 
         # Internal Signal: Shows dialog with initial system state
-        self.init_signal.connect(self._run_flags_logic)
+        self.check_system_state_signal.connect(self._check_system_state)
 
     def _preset_views(self):
         for n, column in enumerate(columns):
@@ -174,7 +168,7 @@ class Adapter(QObject):
                 self._extra_langs_view.hideColumn(n)
         self._extra_langs_view.setSortingEnabled(True)
 
-    def _refresh_package_menu_state(self):
+    def _refresh(self):
         log.debug("Refreshing!")
         # Refresh package tree
         self._app_logic.refresh_state()
@@ -185,9 +179,12 @@ class Adapter(QObject):
         # Check if there are any messages that should
         # be shown to the user
         if self._app_logic.warnings:
-            self.warning_signal.emit(self._app_logic.get_warnings())
+            self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
 
-    def _choose_dir_and_install_from_local_copy(self):
+    def _add_langs(self):
+        self._app_main_view.extra_langs_window.exec()
+
+    def _install_from_local_copy(self):
         text = (
             "Following procedure will inspect the chosen directory to find "
             + "out if LibreOffice can be installed using packages therein.\n"
@@ -215,11 +212,11 @@ class Adapter(QObject):
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
-            self.worker_ready_signal.emit()
+            self.thread_worker_ready_signal.emit()
         else:
             log.debug("Cancel clicked: User gave up installing from local copy")
 
-    def _confirm_and_start_applying_changes(self):
+    def _apply_changes(self):
         # Set initial state of keep_packages checkbox
         # (can be set in configuration)
         if self._keep_packages is True:
@@ -279,15 +276,15 @@ class Adapter(QObject):
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
             # Lock GUI elements, open progress window and start thread
-            self.worker_ready_signal.emit()
+            self.thread_worker_ready_signal.emit()
         else:
             log.debug("Cancel clicked: User decided not to apply changes.")
 
-    def _start_procedure_thread(self):
+    def _thread_start(self):
         # Block some GUI elements while the procedure is running
         self._is_packages_selecting_allowed = False
         self._is_starting_procedures_allowed = False
-        self.GUI_locks_signal.emit()
+        self.lock_unlock_GUI_signal.emit()
 
         # Connect thread signals
         self.progress_description_signal.connect(self._update_progress_description)
@@ -344,9 +341,9 @@ class Adapter(QObject):
         log.debug("Emiting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
-        self.GUI_locks_signal.emit()
+        self.lock_unlock_GUI_signal.emit()
 
-    def _show_warnings(self, warnings):
+    def _warnings_show(self, warnings):
         error_icon = QMessageBox.Icon.Critical
         good_icon = QMessageBox.Icon.Information
         warnings_icon = QMessageBox.Icon.Warning
@@ -366,7 +363,7 @@ class Adapter(QObject):
         self._info_view.setIcon(icon)
         self._info_view.show()
 
-    def change_GUI_locks(self):
+    def _lock_unlock_GUI(self):
         if self._is_packages_selecting_allowed is True:
             self._software_view.setEnabled(True)
         else:
@@ -390,8 +387,8 @@ class Adapter(QObject):
             is_local_enabled = False
         self._app_main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
 
-    def _run_flags_logic(self):
-        print("init signal emitted")
+    def _check_system_state(self):
+        print("check system state signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._app_logic.flags_logic,
             progress_description=self.progress_description_signal.emit,
@@ -400,8 +397,7 @@ class Adapter(QObject):
             overall_progress_percentage=self.overall_progress_signal.emit,
         )
         # Lock GUI elements, open progress window and start thread
-        self.worker_ready_signal.emit()
-        # self._main_model.flags_logic()
+        self.thread_worker_ready_signal.emit()
 
 
 def main():
@@ -415,10 +411,10 @@ def main():
 
     # Adapter
     adapter = Adapter(app_logic=app_logic, main_view=main_window)
-    adapter.change_GUI_locks()
+    adapter._lock_unlock_GUI()
 
     main_window.show()
-    adapter.init_signal.emit()
+    adapter.check_system_state_signal.emit()
     sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 
