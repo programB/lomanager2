@@ -72,7 +72,7 @@ class Adapter(QObject):
     progress_signal = Signal(int)
     overall_progress_description_signal = Signal(str)
     overall_progress_signal = Signal(int)
-    refresh_signal = Signal()
+    rebuild_tree_signal = Signal()
     thread_worker_ready_signal = Signal()
     warnings_awaiting_signal = Signal(list)
     check_system_state_signal = Signal()
@@ -144,9 +144,8 @@ class Adapter(QObject):
         #       but through _app_logic
         self._app_main_view.button_quit.clicked.connect(self._app_main_view.close)
 
-        # Internal Signal: Refresh state of the menu
-        # TODO: test connect "refresh" (custom signal)
-        self.refresh_signal.connect(self._refresh)
+        # Internal signal: Ask applogic to redo package tree from scratch
+        self.rebuild_tree_signal.connect(self._rebuild_tree)
 
         # Internal Signal: Locks/Unlocks GUI elements
         self.lock_unlock_GUI_signal.connect(self._lock_unlock_GUI)
@@ -168,10 +167,10 @@ class Adapter(QObject):
                 self._extra_langs_view.hideColumn(n)
         self._extra_langs_view.setSortingEnabled(True)
 
-    def _refresh(self):
+    def _rebuild_tree(self):
         log.debug("Refreshing!")
         # Refresh package tree
-        self._app_logic.refresh_state()
+        self._app_logic.rebuild_package_tree()
         # Inform model that underlying data source has finished changing
         self._software_menu_model.endResetModel()
         # and make it refresh itself
@@ -336,8 +335,8 @@ class Adapter(QObject):
         log.debug("Thread finished signal received.")
         self._app_main_view.unsetCursor()
         self._progress_view.hide()
-        log.debug("Emiting refresh signal to rebuild packages state")
-        self.refresh_signal.emit()
+        log.debug("Emiting rebuild_tree_signal")
+        self.rebuild_tree_signal.emit()
         log.debug("Emiting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True

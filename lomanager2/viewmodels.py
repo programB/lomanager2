@@ -33,19 +33,19 @@ class SoftwareMenuModel(QAbstractTableModel):
         self._app_logic = app_logic
         self._column_names = column_names
 
-        self.last_refresh_timestamp = 0
+        self.last_rebuild_timestamp = 0
         self._package_list = []
 
     def get_package_list(self):
         """Rebuilds package list if it's outdated"""
         if (
-            self._app_logic.refresh_timestamp > self.last_refresh_timestamp
+            self._app_logic.rebuild_timestamp > self.last_rebuild_timestamp
             or self._package_list == []
         ):
             self._package_list = self._build_sorted_list(
                 root=self._app_logic.package_tree_root
             )
-            self.last_refresh_timestamp = self._app_logic.refresh_timestamp
+            self.last_rebuild_timestamp = self._app_logic.rebuild_timestamp
         return self._package_list
 
     def _build_sorted_list(self, root):

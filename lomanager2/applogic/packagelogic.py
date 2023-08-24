@@ -26,7 +26,7 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        self.refresh_timestamp = 0
+        self.rebuild_timestamp = 0
         self.warnings = []
         self.global_flags = SignalFlags()
         self.package_tree_root = VirtualPackage("master-node", "", "")
@@ -518,9 +518,9 @@ class MainLogic(object):
             )
             self.inform_user(msg, isOK=False)
 
-        self.refresh_state(*args, **kwargs)
+        self.rebuild_package_tree(*args, **kwargs)
 
-    def refresh_state(self, *args, **kwargs):
+    def rebuild_package_tree(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
         msg = ""
 
@@ -568,7 +568,7 @@ class MainLogic(object):
             newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
-        self.refresh_timestamp = time.time()
+        self.rebuild_timestamp = time.time()
         if msg:
             self.inform_user(msg, isOK=False)
 
