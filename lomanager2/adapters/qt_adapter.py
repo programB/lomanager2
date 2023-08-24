@@ -78,14 +78,14 @@ class Adapter(QObject):
     init_signal = Signal()
     GUI_locks_signal = Signal()
 
-    def __init__(self, app_main_model, app_main_view) -> None:
+    def __init__(self, app_logic, app_main_view) -> None:
         super().__init__()
 
         # TODO:  Naming: too many different names for the same thing
         #        logic/model/package_menu etc
 
-        # Models
-        self._main_model = app_main_model
+        # Application's business logic
+        self._app_logic = app_logic
 
         # Views
         self._main_view = app_main_view
@@ -103,7 +103,7 @@ class Adapter(QObject):
         # This is done here explicitly although PackageMenuViewModel
         # has to now the details of methods exposed by MainLogic
         self._package_menu_viewmodel = PackageMenuViewModel(
-            self._main_model,
+            self._app_logic,
             column_names=[column.get("name") for column in columns],
         )
         self._package_menu_rendermodel = MainPackageMenuRenderModel(
@@ -183,15 +183,15 @@ class Adapter(QObject):
     def _refresh_package_menu_state(self):
         log.debug("Refreshing!")
         # Refresh package tree
-        self._main_model.refresh_state()
+        self._app_logic.refresh_state()
         # Inform model that underlying data source has finished changing
         self._package_menu_viewmodel.endResetModel()
         # and make it refresh itself
         self._package_menu_viewmodel.layoutChanged.emit()
         # Check if there are any messages that should
         # be shown to the user
-        if self._main_model.warnings:
-            self.warning_signal.emit(self._main_model.get_warnings())
+        if self._app_logic.warnings:
+            self.warning_signal.emit(self._app_logic.get_warnings())
 
     def _choose_dir_and_install_from_local_copy(self):
         text = (
@@ -213,7 +213,7 @@ class Adapter(QObject):
             # Create separate thread worker passing
             # MainLogic's method to execute along with needed variables
             self.procedure_thread = ProcedureWorker(
-                function_to_run=self._main_model.install_from_local_copy,
+                function_to_run=self._app_logic.install_from_local_copy,
                 local_copy_folder=selected_dir,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
@@ -243,7 +243,7 @@ class Adapter(QObject):
         self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
             fjd_state
         )
-        to_install, to_remove = self._main_model.get_planned_changes()
+        to_install, to_remove = self._app_logic.get_planned_changes()
         if to_install or to_remove:
             text = ""
             if to_install:
@@ -278,7 +278,7 @@ class Adapter(QObject):
             # Create separate thread worker passing
             # MainLogic's method to execute along with needed variables
             self.procedure_thread = ProcedureWorker(
-                function_to_run=self._main_model.apply_changes,
+                function_to_run=self._app_logic.apply_changes,
                 keep_packages=self._keep_packages,
                 force_java_download=self._force_java_download,
                 progress_description=self.progress_description_signal.emit,
@@ -382,7 +382,7 @@ class Adapter(QObject):
 
         if (
             self._is_starting_procedures_allowed
-            and not self._main_model.global_flags.block_normal_procedure
+            and not self._app_logic.global_flags.block_normal_procedure
         ):
             is_apply_enabled = True
         else:
@@ -391,7 +391,7 @@ class Adapter(QObject):
 
         if (
             self._is_starting_procedures_allowed
-            and not self._main_model.global_flags.block_local_copy_install
+            and not self._app_logic.global_flags.block_local_copy_install
         ):
             is_local_enabled = True
         else:
@@ -401,7 +401,7 @@ class Adapter(QObject):
     def _run_flags_logic(self):
         print("init signal emitted")
         self.procedure_thread = ProcedureWorker(
-            function_to_run=self._main_model.flags_logic,
+            function_to_run=self._app_logic.flags_logic,
             progress_description=self.progress_description_signal.emit,
             progress_percentage=self.progress_signal.emit,
             overall_progress_description=self.overall_progress_description_signal.emit,
@@ -415,14 +415,14 @@ class Adapter(QObject):
 def main():
     lomanager2App = QApplication([])
 
-    # Model
+    # Business logic
     app_logic = MainLogic()
 
     # View
     main_window = AppMainWindow()
 
     # Adapter
-    adapter = Adapter(app_main_model=app_logic, app_main_view=main_window)
+    adapter = Adapter(app_logic=app_logic, app_main_view=main_window)
     adapter.change_GUI_locks()
 
     main_window.show()

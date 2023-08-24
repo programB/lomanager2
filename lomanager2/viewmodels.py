@@ -27,10 +27,10 @@ column_idx = {
 
 
 class PackageMenuViewModel(QAbstractTableModel):
-    def __init__(self, main_logic, column_names):
+    def __init__(self, app_logic, column_names):
         super().__init__()
 
-        self._main_logic = main_logic
+        self._app_logic = app_logic
         self._column_names = column_names
 
         self.last_refresh_timestamp = 0
@@ -39,13 +39,13 @@ class PackageMenuViewModel(QAbstractTableModel):
     def get_package_list(self):
         """Rebuilds package list if it's outdated"""
         if (
-            self._main_logic.refresh_timestamp > self.last_refresh_timestamp
+            self._app_logic.refresh_timestamp > self.last_refresh_timestamp
             or self._package_list == []
         ):
             self._package_list = self._build_sorted_list(
-                root=self._main_logic.package_tree_root
+                root=self._app_logic.package_tree_root
             )
-            self.last_refresh_timestamp = self._main_logic.refresh_timestamp
+            self.last_refresh_timestamp = self._app_logic.refresh_timestamp
         return self._package_list
 
     def _build_sorted_list(self, root):
@@ -282,7 +282,7 @@ class PackageMenuViewModel(QAbstractTableModel):
                 self.layoutAboutToBeChanged.emit()
 
                 # Request data change from the applogic
-                is_logic_applied = self._main_logic.change_removal_mark(
+                is_logic_applied = self._app_logic.change_removal_mark(
                     package, value_as_bool
                 )
 
@@ -295,7 +295,7 @@ class PackageMenuViewModel(QAbstractTableModel):
 
             elif column == column_idx.get("marked_for_install"):
                 self.layoutAboutToBeChanged.emit()
-                is_logic_applied = self._main_logic.change_install_mark(
+                is_logic_applied = self._app_logic.change_install_mark(
                     package, value_as_bool
                 )
                 self.layoutChanged.emit()
