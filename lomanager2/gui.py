@@ -27,30 +27,30 @@ class AppMainWindow(QMainWindow):
         central_widget = QWidget()
         main_layout = QVBoxLayout()
 
-        # -- define Main View
-        self.package_menu_view = QTableView()
-        header = self.package_menu_view.horizontalHeader()
+        # -- define Software View
+        self.software_view = QTableView()
+        header = self.software_view.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # -- end define Main View
 
-        # -- define Languages View
-        self.extra_langs_view = LangsModalWindow(parent=self)
-        # -- end define Languages View
+        # -- define Languages window
+        self.extra_langs_window = LangsModalWindow(parent=self)
+        # -- end define Languages window
 
         # -- define Progress dialog
-        self.progress_view = ProgressDialog(parent=self)
+        self.progress_dialog = ProgressDialog(parent=self)
         # -- end define Progress dialog
 
         # -- define Apply changes confirmation dialog
-        self.confirm_apply_view = ConfirmApplyDialog(parent=self)
+        self.confirm_apply_dialog = ConfirmApplyDialog(parent=self)
         # -- end define Apply changes confirmation dialog
 
         # -- define Local copy install confirmation dialog
-        self.confirm_local_copy_view = LocalCopyInstallDialog(parent=self)
+        self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
         # -- end define Local copy install confirmation dialog
 
         # -- define other GUI elements
-        #    (not belonging to Main View or Languages View)
+        #    (not being real views)
         self.button_install_from_local_copy = QPushButton("Install from local copy")
         self.button_add_langs = QPushButton("Add langs...")
         self.button_apply_changes = QPushButton("Apply changes")
@@ -59,7 +59,7 @@ class AppMainWindow(QMainWindow):
         # -- end define other GUI elements
 
         main_layout.addWidget(self.button_install_from_local_copy)
-        main_layout.addWidget(self.package_menu_view)
+        main_layout.addWidget(self.software_view)
         main_layout.addWidget(self.button_add_langs)
         main_layout.addWidget(self.button_apply_changes)
         main_layout.addWidget(self.button_quit)
@@ -69,7 +69,7 @@ class AppMainWindow(QMainWindow):
         self.setMinimumSize(900, 550)
 
     def open_langs_selection_modal_window(self):
-        self.extra_langs_view.exec()
+        self.extra_langs_window.exec()
 
 
 class LangsModalWindow(QDialog):
@@ -85,11 +85,11 @@ class LangsModalWindow(QDialog):
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # -- end define Langs View
 
-        # -- define other GUI elements (not belonging to Langs View)
+        # -- define other GUI elements
         flag_OK = QDialogButtonBox.StandardButton.Close
         buttons = flag_OK
         self.buttonBox = QDialogButtonBox(buttons)
-        # -- end define other GUI elements (not belonging to Langs View)
+        # -- end define other GUI elements
         modal_layout.addWidget(self.langs_view)
         modal_layout.addWidget(self.buttonBox)
 

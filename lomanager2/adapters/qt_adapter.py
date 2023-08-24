@@ -78,7 +78,7 @@ class Adapter(QObject):
     init_signal = Signal()
     GUI_locks_signal = Signal()
 
-    def __init__(self, app_logic, app_main_view) -> None:
+    def __init__(self, app_logic, main_view) -> None:
         super().__init__()
 
         # TODO:  Naming: too many different names for the same thing
@@ -88,10 +88,10 @@ class Adapter(QObject):
         self._app_logic = app_logic
 
         # Views
-        self._main_view = app_main_view
-        self._package_menu_view = self._main_view.package_menu_view
-        self._extra_langs_view = self._main_view.extra_langs_view.langs_view
-        self._progress_view = self._main_view.progress_view
+        self._app_main_view = main_view
+        self._software_view = self._app_main_view.software_view
+        self._extra_langs_view = self._app_main_view.extra_langs_window.langs_view
+        self._progress_view = self._app_main_view.progress_dialog
 
         # Viewmodels
         # The viewmodel (PackageMenuViewModel) for the object responsible
@@ -107,7 +107,7 @@ class Adapter(QObject):
             column_names=[column.get("name") for column in columns],
         )
         self._package_menu_rendermodel = MainPackageMenuRenderModel(
-            model=self._package_menu_viewmodel, parent=self._package_menu_view
+            model=self._package_menu_viewmodel, parent=self._software_view
         )
         self._language_menu_rendermodel = LanguageMenuRenderModel(
             model=self._package_menu_viewmodel, parent=self._extra_langs_view
@@ -128,24 +128,24 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
 
     def _bind_views_to_viewmodels(self):
-        self._package_menu_view.setModel(self._package_menu_rendermodel)
+        self._software_view.setModel(self._package_menu_rendermodel)
         self._extra_langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
         # Option: Local copy installation
-        self._main_view.button_install_from_local_copy.clicked.connect(
+        self._app_main_view.button_install_from_local_copy.clicked.connect(
             self._choose_dir_and_install_from_local_copy
         )
 
         # Option: Select additional language packs
-        self._main_view.button_add_langs.clicked.connect(
-            self._main_view.open_langs_selection_modal_window
+        self._app_main_view.button_add_langs.clicked.connect(
+            self._app_main_view.open_langs_selection_modal_window
         )
 
         # Option: Apply changes
         # TODO: Should this button be disabled
         #       until the procedure is finished?
-        self._main_view.button_apply_changes.clicked.connect(
+        self._app_main_view.button_apply_changes.clicked.connect(
             self._confirm_and_start_applying_changes
         )
 
@@ -154,7 +154,7 @@ class Adapter(QObject):
         #       like eg. closing the log file.
         #       ...and these should not be called directly of course
         #       but _main_model should be providing that functions.
-        self._main_view.button_quit.clicked.connect(self._main_view.close)
+        self._app_main_view.button_quit.clicked.connect(self._app_main_view.close)
 
         # Internal Signal: Refresh state of the menu
         # TODO: test connect "refresh" (custom signal)
@@ -175,7 +175,7 @@ class Adapter(QObject):
     def _preset_views(self):
         for n, column in enumerate(columns):
             if column.get("show_in_main") is False:
-                self._package_menu_view.hideColumn(n)
+                self._software_view.hideColumn(n)
             if column.get("show_in_langs") is False:
                 self._extra_langs_view.hideColumn(n)
         self._extra_langs_view.setSortingEnabled(True)
@@ -201,14 +201,14 @@ class Adapter(QObject):
             + "already installed Office will be removed with all its "
             + "language packages."
         )
-        self._main_view.confirm_local_copy_view.info_box.setText(text)
-        self._main_view.confirm_local_copy_view.info_box.setWordWrap(True)
+        self._app_main_view.confirm_local_copy_dialog.info_box.setText(text)
+        self._app_main_view.confirm_local_copy_dialog.info_box.setWordWrap(True)
         # Ask the user for directory with saved packages
-        if self._main_view.confirm_local_copy_view.exec():  # opens a dialog
+        if self._app_main_view.confirm_local_copy_dialog.exec():  # opens a dialog
             log.debug("Ok clicked: Installing from local copy...")
 
             # Get the directory path set by the user
-            selected_dir = self._main_view.confirm_local_copy_view.selected_dir
+            selected_dir = self._app_main_view.confirm_local_copy_dialog.selected_dir
 
             # Create separate thread worker passing
             # MainLogic's method to execute along with needed variables
@@ -229,18 +229,18 @@ class Adapter(QObject):
         # Set initial state of keep_packages checkbox
         # (can be set in configuration)
         if self._keep_packages is True:
-            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+            self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Checked
             )
         else:
-            self._main_view.confirm_apply_view.checkbox_keep_packages.setCheckState(
+            self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.setCheckState(
                 Qt.CheckState.Unchecked
             )
 
         # Set the initial state of the force_java_download checkbox
         # before displaying the dialog window
         fjd_state = checked if self._force_java_download else unchecked
-        self._main_view.confirm_apply_view.checkbox_force_java_download.setCheckState(
+        self._app_main_view.confirm_apply_dialog.checkbox_force_java_download.setCheckState(
             fjd_state
         )
         to_install, to_remove = self._app_logic.get_planned_changes()
@@ -255,24 +255,24 @@ class Adapter(QObject):
                 text += "Following components will be removed:\n"
                 for p in to_remove:
                     text += "- " + p + "\n"
-            self._main_view.confirm_apply_view.info_box.setText(text)
-            self._main_view.confirm_apply_view.apply_button.setEnabled(True)
+            self._app_main_view.confirm_apply_dialog.info_box.setText(text)
+            self._app_main_view.confirm_apply_dialog.apply_button.setEnabled(True)
         else:
             text = "No changes to apply"
-            self._main_view.confirm_apply_view.info_box.setText(text)
-            self._main_view.confirm_apply_view.apply_button.setEnabled(False)
+            self._app_main_view.confirm_apply_dialog.info_box.setText(text)
+            self._app_main_view.confirm_apply_dialog.apply_button.setEnabled(False)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
         # - if the java should be downloaded (despite it being installed)
-        if self._main_view.confirm_apply_view.exec():
+        if self._app_main_view.confirm_apply_dialog.exec():
             log.debug("Ok clicked. Applying changes...")
 
             self._keep_packages = (
-                self._main_view.confirm_apply_view.checkbox_keep_packages.isChecked()
+                self._app_main_view.confirm_apply_dialog.checkbox_keep_packages.isChecked()
             )
             self._force_java_download = (
-                self._main_view.confirm_apply_view.checkbox_force_java_download.isChecked()
+                self._app_main_view.confirm_apply_dialog.checkbox_force_java_download.isChecked()
             )
 
             # Create separate thread worker passing
@@ -319,7 +319,7 @@ class Adapter(QObject):
         self._progress_view.show()
 
         # Change cursor
-        self._main_view.setCursor(Qt.WaitCursor)
+        self._app_main_view.setCursor(Qt.WaitCursor)
 
         # Let the model know the data it currently has
         # will become invalid
@@ -345,7 +345,7 @@ class Adapter(QObject):
 
     def _thread_stopped_or_terminated(self):
         log.debug("Thread finished signal received.")
-        self._main_view.unsetCursor()
+        self._app_main_view.unsetCursor()
         self._progress_view.hide()
         log.debug("Emiting refresh signal to rebuild packages state")
         self.refresh_signal.emit()
@@ -369,16 +369,16 @@ class Adapter(QObject):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
             icon = warnings_icon
             title = "Warning"
-        self._main_view.info_dialog.setWindowTitle(title)
-        self._main_view.info_dialog.setText(msg)
-        self._main_view.info_dialog.setIcon(icon)
-        self._main_view.info_dialog.show()
+        self._app_main_view.info_dialog.setWindowTitle(title)
+        self._app_main_view.info_dialog.setText(msg)
+        self._app_main_view.info_dialog.setIcon(icon)
+        self._app_main_view.info_dialog.show()
 
     def change_GUI_locks(self):
         if self._is_packages_selecting_allowed is True:
-            self._main_view.package_menu_view.setEnabled(True)
+            self._software_view.setEnabled(True)
         else:
-            self._main_view.package_menu_view.setEnabled(False)
+            self._software_view.setEnabled(False)
 
         if (
             self._is_starting_procedures_allowed
@@ -387,7 +387,7 @@ class Adapter(QObject):
             is_apply_enabled = True
         else:
             is_apply_enabled = False
-        self._main_view.button_apply_changes.setEnabled(is_apply_enabled)
+        self._app_main_view.button_apply_changes.setEnabled(is_apply_enabled)
 
         if (
             self._is_starting_procedures_allowed
@@ -396,7 +396,7 @@ class Adapter(QObject):
             is_local_enabled = True
         else:
             is_local_enabled = False
-        self._main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
+        self._app_main_view.button_install_from_local_copy.setEnabled(is_local_enabled)
 
     def _run_flags_logic(self):
         print("init signal emitted")
@@ -422,7 +422,7 @@ def main():
     main_window = AppMainWindow()
 
     # Adapter
-    adapter = Adapter(app_logic=app_logic, app_main_view=main_window)
+    adapter = Adapter(app_logic=app_logic, main_view=main_window)
     adapter.change_GUI_locks()
 
     main_window.show()
