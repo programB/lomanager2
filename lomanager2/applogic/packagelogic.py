@@ -26,7 +26,7 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
-        self.refresh_timestamp = 0
+        self.rebuild_timestamp = 0
         self.warnings = []
         self.global_flags = SignalFlags()
         self.package_tree_root = VirtualPackage("master-node", "", "")
@@ -412,13 +412,13 @@ class MainLogic(object):
             msg = "Nothing to install. Check logs."
             self.inform_user(msg, isOK=False)
 
-    def flags_logic(self, *args, **kwargs):
-        """'Rises' flags indicating some operations will not be available
+    def check_system_state(self, *args, **kwargs):
+        """Checks if installing/removing packages is allowed
 
         This method performs checks of the operating system and
         sets the status of the flags in the self.global_flags object
-        to TRUE if some package operations need to be BLOCKED.
-        When it happens a human readable messages for the cause
+        to TRUE if some operations need to be BLOCKED.
+        If so a human readable messages for the cause
         is added to the self.warnings list.
         """
 
@@ -518,9 +518,9 @@ class MainLogic(object):
             )
             self.inform_user(msg, isOK=False)
 
-        self.refresh_state(*args, **kwargs)
+        self.rebuild_package_tree(*args, **kwargs)
 
-    def refresh_state(self, *args, **kwargs):
+    def rebuild_package_tree(self, *args, **kwargs):
         step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
         msg = ""
 
@@ -568,7 +568,7 @@ class MainLogic(object):
             newest_Clipart_version=newest_Clip_ver,
         )
         self.global_flags.ready_to_apply_changes = True
-        self.refresh_timestamp = time.time()
+        self.rebuild_timestamp = time.time()
         if msg:
             self.inform_user(msg, isOK=False)
 
