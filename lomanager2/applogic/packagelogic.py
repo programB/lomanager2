@@ -412,13 +412,13 @@ class MainLogic(object):
             msg = "Nothing to install. Check logs."
             self.inform_user(msg, isOK=False)
 
-    def flags_logic(self, *args, **kwargs):
-        """'Rises' flags indicating some operations will not be available
+    def check_system_state(self, *args, **kwargs):
+        """Checks if installing/removing packages is allowed
 
         This method performs checks of the operating system and
         sets the status of the flags in the self.global_flags object
-        to TRUE if some package operations need to be BLOCKED.
-        When it happens a human readable messages for the cause
+        to TRUE if some operations need to be BLOCKED.
+        If so a human readable messages for the cause
         is added to the self.warnings list.
         """
 

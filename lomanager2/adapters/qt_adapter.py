@@ -395,7 +395,7 @@ class Adapter(QObject):
     def _check_system_state(self):
         print("check system state signal emitted")
         self.procedure_thread = ProcedureWorker(
-            function_to_run=self._app_logic.flags_logic,
+            function_to_run=self._app_logic.check_system_state,
             progress_description=self.progress_description_signal.emit,
             progress_percentage=self.progress_signal.emit,
             overall_progress_description=self.overall_progress_description_signal.emit,
