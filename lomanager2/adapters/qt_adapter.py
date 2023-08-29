@@ -22,48 +22,48 @@ from configuration import logging as log
 checked = Qt.CheckState.Checked
 unchecked = Qt.CheckState.Unchecked
 
-columns = [
-    {
-        "name": "Program name",
+columns = {
+    "Program name": {
+        "id": 0,
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
-    {
-        "name": "language code",
+    "language code": {
+        "id": 1,
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
-    {
-        "name": "language name",
+    "language name": {
+        "id": 2,
         "show_in_software_view": False,
         "show_in_langs_view": True,
     },
-    {
-        "name": "version",
+    "version": {
+        "id": 3,
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
-    {
-        "name": "marked for removal?",
+    "marked for removal?": {
+        "id": 4,
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
-    {
-        "name": "marked for install?",
+    "marked for install?": {
+        "id": 5,
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
-    {
-        "name": "installed?",
+    "installed?": {
+        "id": 6,
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
-    {
-        "name": "marked for download?",
+    "marked for download?": {
+        "id": 7,
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
-]
+}
 
 
 class Adapter(QObject):
@@ -87,7 +87,7 @@ class Adapter(QObject):
         # Model (transforms data from app logic to form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
-            column_names=[column.get("name") for column in columns],
+            column_names=[column for column in columns],
         )
 
         # Views
@@ -161,10 +161,10 @@ class Adapter(QObject):
 
     def _preset_views(self):
         """Any extra changes to appearance of views not done by render models"""
-        for n, column in enumerate(columns):
-            if column.get("show_in_software_view") is False:
+        for n, column_flags in enumerate(columns.values()):
+            if column_flags.get("show_in_software_view") is False:
                 self._software_view.hideColumn(n)
-            if column.get("show_in_langs_view") is False:
+            if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
         self._langs_view.setSortingEnabled(True)
 
@@ -383,7 +383,7 @@ class Adapter(QObject):
             and not self._app_logic.global_flags.block_local_copy_install
         )
         is_software_view_enabled = self._is_packages_selecting_allowed
-        is_langs_view_enabled = is_software_view_enabled 
+        is_langs_view_enabled = is_software_view_enabled
 
         self._app_main_view.button_apply_changes.setEnabled(is_apply_changes_enabled)
         self._app_main_view.button_install_from_local_copy.setEnabled(
