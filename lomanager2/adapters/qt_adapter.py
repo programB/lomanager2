@@ -1,15 +1,9 @@
 import sys
 
-from pysidecompat import (
-    QApplication,  # pyright: ignore
-    QMessageBox,  # pyright: ignore
-    QObject,  # pyright: ignore
-    Signal,  # pyright: ignore
-    Qt,  # pyright: ignore
-)
-
+from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
+from delegates import CheckButtonDelegate, columns
 from viewmodels import (
     SoftwareMenuModel,
     SoftwareMenuRenderModel,
@@ -19,64 +13,18 @@ from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
 
-checked = Qt.CheckState.Checked
-unchecked = Qt.CheckState.Unchecked
 
-columns = [
-    {
-        "name": "Program name",
-        "show_in_software_view": True,
-        "show_in_langs_view": False,
-    },
-    {
-        "name": "language code",
-        "show_in_software_view": True,
-        "show_in_langs_view": True,
-    },
-    {
-        "name": "language name",
-        "show_in_software_view": False,
-        "show_in_langs_view": True,
-    },
-    {
-        "name": "version",
-        "show_in_software_view": True,
-        "show_in_langs_view": False,
-    },
-    {
-        "name": "marked for removal?",
-        "show_in_software_view": True,
-        "show_in_langs_view": False,
-    },
-    {
-        "name": "marked for install?",
-        "show_in_software_view": True,
-        "show_in_langs_view": True,
-    },
-    {
-        "name": "installed?",
-        "show_in_software_view": True,
-        "show_in_langs_view": False,
-    },
-    {
-        "name": "marked for download?",
-        "show_in_software_view": True,
-        "show_in_langs_view": False,
-    },
-]
-
-
-class Adapter(QObject):
+class Adapter(QtCore.QObject):
     # Register custom signals
-    progress_description_signal = Signal(str)
-    progress_signal = Signal(int)
-    overall_progress_description_signal = Signal(str)
-    overall_progress_signal = Signal(int)
-    rebuild_tree_signal = Signal()
-    thread_worker_ready_signal = Signal()
-    warnings_awaiting_signal = Signal(list)
-    check_system_state_signal = Signal()
-    lock_unlock_GUI_signal = Signal()
+    progress_description_signal = QtCore.Signal(str)
+    progress_signal = QtCore.Signal(int)
+    overall_progress_description_signal = QtCore.Signal(str)
+    overall_progress_signal = QtCore.Signal(int)
+    rebuild_tree_signal = QtCore.Signal()
+    thread_worker_ready_signal = QtCore.Signal()
+    warnings_awaiting_signal = QtCore.Signal(list)
+    check_system_state_signal = QtCore.Signal()
+    lock_unlock_GUI_signal = QtCore.Signal()
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -87,7 +35,7 @@ class Adapter(QObject):
         # Model (transforms data from app logic to form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
-            column_names=[column.get("name") for column in columns],
+            column_names=[column for column in columns],
         )
 
         # Views
@@ -106,6 +54,13 @@ class Adapter(QObject):
         self._language_menu_rendermodel = LanguageMenuRenderModel(
             model=self._software_menu_model, parent=self._langs_view
         )
+
+        # Delegates
+        # contructing delegate with main WINDOW as parent ensures it will
+        # be propertly deleted
+        self.check_button = CheckButtonDelegate(parent=self._app_main_view)
+        self._software_view.setItemDelegate(self.check_button)
+        self._langs_view.setItemDelegate(self.check_button)
 
         # Extra variables that can be set by the user in GUI
         # Initialize local _keep_packages variable from configuration
@@ -161,10 +116,10 @@ class Adapter(QObject):
 
     def _preset_views(self):
         """Any extra changes to appearance of views not done by render models"""
-        for n, column in enumerate(columns):
-            if column.get("show_in_software_view") is False:
+        for n, column_flags in enumerate(columns.values()):
+            if column_flags.get("show_in_software_view") is False:
                 self._software_view.hideColumn(n)
-            if column.get("show_in_langs_view") is False:
+            if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
         self._langs_view.setSortingEnabled(True)
 
@@ -222,17 +177,21 @@ class Adapter(QObject):
         # (can be set in configuration)
         if self._keep_packages is True:
             self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                Qt.CheckState.Checked
+                QtCore.Qt.CheckState.Checked
             )
         else:
             self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                Qt.CheckState.Unchecked
+                QtCore.Qt.CheckState.Unchecked
             )
 
         # Set the initial state of the force_java_download checkbox
         # before displaying the dialog window
-        fjd_state = checked if self._force_java_download else unchecked
-        self._apply_changes_view.checkbox_force_java_download.setCheckState(fjd_state)
+        ch_s = (
+            QtCore.Qt.CheckState.Checked
+            if self._force_java_download
+            else QtCore.Qt.CheckState.Unchecked
+        )
+        self._apply_changes_view.checkbox_force_java_download.setCheckState(ch_s)
         to_install, to_remove = self._app_logic.get_planned_changes()
         if to_install or to_remove:
             text = ""
@@ -318,7 +277,7 @@ class Adapter(QObject):
         self._progress_view.show()
 
         # Change cursor to indicate program is busy
-        self._app_main_view.setCursor(Qt.WaitCursor)
+        self._app_main_view.setCursor(QtCore.Qt.WaitCursor)
 
         # Inform model that underlying data source will invalidate current data
         # (corresponding endResetModel is in the _rebuild_tree)
@@ -354,9 +313,9 @@ class Adapter(QObject):
         self.lock_unlock_GUI_signal.emit()
 
     def _warnings_show(self, warnings):
-        error_icon = QMessageBox.Icon.Critical
-        good_icon = QMessageBox.Icon.Information
-        warnings_icon = QMessageBox.Icon.Warning
+        error_icon = QtWidgets.QMessageBox.Icon.Critical
+        good_icon = QtWidgets.QMessageBox.Icon.Information
+        warnings_icon = QtWidgets.QMessageBox.Icon.Warning
 
         if len(warnings) == 1:
             isOK, msg = warnings[0]
@@ -383,7 +342,7 @@ class Adapter(QObject):
             and not self._app_logic.global_flags.block_local_copy_install
         )
         is_software_view_enabled = self._is_packages_selecting_allowed
-        is_langs_view_enabled = is_software_view_enabled 
+        is_langs_view_enabled = is_software_view_enabled
 
         self._app_main_view.button_apply_changes.setEnabled(is_apply_changes_enabled)
         self._app_main_view.button_install_from_local_copy.setEnabled(
@@ -406,7 +365,7 @@ class Adapter(QObject):
 
 
 def main():
-    lomanager2App = QApplication([])
+    lomanager2App = QtWidgets.QApplication([])
 
     # Business logic
     app_logic = MainLogic()

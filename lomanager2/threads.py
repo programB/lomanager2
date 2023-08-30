@@ -1,15 +1,14 @@
 import time
 
-from pysidecompat import QThread, Signal, Slot  # pyright: ignore
-
+from pysidecompat import QtCore  # pyright: ignore
 from configuration import logging as log
 
 
-class ProcedureWorker(QThread):
+class ProcedureWorker(QtCore.QThread):
     """Worker thread intended to run install procedure"""
 
     # Define custom signals
-    result = Signal(str)
+    result = QtCore.Signal(str)
 
     def __init__(self, function_to_run, *args, **kwargs):
         super().__init__()
@@ -19,7 +18,7 @@ class ProcedureWorker(QThread):
         self.args = args
         self.kwargs = kwargs
 
-    @Slot()
+    @QtCore.Slot()
     def run(self):
         """Run code inside in a separate thread"""
 
