@@ -305,6 +305,7 @@ class Adapter(QtCore.QObject):
 
         self._progress_view.hide()
         self._app_main_view.unsetCursor()
+        self._progress_view.progress_bar.setVisible(True)
 
         log.debug("Emiting rebuild_tree_signal")
         self.rebuild_tree_signal.emit()
@@ -362,6 +363,7 @@ class Adapter(QtCore.QObject):
             overall_progress_description=self.overall_progress_description_signal.emit,
             overall_progress_percentage=self.overall_progress_signal.emit,
         )
+        self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
 
