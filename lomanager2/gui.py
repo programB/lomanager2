@@ -21,6 +21,8 @@ class AppMainWindow(QtWidgets.QMainWindow):
             QtWidgets.QAbstractItemView.SelectionMode.NoSelection
         )
         self.software_view.setFocusPolicy(QtGui.Qt.NoFocus)
+        # Hide grid for better UX
+        self.software_view.setShowGrid(False)
         # -- end define Main View
 
         # -- define Languages window
