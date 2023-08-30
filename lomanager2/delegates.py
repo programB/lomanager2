@@ -76,7 +76,7 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
                 log.debug(f"switching markstate: {markstate} -> {not markstate}")
                 model.setData(
-                    index, str(not markstate), QtCore.Qt.ItemDataRole.EditRole
+                    index, not markstate, QtCore.Qt.ItemDataRole.EditRole
                 )
             else:
                 log.debug("button disabled")

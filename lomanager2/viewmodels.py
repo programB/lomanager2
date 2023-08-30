@@ -4,6 +4,7 @@ from functools import cmp_to_key
 from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from lolangs import supported_langs
 from applogic.datatypes import compare_versions
+from configuration import logging as log
 
 column_idx = {
     "family": 0,
@@ -282,12 +283,10 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         # Also this method will not be called for other columns
         # because the flags() method already
         # prevents the user from modifying other columns.
-        if value.upper() == "TRUE" or value == "1":
-            value_as_bool = True
-        elif value.upper() == "FALSE" or value == "0":
-            value_as_bool = False
-        else:
-            return False
+        if not isinstance(value, bool):
+            log.error(
+                f"expected boolean to set mark state, received {type(value)}"
+            )
 
         if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
             if column == column_idx.get("marked_for_removal"):
@@ -297,7 +296,8 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
 
                 # Request data change from the applogic
                 is_logic_applied = self._app_logic.change_removal_mark(
-                    package, value_as_bool
+                    package,
+                    value,
                 )
 
                 # Tell the views to redraw themselves ENTIRELY
@@ -310,7 +310,8 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
             elif column == column_idx.get("marked_for_install"):
                 self.layoutAboutToBeChanged.emit()
                 is_logic_applied = self._app_logic.change_install_mark(
-                    package, value_as_bool
+                    package,
+                    value,
                 )
                 self.layoutChanged.emit()
                 return is_logic_applied
