@@ -1,4 +1,5 @@
 from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
+from configuration import logging as log
 
 columns = {
     "Program name": {
@@ -71,21 +72,21 @@ class PushButtonDelegate(QtWidgets.QItemDelegate):
                     and event.key() == QtCore.Qt.Key.Key_Space
                     and is_enabled
                 ):
-                    print("DELEGATE: ≈≈≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈≈≈")
-                    print(f"switching markstate: {markstate} -> {not markstate}")
+                    log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
+                    log.debug(f"switching markstate: {markstate} -> {not markstate}")
                     model.setData(
                         index, str(not markstate), QtCore.Qt.ItemDataRole.EditRole
                     )
                     return True
                 elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
-                    print("2-clicked MOUSE")
+                    log.debug("2-clicked MOUSE")
                     # Capture DoubleClick here
                     # (accept event to prevent cell editor getting opened)
                     event.accept()
                     return True
 
                 else:
-                    # print(f"other editorEvent: {event}")
+                    # log.debug(f"other editorEvent: {event}")
                     # Ignore other events
                     return True
             else:
