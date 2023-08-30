@@ -202,6 +202,24 @@ class SoftwareMenuModel(QAbstractTableModel):
             else:
                 return ""
 
+        if role == Qt.ItemDataRole.UserRole + 2:
+            return pf_vis
+
+        if role == Qt.ItemDataRole.UserRole + 3:
+            return pf_enabled
+
+        if role == Qt.ItemDataRole.EditRole:
+            # The type of delegate that is created by Qt automatically
+            # if no custom one is provided is decided based on the type
+            # of data returned in this EditRole
+            # (eg. if str is returned here the delegate will be QLineEdit,
+            # if it's bool it will be a QComboBox (with True and False values)
+            # if it's int it will be a QSpinBox (with up-down arrows
+            # increasing/decreasing int values by 1)
+            # return str(pf_base)
+            # return 1 if pf_base else 0
+            return pf_base
+
     def rowCount(self, index) -> int:
         """Returns number of rows the table has"""
         return len(self.get_package_list())
