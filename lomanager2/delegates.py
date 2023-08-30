@@ -45,7 +45,7 @@ columns = {
 }
 
 
-class PushButtonDelegate(QtWidgets.QItemDelegate):
+class CheckButtonDelegate(QtWidgets.QItemDelegate):
     update_model_signal = QtCore.Signal(QtCore.QAbstractItemModel, QtCore.QModelIndex)
 
     checked_button_color = QtGui.QColor("#005b00")  # dark green
@@ -58,7 +58,7 @@ class PushButtonDelegate(QtWidgets.QItemDelegate):
     disabled_text_color = QtGui.QColor("#b4adaa")  # light grey
 
     def __init__(self, parent=None):
-        super(PushButtonDelegate, self).__init__(parent)
+        super(CheckButtonDelegate, self).__init__(parent)
         self.update_model_signal.connect(self.update_model)
 
     def update_model(self, model, index):

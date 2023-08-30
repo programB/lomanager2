@@ -3,7 +3,7 @@ import sys
 from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
-from delegates import PushButtonDelegate, columns
+from delegates import CheckButtonDelegate, columns
 from viewmodels import (
     SoftwareMenuModel,
     SoftwareMenuRenderModel,
@@ -58,7 +58,7 @@ class Adapter(QtCore.QObject):
         # Delegates
         # contructing delegate with main WINDOW as parent ensures it will
         # be propertly deleted
-        self.check_button = PushButtonDelegate(parent=self._app_main_view)
+        self.check_button = CheckButtonDelegate(parent=self._app_main_view)
         self._software_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
 
