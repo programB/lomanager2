@@ -16,6 +16,11 @@ class AppMainWindow(QtWidgets.QMainWindow):
         # Header is defined but for proper UX should be hidden in this view
         self.software_view.verticalHeader().hide()
         self.software_view.horizontalHeader().hide()
+        # Selection and focus should be turned off in this view for UX reasons
+        self.software_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
+        )
+        self.software_view.setFocusPolicy(QtGui.Qt.NoFocus)
         # -- end define Main View
 
         # -- define Languages window
