@@ -13,6 +13,9 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.software_view = QtWidgets.QTableView()
         header = self.software_view.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        # Header is defined but for proper UX should be hidden in this view
+        self.software_view.verticalHeader().hide()
+        self.software_view.horizontalHeader().hide()
         # -- end define Main View
 
         # -- define Languages window
