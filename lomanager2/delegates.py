@@ -46,51 +46,56 @@ columns = {
 
 
 class PushButtonDelegate(QtWidgets.QItemDelegate):
+    update_model_signal = QtCore.Signal(QtCore.QAbstractItemModel, QtCore.QModelIndex)
+
     def __init__(self, parent=None):
         super(PushButtonDelegate, self).__init__(parent)
+        self.update_model_signal.connect(self.update_model)
+
+    def update_model(self, model, index):
+        is_visible = bool(
+            index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
+        )
+        if is_visible:
+            is_enabled = bool(
+                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
+            )
+            if is_enabled:
+                markstate = index.model().data(
+                    index, QtCore.Qt.ItemDataRole.DisplayRole
+                )
+                log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
+                log.debug(f"switching markstate: {markstate} -> {not markstate}")
+                model.setData(
+                    index, str(not markstate), QtCore.Qt.ItemDataRole.EditRole
+                )
+            else:
+                log.debug("button disabled")
+        else:
+            log.debug("button not visible")
 
     def editorEvent(self, event, model, option, index):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
         is_install_col = index.column() == columns.get("marked for install?").get("id")
         if is_remove_col or is_install_col:
-            is_visible = bool(
-                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
-            )
-            if is_visible:
-                markstate = index.model().data(
-                    index, QtCore.Qt.ItemDataRole.DisplayRole
-                )
-                is_enabled = bool(
-                    index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
-                )
-                if (
-                    event.type() == QtCore.QEvent.Type.MouseButtonRelease
-                    and event.button() == QtCore.Qt.MouseButton.LeftButton
-                    and is_enabled
-                ) or (
-                    event.type() == QtCore.QEvent.Type.KeyPress
-                    and event.key() == QtCore.Qt.Key.Key_Space
-                    and is_enabled
-                ):
-                    log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
-                    log.debug(f"switching markstate: {markstate} -> {not markstate}")
-                    model.setData(
-                        index, str(not markstate), QtCore.Qt.ItemDataRole.EditRole
-                    )
-                    return True
-                elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
-                    log.debug("2-clicked MOUSE")
-                    # Capture DoubleClick here
-                    # (accept event to prevent cell editor getting opened)
-                    event.accept()
-                    return True
-
-                else:
-                    # log.debug(f"other editorEvent: {event}")
-                    # Ignore other events
-                    return True
+            if (
+                event.type() == QtCore.QEvent.Type.MouseButtonRelease
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
+            ) or (
+                event.type() == QtCore.QEvent.Type.KeyPress
+                and event.key() == QtCore.Qt.Key.Key_Space
+            ):
+                self.update_model_signal.emit(model, index)
+            elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
+                log.debug("2-clicked MOUSE")
+                # Capture DoubleClick here
+                # (accept event to prevent cell editor getting opened)
+                event.accept()
             else:
-                return True
+                # log.debug(f"other editorEvent: {event}")
+                # Ignore other events
+                pass
+            return True
         else:
             return False
 
