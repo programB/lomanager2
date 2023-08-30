@@ -131,6 +131,9 @@ class Adapter(QtCore.QObject):
         self._software_menu_model.endResetModel()
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
+        # Increase spacing between rows in software_view
+        for row in range(self._software_view.model().rowCount()):
+            self._software_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
