@@ -1,16 +1,6 @@
 import sys
 
-from pysidecompat import (
-    QApplication,  # pyright: ignore
-    QMessageBox,  # pyright: ignore
-    QObject,  # pyright: ignore
-    Signal,  # pyright: ignore
-    Qt,  # pyright: ignore
-    QItemDelegate,  # pyright: ignore
-    QEvent,  # pyright: ignore
-    QtGui,  # pyright: ignore
-)
-
+from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from applogic.packagelogic import MainLogic
 from gui import AppMainWindow
 from viewmodels import (
@@ -22,8 +12,6 @@ from threads import ProcedureWorker
 import configuration
 from configuration import logging as log
 
-checked = Qt.CheckState.Checked
-unchecked = Qt.CheckState.Unchecked
 
 columns = {
     "Program name": {
@@ -69,7 +57,7 @@ columns = {
 }
 
 
-class PushButtonDelegate(QItemDelegate):
+class PushButtonDelegate(QtWidgets.QItemDelegate):
     def __init__(self, parent=None):
         super(PushButtonDelegate, self).__init__(parent)
 
@@ -77,26 +65,32 @@ class PushButtonDelegate(QItemDelegate):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
         is_install_col = index.column() == columns.get("marked for install?").get("id")
         if is_remove_col or is_install_col:
-            is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
+            is_visible = bool(
+                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
+            )
             if is_visible:
-                markstate = index.model().data(index, Qt.ItemDataRole.DisplayRole)
+                markstate = index.model().data(
+                    index, QtCore.Qt.ItemDataRole.DisplayRole
+                )
                 is_enabled = bool(
-                    index.model().data(index, Qt.ItemDataRole.UserRole + 3)
+                    index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
                 )
                 if (
-                    event.type() == QEvent.Type.MouseButtonRelease
-                    and event.button() == Qt.MouseButton.LeftButton
+                    event.type() == QtCore.QEvent.Type.MouseButtonRelease
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
                     and is_enabled
                 ) or (
-                    event.type() == QEvent.Type.KeyPress
-                    and event.key() == Qt.Key.Key_Space
+                    event.type() == QtCore.QEvent.Type.KeyPress
+                    and event.key() == QtCore.Qt.Key.Key_Space
                     and is_enabled
                 ):
                     print("DELEGATE: ≈≈≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈≈≈")
                     print(f"switching markstate: {markstate} -> {not markstate}")
-                    model.setData(index, str(not markstate), Qt.ItemDataRole.EditRole)
+                    model.setData(
+                        index, str(not markstate), QtCore.Qt.ItemDataRole.EditRole
+                    )
                     return True
-                elif event.type() == QEvent.Type.MouseButtonDblClick:
+                elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
                     print("2-clicked MOUSE")
                     # Capture DoubleClick here
                     # (accept event to prevent cell editor getting opened)
@@ -119,14 +113,18 @@ class PushButtonDelegate(QItemDelegate):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
         is_install_col = index.column() == columns.get("marked for install?").get("id")
         if is_remove_col or is_install_col:
-            is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
+            is_visible = bool(
+                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
+            )
             if is_visible:
                 # Do the button painting here
                 painter.save()
 
-                markstate = bool(index.model().data(index, Qt.ItemDataRole.EditRole))
+                markstate = bool(
+                    index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+                )
                 is_enabled = bool(
-                    index.model().data(index, Qt.ItemDataRole.UserRole + 3)
+                    index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
                 )
 
                 normal_button_color = QtGui.QColor("green")
@@ -167,7 +165,9 @@ class PushButtonDelegate(QItemDelegate):
                 pen.setColor(normal_text_color if is_enabled else disabled_text_color)
                 painter.setPen(pen)
                 button_text = "remove" if is_remove_col else "install"
-                painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, button_text)
+                painter.drawText(
+                    option.rect, QtCore.Qt.AlignmentFlag.AlignCenter, button_text
+                )
 
                 # draw a checkbox
                 x, y, w, h = option.rect.getRect()
@@ -180,29 +180,29 @@ class PushButtonDelegate(QItemDelegate):
                     painter,
                     option,
                     option.rect,
-                    Qt.Checked if markstate else Qt.Unchecked,
+                    QtCore.Qt.Checked if markstate else QtCore.Qt.Unchecked,
                 )
                 painter.restore()
             else:
-                # QItemDelegate.paint(self, painter, option, index)
+                # QtWidgets.QItemDelegate.paint(self, painter, option, index)
                 # Do not draw anything - leave the cell empty
                 pass
         else:
             # Use default delegates to paint other cells
-            QItemDelegate.paint(self, painter, option, index)
+            QtWidgets.QItemDelegate.paint(self, painter, option, index)
 
 
-class Adapter(QObject):
+class Adapter(QtCore.QObject):
     # Register custom signals
-    progress_description_signal = Signal(str)
-    progress_signal = Signal(int)
-    overall_progress_description_signal = Signal(str)
-    overall_progress_signal = Signal(int)
-    rebuild_tree_signal = Signal()
-    thread_worker_ready_signal = Signal()
-    warnings_awaiting_signal = Signal(list)
-    check_system_state_signal = Signal()
-    lock_unlock_GUI_signal = Signal()
+    progress_description_signal = QtCore.Signal(str)
+    progress_signal = QtCore.Signal(int)
+    overall_progress_description_signal = QtCore.Signal(str)
+    overall_progress_signal = QtCore.Signal(int)
+    rebuild_tree_signal = QtCore.Signal()
+    thread_worker_ready_signal = QtCore.Signal()
+    warnings_awaiting_signal = QtCore.Signal(list)
+    check_system_state_signal = QtCore.Signal()
+    lock_unlock_GUI_signal = QtCore.Signal()
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -355,17 +355,21 @@ class Adapter(QObject):
         # (can be set in configuration)
         if self._keep_packages is True:
             self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                Qt.CheckState.Checked
+                QtCore.Qt.CheckState.Checked
             )
         else:
             self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                Qt.CheckState.Unchecked
+                QtCore.Qt.CheckState.Unchecked
             )
 
         # Set the initial state of the force_java_download checkbox
         # before displaying the dialog window
-        fjd_state = checked if self._force_java_download else unchecked
-        self._apply_changes_view.checkbox_force_java_download.setCheckState(fjd_state)
+        ch_s = (
+            QtCore.Qt.CheckState.Checked
+            if self._force_java_download
+            else QtCore.Qt.CheckState.Unchecked
+        )
+        self._apply_changes_view.checkbox_force_java_download.setCheckState(ch_s)
         to_install, to_remove = self._app_logic.get_planned_changes()
         if to_install or to_remove:
             text = ""
@@ -451,7 +455,7 @@ class Adapter(QObject):
         self._progress_view.show()
 
         # Change cursor to indicate program is busy
-        self._app_main_view.setCursor(Qt.WaitCursor)
+        self._app_main_view.setCursor(QtCore.Qt.WaitCursor)
 
         # Inform model that underlying data source will invalidate current data
         # (corresponding endResetModel is in the _rebuild_tree)
@@ -487,9 +491,9 @@ class Adapter(QObject):
         self.lock_unlock_GUI_signal.emit()
 
     def _warnings_show(self, warnings):
-        error_icon = QMessageBox.Icon.Critical
-        good_icon = QMessageBox.Icon.Information
-        warnings_icon = QMessageBox.Icon.Warning
+        error_icon = QtWidgets.QMessageBox.Icon.Critical
+        good_icon = QtWidgets.QMessageBox.Icon.Information
+        warnings_icon = QtWidgets.QMessageBox.Icon.Warning
 
         if len(warnings) == 1:
             isOK, msg = warnings[0]
@@ -539,7 +543,7 @@ class Adapter(QObject):
 
 
 def main():
-    lomanager2App = QApplication([])
+    lomanager2App = QtWidgets.QApplication([])
 
     # Business logic
     app_logic = MainLogic()
