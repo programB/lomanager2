@@ -48,6 +48,15 @@ columns = {
 class PushButtonDelegate(QtWidgets.QItemDelegate):
     update_model_signal = QtCore.Signal(QtCore.QAbstractItemModel, QtCore.QModelIndex)
 
+    checked_button_color = QtGui.QColor("#005b00")  # dark green
+    checked_button_border_color = QtGui.QColor("#005b00")  # dark green
+    unchecked_button_color = QtGui.QColor("#008000")  # green
+    unchecked_button_border_color = QtGui.QColor("#008000")  # green
+    disabled_button_color = QtGui.QColor("#635f5e")  # mid grey
+    disabled_button_border_color = QtGui.QColor("#484544")  # dark grey
+    normal_text_color = QtGui.QColor("white")
+    disabled_text_color = QtGui.QColor("#b4adaa")  # light grey
+
     def __init__(self, parent=None):
         super(PushButtonDelegate, self).__init__(parent)
         self.update_model_signal.connect(self.update_model)
@@ -111,41 +120,42 @@ class PushButtonDelegate(QtWidgets.QItemDelegate):
             )
             if is_visible:
                 # Do the button painting here
-                painter.save()
 
-                markstate = bool(
+                is_marked = bool(
                     index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
                 )
                 is_enabled = bool(
                     index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
                 )
+                if is_enabled and is_marked:
+                    button_color = self.checked_button_color
+                    button_border_color = self.checked_button_border_color
+                    button_text_color = self.normal_text_color
+                elif is_enabled and is_marked is False:
+                    button_color = self.unchecked_button_color
+                    button_border_color = self.unchecked_button_border_color
+                    button_text_color = self.normal_text_color
+                else:
+                    button_color = self.disabled_button_color
+                    button_border_color = self.disabled_button_border_color
+                    button_text_color = self.disabled_text_color
+                button_text = "remove" if is_remove_col else "install"
 
-                normal_button_color = QtGui.QColor("green")
-                normal_button_border_color = QtGui.QColor("dark green")
-                normal_text_color = QtGui.QColor("white")
+                #
+                painter.save()
 
-                disabled_button_color = QtGui.QColor("#635f5e")
-                disabled_button_border_color = QtGui.QColor("#484544")
-                disabled_text_color = QtGui.QColor("#b4adaa")
-
-                # Ignore the check: if option.state & QStyle.State_Selected
+                # Ignore selection: if option.state & QStyle.State_Selected
                 # and remove highlight around the button irrespective its
                 # selection/focus state
                 painter.eraseRect(option.rect)
 
-                # controls border color (and text color)
+                # set border color (and text color)
                 pen = painter.pen()
-                pen.setColor(
-                    normal_button_border_color
-                    if is_enabled
-                    else disabled_button_border_color
-                )
+                pen.setColor(button_border_color)
                 painter.setPen(pen)
 
-                # controls the fill color
-                painter.setBrush(
-                    normal_button_color if is_enabled else disabled_button_color
-                )
+                # set button fill color
+                painter.setBrush(button_color)
 
                 # Draw the "button"
                 delta = 2
@@ -154,15 +164,16 @@ class PushButtonDelegate(QtWidgets.QItemDelegate):
                 painter.setRenderHint(QtGui.QPainter.Antialiasing)
                 painter.drawRoundedRect(x, y, w, h, 10, 10)
 
-                # change pen color to draw text
-                pen.setColor(normal_text_color if is_enabled else disabled_text_color)
+                # (re)set pen color to draw text
+                pen.setColor(button_text_color)
                 painter.setPen(pen)
-                button_text = "remove" if is_remove_col else "install"
+
+                # Draw button text
                 painter.drawText(
                     option.rect, QtCore.Qt.AlignmentFlag.AlignCenter, button_text
                 )
 
-                # draw a checkbox
+                # Draw a checkbox
                 x, y, w, h = option.rect.getRect()
                 new_h = 0.6 * h
                 new_w = new_h
@@ -173,8 +184,10 @@ class PushButtonDelegate(QtWidgets.QItemDelegate):
                     painter,
                     option,
                     option.rect,
-                    QtCore.Qt.Checked if markstate else QtCore.Qt.Unchecked,
+                    QtCore.Qt.Checked if is_marked else QtCore.Qt.Unchecked,
                 )
+
+                #
                 painter.restore()
             else:
                 # QtWidgets.QItemDelegate.paint(self, painter, option, index)
