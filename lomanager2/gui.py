@@ -64,6 +64,10 @@ class LangsModalWindow(QtWidgets.QDialog):
         self.langs_view = QtWidgets.QTableView()
         header = self.langs_view.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        # Allow columns to be user sortable
+        # (model to which this view will get attached decides which
+        #  column(s) are keyed for sorting)
+        self.langs_view.setSortingEnabled(True)
         # -- end define Langs View
 
         # -- define other GUI elements

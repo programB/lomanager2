@@ -121,7 +121,6 @@ class Adapter(QtCore.QObject):
                 self._software_view.hideColumn(n)
             if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
-        self._langs_view.setSortingEnabled(True)
 
     def _rebuild_tree(self):
         log.debug("Starting package tree rebuild!")
