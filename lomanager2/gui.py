@@ -172,6 +172,7 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         main_layout = QtWidgets.QVBoxLayout()
 
         self.info_box = QtWidgets.QLabel()
+        self.info_box.setWordWrap(True)
 
         file_input_layout = QtWidgets.QHBoxLayout()
         self.initial_dir = "/"

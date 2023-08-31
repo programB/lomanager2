@@ -148,7 +148,6 @@ class Adapter(QtCore.QObject):
             + "language packages."
         )
         self._local_copy_view.info_box.setText(text)
-        self._local_copy_view.info_box.setWordWrap(True)
         if self._local_copy_view.exec():
             log.debug("Ok clicked: Installing from local copy...")
 
