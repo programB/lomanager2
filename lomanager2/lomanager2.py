@@ -45,11 +45,9 @@ if os.geteuid() == 0:
 
     # create formatters
     debug_formatter = logging.Formatter(
-        "[%(levelname)s](%(asctime)s) (in %(module)s.%(funcName)s): %(message)s"
+        "%(asctime)s [%(levelname)s] (in %(module)s.%(funcName)s): %(message)s"
     )
-    normal_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    normal_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     # add formatters to handlers
     formatter = debug_formatter if args.debug else normal_formatter
