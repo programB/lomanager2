@@ -166,8 +166,6 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.selected_dir = None
-
         self.setWindowTitle("Install from local copy")
         main_layout = QtWidgets.QVBoxLayout()
 
@@ -175,10 +173,8 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         self.info_box.setWordWrap(True)
 
         file_input_layout = QtWidgets.QHBoxLayout()
-        self.initial_dir = "/"
         self.directory_choice_box = QtWidgets.QLineEdit()
         self.directory_choice_box.setReadOnly(True)
-        self.directory_choice_box.setPlaceholderText(self.initial_dir)
         self.button_choose_directory = QtWidgets.QPushButton("Choose directory...")
         file_input_layout.addWidget(self.directory_choice_box)
         file_input_layout.addWidget(self.button_choose_directory)
@@ -194,17 +190,17 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         main_layout.addWidget(self.info_box)
         main_layout.addItem(file_input_layout)
         main_layout.addWidget(self.buttonBox)
-
         self.setLayout(main_layout)
 
         self.button_choose_directory.clicked.connect(self._chose_directory)
-
         # Cancel button sends this so we can connect directly
         self.buttonBox.rejected.connect(self.reject)
         # Apply button sends something else so we will
         # check which button was pressed and ...
         self.buttonBox.clicked.connect(self._which_button)
         self.buttonBox.accepted.connect(self.accept)
+
+        self.set_initial_dir()
 
     def _which_button(self, clicked_button):
         # ... if it is the apply button we will
@@ -213,12 +209,17 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
 
-    def _chose_directory(self):
-        caption = "Select directory"
+    def set_initial_dir(self, dir: str | None = None) -> None:
+        # Set some initial value - it will be overridden by user selection
+        self.selected_dir = "/" if dir is None else dir
+        self.directory_choice_box.setText("")
+        self.directory_choice_box.setPlaceholderText(self.selected_dir)
 
+    def _chose_directory(self):
         selection_dialog = QtWidgets.QFileDialog()
+        caption = "Select directory"
         selection_dialog.setWindowTitle(caption)
-        selection_dialog.setDirectory(self.initial_dir)
+        selection_dialog.setDirectory(self.selected_dir)
         selection_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()

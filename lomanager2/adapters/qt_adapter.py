@@ -62,9 +62,6 @@ class Adapter(QtCore.QObject):
         self._software_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
 
-        # Extra variables that can be set by the user in GUI
-        self._local_copy_folder = None
-
         self._bind_views_to_models()
         self._connect_signals_and_slots()
         self._preset_views()
@@ -139,7 +136,6 @@ class Adapter(QtCore.QObject):
         self._app_main_view.extra_langs_window.exec()
 
     def _install_from_local_copy(self):
-        # Open confirmation dialog before proceeding with installation
         text = (
             "Following procedure will inspect the chosen directory to find "
             + "out if LibreOffice can be installed using packages therein.\n"
@@ -148,6 +144,10 @@ class Adapter(QtCore.QObject):
             + "language packages."
         )
         self._local_copy_view.info_box.setText(text)
+        # Set some dir before user makes proper choice
+        self._local_copy_view.set_initial_dir("/home")
+
+        # Open confirmation dialog before proceeding with installation
         if self._local_copy_view.exec():
             log.debug("Ok clicked: Installing from local copy...")
 
