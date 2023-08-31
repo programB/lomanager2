@@ -28,7 +28,7 @@ import pwd
 
 
 def has_root_privileges() -> bool:
-    return os.geteuid == 0
+    return os.geteuid() == 0
 
 
 def run_shell_command(
