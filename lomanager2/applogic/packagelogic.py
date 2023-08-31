@@ -5,7 +5,6 @@ import urllib.request, urllib.error
 from copy import deepcopy
 import xml.etree.ElementTree as ET
 import configuration
-from configuration import logging as log
 import lolangs
 from typing import Any, Tuple, Callable
 from . import PCLOS
@@ -15,6 +14,9 @@ from .callbacks import (
     progress_closure,
     progress_description_closure,
 )
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 
 class MainLogic(object):

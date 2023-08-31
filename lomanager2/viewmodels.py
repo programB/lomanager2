@@ -4,7 +4,9 @@ from functools import cmp_to_key
 from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from lolangs import supported_langs
 from applogic.datatypes import compare_versions
-from configuration import logging as log
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 column_idx = {
     "family": 0,

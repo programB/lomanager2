@@ -10,8 +10,9 @@ from viewmodels import (
     LanguageMenuRenderModel,
 )
 from threads import ProcedureWorker
-import configuration
-from configuration import logging as log
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 
 class Adapter(QtCore.QObject):

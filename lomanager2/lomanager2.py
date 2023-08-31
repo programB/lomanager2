@@ -3,8 +3,6 @@ from datetime import datetime
 import argparse
 import logging
 
-from adapters import qt_adapter, cli_adapter
-from applogic.PCLOS import has_root_privileges
 
 parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")
@@ -17,7 +15,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if has_root_privileges():
+
+# Check if programs runs with root privileges
+if os.geteuid() == 0:
     is_GUI_wanted = args.gui
     keep_logging_messages_in_english = args.force_english_logs
 
@@ -64,10 +64,15 @@ if has_root_privileges():
     # log.debug(f"is_GUI_wanted: {is_GUI_wanted}")
     # log.debug(f"is_DEBUG_mode_on {is_DEBUG_mode_on}")
     # log.debug(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
+    logger.debug("TEST")
 
     if is_GUI_wanted is True:
+        from adapters import qt_adapter
+
         qt_adapter.main()
     else:
+        from adapters import cli_adapter
+
         cli_adapter.main()
 else:
     print("This program requires root privileges to run.")

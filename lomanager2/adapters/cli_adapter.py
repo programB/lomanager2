@@ -1,6 +1,8 @@
-from configuration import logging as log
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 
 def main():
     # TODO: Implement
-    log.debug("CLI not yet implemented.")
+    log.warning("CLI not yet implemented.")

@@ -2,6 +2,8 @@ import logging
 import pathlib
 import socket
 
+
+log = logging.getLogger("lomanager2_logger")
 socket.setdefaulttimeout(15)
 
 
