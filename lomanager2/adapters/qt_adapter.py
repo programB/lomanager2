@@ -63,9 +63,6 @@ class Adapter(QtCore.QObject):
         self._langs_view.setItemDelegate(self.check_button)
 
         # Extra variables that can be set by the user in GUI
-        # Initialize local _keep_packages variable from configuration
-        self._keep_packages = configuration.keep_packages
-        self._force_java_download = False
         self._local_copy_folder = None
 
         self._bind_views_to_models()
@@ -175,25 +172,18 @@ class Adapter(QtCore.QObject):
             log.debug("Cancel clicked: User gave up installing from local copy")
 
     def _apply_changes(self):
-        # Set initial state of keep_packages checkbox
-        # (can be set in configuration)
-        if self._keep_packages is True:
-            self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                QtCore.Qt.CheckState.Checked
-            )
-        else:
-            self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                QtCore.Qt.CheckState.Unchecked
-            )
-
-        # Set the initial state of the force_java_download checkbox
-        # before displaying the dialog window
-        ch_s = (
-            QtCore.Qt.CheckState.Checked
-            if self._force_java_download
-            else QtCore.Qt.CheckState.Unchecked
+        # Reset initial state of keep_packages and force_java_download
+        # checkboxes to not checked
+        # No assumptions should be made, user has to explicitly demand
+        # both package retention and download
+        self._apply_changes_view.checkbox_keep_packages.setCheckState(
+            QtCore.Qt.CheckState.Unchecked
         )
-        self._apply_changes_view.checkbox_force_java_download.setCheckState(ch_s)
+        self._apply_changes_view.checkbox_force_java_download.setCheckState(
+            QtCore.Qt.CheckState.Unchecked
+        )
+
+        # Display summary of changes
         to_install, to_remove = self._app_logic.get_planned_changes()
         if to_install or to_remove:
             text = ""
@@ -219,10 +209,10 @@ class Adapter(QtCore.QObject):
         if self._apply_changes_view.exec():
             log.debug("Ok clicked. Applying changes...")
 
-            self._keep_packages = (
+            is_keep_packages_checked = (
                 self._apply_changes_view.checkbox_keep_packages.isChecked()
             )
-            self._force_java_download = (
+            is_force_java_download_checked = (
                 self._apply_changes_view.checkbox_force_java_download.isChecked()
             )
 
@@ -231,8 +221,8 @@ class Adapter(QtCore.QObject):
             # pass any variables required by this procedure as well.
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._app_logic.apply_changes,
-                keep_packages=self._keep_packages,
-                force_java_download=self._force_java_download,
+                keep_packages=is_keep_packages_checked,
+                force_java_download=is_force_java_download_checked,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
