@@ -1,5 +1,7 @@
 from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
-from configuration import logging as log
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 columns = {
     "Program name": {

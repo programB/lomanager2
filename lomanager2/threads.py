@@ -1,7 +1,9 @@
 import time
 
 from pysidecompat import QtCore  # pyright: ignore
-from configuration import logging as log
+import logging
+
+log = logging.getLogger("lomanager2_logger")
 
 
 class ProcedureWorker(QtCore.QThread):
