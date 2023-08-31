@@ -34,12 +34,12 @@ columns = {
     },
     "installed?": {
         "id": 6,
-        "show_in_software_view": True,
+        "show_in_software_view": False,
         "show_in_langs_view": False,
     },
     "marked for download?": {
         "id": 7,
-        "show_in_software_view": True,
+        "show_in_software_view": False,
         "show_in_langs_view": False,
     },
 }

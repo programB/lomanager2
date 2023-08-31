@@ -60,7 +60,7 @@ class AppMainWindow(QtWidgets.QMainWindow):
 
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
-        self.setMinimumSize(900, 550)
+        self.setMinimumSize(700, 550)
 
 
 class LangsModalWindow(QtWidgets.QDialog):
