@@ -1,7 +1,10 @@
+import os
+from datetime import datetime
 import argparse
+import logging
+
 from adapters import qt_adapter, cli_adapter
-import configuration
-from configuration import logging as log 
+from applogic.PCLOS import has_root_privileges
 
 parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")
@@ -14,19 +17,54 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-is_running_as_root = True  # TODO: Implement checking
+if has_root_privileges():
+    is_GUI_wanted = args.gui
+    keep_logging_messages_in_english = args.force_english_logs
 
-is_GUI_wanted = args.gui
-# TODO: affect logging level directly
-is_DEBUG_mode_on = args.debug
-keep_logging_messages_in_english = args.force_english_logs
+    # Setup logging
+    log_level = logging.DEBUG if args.debug else logging.INFO
 
-# TODO: prints for test purposes, remove when not needed
-log.debug(f"is_GUI_wanted: {is_GUI_wanted}")
-log.debug(f"is_DEBUG_mode_on {is_DEBUG_mode_on}")
-log.debug(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
+    # Create log(s) folder
+    logs_path = "/root/.lomanager2/log/"
+    os.makedirs(logs_path, exist_ok=True)
 
-if is_running_as_root:
+    # create logger
+    logger = logging.getLogger("lomanager2_logger")
+    logger.setLevel(log_level)
+
+    # create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+
+    # create file handler
+    log_filename = datetime.now().strftime("%Y-%m-%d_%H%M%S") + ".log"
+    logfile_handler = logging.FileHandler(
+        logs_path + log_filename, mode="w", encoding="utf-8", delay=False, errors=None
+    )
+    logfile_handler.setLevel(log_level)
+
+    # create formatters
+    debug_formatter = logging.Formatter(
+        "[%(levelname)s](%(asctime)s) (in %(module)s.%(funcName)s): %(message)s"
+    )
+    normal_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    # add formatters to handlers
+    formatter = debug_formatter if args.debug else normal_formatter
+    console_handler.setFormatter(formatter)
+    logfile_handler.setFormatter(formatter)
+
+    # add handlers to the logger
+    logger.addHandler(console_handler)
+    logger.addHandler(logfile_handler)
+
+    # TODO: prints for test purposes, remove when not needed
+    # log.debug(f"is_GUI_wanted: {is_GUI_wanted}")
+    # log.debug(f"is_DEBUG_mode_on {is_DEBUG_mode_on}")
+    # log.debug(f"keep_logging_messages_in_english: {keep_logging_messages_in_english}")
+
     if is_GUI_wanted is True:
         qt_adapter.main()
     else:
