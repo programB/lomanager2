@@ -34,12 +34,12 @@ columns = {
     },
     "installed?": {
         "id": 6,
-        "show_in_software_view": True,
+        "show_in_software_view": False,
         "show_in_langs_view": False,
     },
     "marked for download?": {
         "id": 7,
-        "show_in_software_view": True,
+        "show_in_software_view": False,
         "show_in_langs_view": False,
     },
 }
@@ -57,9 +57,10 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
     normal_text_color = QtGui.QColor("white")
     disabled_text_color = QtGui.QColor("#b4adaa")  # light grey
 
-    def __init__(self, parent=None):
+    def __init__(self, max_height=40, parent=None):
         super(CheckButtonDelegate, self).__init__(parent)
         self.update_model_signal.connect(self.update_model)
+        self.max_button_height = max_height
 
     def update_model(self, model, index):
         is_visible = bool(
@@ -75,9 +76,7 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 )
                 log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
                 log.debug(f"switching markstate: {markstate} -> {not markstate}")
-                model.setData(
-                    index, not markstate, QtCore.Qt.ItemDataRole.EditRole
-                )
+                model.setData(index, not markstate, QtCore.Qt.ItemDataRole.EditRole)
             else:
                 log.debug("button disabled")
         else:
@@ -158,9 +157,18 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 painter.setBrush(button_color)
 
                 # Draw the "button"
+                # limit button height
+                x, y, w, h = option.rect.getRect()
+                new_h = self.max_button_height if h > self.max_button_height else h
+                new_y = y + (h / 2) - (new_h / 2)
+                option.rect.setRect(x, new_y, w, new_h)
+
+                # shrink is slightly
                 delta = 2
                 option.rect.adjust(delta, delta, -delta, -delta)
                 x, y, w, h = option.rect.getRect()
+
+                # paint with smooth edges
                 painter.setRenderHint(QtGui.QPainter.Antialiasing)
                 painter.drawRoundedRect(x, y, w, h, 10, 10)
 

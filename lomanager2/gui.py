@@ -13,6 +13,16 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.software_view = QtWidgets.QTableView()
         header = self.software_view.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        # Header is defined but for proper UX should be hidden in this view
+        self.software_view.verticalHeader().hide()
+        self.software_view.horizontalHeader().hide()
+        # Selection and focus should be turned off in this view for UX reasons
+        self.software_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
+        )
+        self.software_view.setFocusPolicy(QtGui.Qt.NoFocus)
+        # Hide grid for better UX
+        self.software_view.setShowGrid(False)
         # -- end define Main View
 
         # -- define Languages window
@@ -50,7 +60,7 @@ class AppMainWindow(QtWidgets.QMainWindow):
 
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
-        self.setMinimumSize(900, 550)
+        self.setMinimumSize(700, 550)
 
 
 class LangsModalWindow(QtWidgets.QDialog):
@@ -64,6 +74,10 @@ class LangsModalWindow(QtWidgets.QDialog):
         self.langs_view = QtWidgets.QTableView()
         header = self.langs_view.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        # Allow columns to be user sortable
+        # (model to which this view will get attached decides which
+        #  column(s) are keyed for sorting)
+        self.langs_view.setSortingEnabled(True)
         # -- end define Langs View
 
         # -- define other GUI elements
@@ -113,6 +127,8 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
         self.info_box = QtWidgets.QLabel()
         self.checkbox_keep_packages = QtWidgets.QCheckBox("Keep downloaded packages")
         self.checkbox_force_java_download = QtWidgets.QCheckBox("Download Java")
+        # Initially disabled !
+        self.checkbox_force_java_download.setEnabled(False)
 
         self.buttonBox = QtWidgets.QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
@@ -129,36 +145,36 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
 
         self.setLayout(main_layout)
 
-        # Cancel button sends this so we can connect directly
+        self.checkbox_keep_packages.stateChanged.connect(self._offer_java)
+        # Cancel button sends rejected signal so it can be connect directly
         self.buttonBox.rejected.connect(self.reject)
-        # Apply button sends something else so we will
-        # check which button was pressed and ...
+        # Apply button is not sending accepted signal but something else.
+        # Check which button was pressed and ...
         self.buttonBox.clicked.connect(self._which_button)
         self.buttonBox.accepted.connect(self.accept)
 
     def _which_button(self, clicked_button):
-        # ... if it is apply button we will make it
-        #     send the 'accepted' signal
+        # ... if it's the apply button send the 'accepted' signal
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
+
+    def _offer_java(self, is_keep_packages_marked):
+        self.checkbox_force_java_download.setEnabled(is_keep_packages_marked)
 
 
 class LocalCopyInstallDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.selected_dir = None
-
         self.setWindowTitle("Install from local copy")
         main_layout = QtWidgets.QVBoxLayout()
 
         self.info_box = QtWidgets.QLabel()
+        self.info_box.setWordWrap(True)
 
         file_input_layout = QtWidgets.QHBoxLayout()
-        self.initial_dir = "/"
         self.directory_choice_box = QtWidgets.QLineEdit()
         self.directory_choice_box.setReadOnly(True)
-        self.directory_choice_box.setPlaceholderText(self.initial_dir)
         self.button_choose_directory = QtWidgets.QPushButton("Choose directory...")
         file_input_layout.addWidget(self.directory_choice_box)
         file_input_layout.addWidget(self.button_choose_directory)
@@ -174,17 +190,17 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         main_layout.addWidget(self.info_box)
         main_layout.addItem(file_input_layout)
         main_layout.addWidget(self.buttonBox)
-
         self.setLayout(main_layout)
 
         self.button_choose_directory.clicked.connect(self._chose_directory)
-
         # Cancel button sends this so we can connect directly
         self.buttonBox.rejected.connect(self.reject)
         # Apply button sends something else so we will
         # check which button was pressed and ...
         self.buttonBox.clicked.connect(self._which_button)
         self.buttonBox.accepted.connect(self.accept)
+
+        self.set_initial_dir()
 
     def _which_button(self, clicked_button):
         # ... if it is the apply button we will
@@ -193,12 +209,17 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
 
-    def _chose_directory(self):
-        caption = "Select directory"
+    def set_initial_dir(self, dir: str | None = None) -> None:
+        # Set some initial value - it will be overridden by user selection
+        self.selected_dir = "/" if dir is None else dir
+        self.directory_choice_box.setText("")
+        self.directory_choice_box.setPlaceholderText(self.selected_dir)
 
+    def _chose_directory(self):
         selection_dialog = QtWidgets.QFileDialog()
+        caption = "Select directory"
         selection_dialog.setWindowTitle(caption)
-        selection_dialog.setDirectory(self.initial_dir)
+        selection_dialog.setDirectory(self.selected_dir)
         selection_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()

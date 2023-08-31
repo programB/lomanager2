@@ -62,12 +62,6 @@ class Adapter(QtCore.QObject):
         self._software_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
 
-        # Extra variables that can be set by the user in GUI
-        # Initialize local _keep_packages variable from configuration
-        self._keep_packages = configuration.keep_packages
-        self._force_java_download = False
-        self._local_copy_folder = None
-
         self._bind_views_to_models()
         self._connect_signals_and_slots()
         self._preset_views()
@@ -121,7 +115,6 @@ class Adapter(QtCore.QObject):
                 self._software_view.hideColumn(n)
             if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
-        self._langs_view.setSortingEnabled(True)
 
     def _rebuild_tree(self):
         log.debug("Starting package tree rebuild!")
@@ -132,6 +125,9 @@ class Adapter(QtCore.QObject):
         self._software_menu_model.endResetModel()
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
+        # Increase spacing between rows in software_view
+        for row in range(self._software_view.model().rowCount()):
+            self._software_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
@@ -140,7 +136,6 @@ class Adapter(QtCore.QObject):
         self._app_main_view.extra_langs_window.exec()
 
     def _install_from_local_copy(self):
-        # Open confirmation dialog before proceeding with installation
         text = (
             "Following procedure will inspect the chosen directory to find "
             + "out if LibreOffice can be installed using packages therein.\n"
@@ -149,7 +144,10 @@ class Adapter(QtCore.QObject):
             + "language packages."
         )
         self._local_copy_view.info_box.setText(text)
-        self._local_copy_view.info_box.setWordWrap(True)
+        # Set some dir before user makes proper choice
+        self._local_copy_view.set_initial_dir("/home")
+
+        # Open confirmation dialog before proceeding with installation
         if self._local_copy_view.exec():
             log.debug("Ok clicked: Installing from local copy...")
 
@@ -173,43 +171,39 @@ class Adapter(QtCore.QObject):
             log.debug("Cancel clicked: User gave up installing from local copy")
 
     def _apply_changes(self):
-        # Set initial state of keep_packages checkbox
-        # (can be set in configuration)
-        if self._keep_packages is True:
-            self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                QtCore.Qt.CheckState.Checked
-            )
-        else:
-            self._apply_changes_view.checkbox_keep_packages.setCheckState(
-                QtCore.Qt.CheckState.Unchecked
-            )
-
-        # Set the initial state of the force_java_download checkbox
-        # before displaying the dialog window
-        ch_s = (
-            QtCore.Qt.CheckState.Checked
-            if self._force_java_download
-            else QtCore.Qt.CheckState.Unchecked
+        # Set keep_packages and force_java_download to NOT Checked
+        # No assumptions should be made here, user has to explicitly demand
+        # both package retention and download
+        self._apply_changes_view.checkbox_keep_packages.setCheckState(
+            QtCore.Qt.CheckState.Unchecked
         )
-        self._apply_changes_view.checkbox_force_java_download.setCheckState(ch_s)
-        to_install, to_remove = self._app_logic.get_planned_changes()
-        if to_install or to_remove:
-            text = ""
-            if to_install:
-                text += "Following components will be installed:\n"
-                for p in to_install:
-                    text += "- " + p + "\n"
-            text += "\n"
-            if to_remove:
-                text += "Following components will be removed:\n"
-                for p in to_remove:
-                    text += "- " + p + "\n"
-            self._apply_changes_view.info_box.setText(text)
-            self._apply_changes_view.apply_button.setEnabled(True)
-        else:
-            text = "No changes to apply"
-            self._apply_changes_view.info_box.setText(text)
-            self._apply_changes_view.apply_button.setEnabled(False)
+        self._apply_changes_view.checkbox_force_java_download.setCheckState(
+            QtCore.Qt.CheckState.Unchecked
+        )
+
+        install_list, removal_list = self._app_logic.get_planned_changes()
+
+        summary = ""
+        if install_list:
+            summary += "Following components will be installed:\n"
+            for p in install_list:
+                summary += "- " + p + "\n"
+        summary += "\n"
+        if removal_list:
+            summary += "Following components will be removed:\n"
+            for p in removal_list:
+                summary += "- " + p + "\n"
+        if not install_list and not removal_list:
+            summary = "No changes to apply"
+        self._apply_changes_view.info_box.setText(summary)
+
+        is_ok_to_apply_changes = True if install_list or removal_list else False
+        is_ok_to_keep_packages = True if install_list else False
+        self._apply_changes_view.apply_button.setEnabled(is_ok_to_apply_changes)
+        self._apply_changes_view.checkbox_keep_packages.setEnabled(
+            is_ok_to_keep_packages
+        )
+        # (force_java_download checkbox enable state is auto-decided in GUI)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation
@@ -217,10 +211,10 @@ class Adapter(QtCore.QObject):
         if self._apply_changes_view.exec():
             log.debug("Ok clicked. Applying changes...")
 
-            self._keep_packages = (
+            is_keep_packages_checked = (
                 self._apply_changes_view.checkbox_keep_packages.isChecked()
             )
-            self._force_java_download = (
+            is_force_java_download_checked = (
                 self._apply_changes_view.checkbox_force_java_download.isChecked()
             )
 
@@ -229,8 +223,8 @@ class Adapter(QtCore.QObject):
             # pass any variables required by this procedure as well.
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._app_logic.apply_changes,
-                keep_packages=self._keep_packages,
-                force_java_download=self._force_java_download,
+                keep_packages=is_keep_packages_checked,
+                force_java_download=is_force_java_download_checked,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -303,6 +297,7 @@ class Adapter(QtCore.QObject):
 
         self._progress_view.hide()
         self._app_main_view.unsetCursor()
+        self._progress_view.progress_bar.setVisible(True)
 
         log.debug("Emiting rebuild_tree_signal")
         self.rebuild_tree_signal.emit()
@@ -360,6 +355,7 @@ class Adapter(QtCore.QObject):
             overall_progress_description=self.overall_progress_description_signal.emit,
             overall_progress_percentage=self.overall_progress_signal.emit,
         )
+        self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
 
