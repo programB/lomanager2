@@ -172,9 +172,8 @@ class Adapter(QtCore.QObject):
             log.debug("Cancel clicked: User gave up installing from local copy")
 
     def _apply_changes(self):
-        # Reset initial state of keep_packages and force_java_download
-        # checkboxes to not checked
-        # No assumptions should be made, user has to explicitly demand
+        # Set keep_packages and force_java_download to NOT Checked
+        # No assumptions should be made here, user has to explicitly demand
         # both package retention and download
         self._apply_changes_view.checkbox_keep_packages.setCheckState(
             QtCore.Qt.CheckState.Unchecked
@@ -183,25 +182,29 @@ class Adapter(QtCore.QObject):
             QtCore.Qt.CheckState.Unchecked
         )
 
-        # Display summary of changes
-        to_install, to_remove = self._app_logic.get_planned_changes()
-        if to_install or to_remove:
-            text = ""
-            if to_install:
-                text += "Following components will be installed:\n"
-                for p in to_install:
-                    text += "- " + p + "\n"
-            text += "\n"
-            if to_remove:
-                text += "Following components will be removed:\n"
-                for p in to_remove:
-                    text += "- " + p + "\n"
-            self._apply_changes_view.info_box.setText(text)
-            self._apply_changes_view.apply_button.setEnabled(True)
-        else:
-            text = "No changes to apply"
-            self._apply_changes_view.info_box.setText(text)
-            self._apply_changes_view.apply_button.setEnabled(False)
+        install_list, removal_list = self._app_logic.get_planned_changes()
+
+        summary = ""
+        if install_list:
+            summary += "Following components will be installed:\n"
+            for p in install_list:
+                summary += "- " + p + "\n"
+        summary += "\n"
+        if removal_list:
+            summary += "Following components will be removed:\n"
+            for p in removal_list:
+                summary += "- " + p + "\n"
+        if not install_list and not removal_list:
+            summary = "No changes to apply"
+        self._apply_changes_view.info_box.setText(summary)
+
+        is_ok_to_apply_changes = True if install_list or removal_list else False
+        is_ok_to_keep_packages = True if install_list else False
+        self._apply_changes_view.apply_button.setEnabled(is_ok_to_apply_changes)
+        self._apply_changes_view.checkbox_keep_packages.setEnabled(
+            is_ok_to_keep_packages
+        )
+        # (force_java_download checkbox enable state is auto-decided in GUI)
 
         # Open a dialog and ask the user:
         # - whether to delete downloaded packages after installation

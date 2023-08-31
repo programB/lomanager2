@@ -127,6 +127,8 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
         self.info_box = QtWidgets.QLabel()
         self.checkbox_keep_packages = QtWidgets.QCheckBox("Keep downloaded packages")
         self.checkbox_force_java_download = QtWidgets.QCheckBox("Download Java")
+        # Initially disabled !
+        self.checkbox_force_java_download.setEnabled(False)
 
         self.buttonBox = QtWidgets.QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
@@ -143,18 +145,21 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
 
         self.setLayout(main_layout)
 
-        # Cancel button sends this so we can connect directly
+        self.checkbox_keep_packages.stateChanged.connect(self._offer_java)
+        # Cancel button sends rejected signal so it can be connect directly
         self.buttonBox.rejected.connect(self.reject)
-        # Apply button sends something else so we will
-        # check which button was pressed and ...
+        # Apply button is not sending accepted signal but something else.
+        # Check which button was pressed and ...
         self.buttonBox.clicked.connect(self._which_button)
         self.buttonBox.accepted.connect(self.accept)
 
     def _which_button(self, clicked_button):
-        # ... if it is apply button we will make it
-        #     send the 'accepted' signal
+        # ... if it's the apply button send the 'accepted' signal
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
+
+    def _offer_java(self, is_keep_packages_marked):
+        self.checkbox_force_java_download.setEnabled(is_keep_packages_marked)
 
 
 class LocalCopyInstallDialog(QtWidgets.QDialog):
