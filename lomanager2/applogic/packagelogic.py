@@ -855,7 +855,9 @@ class MainLogic(object):
         available_virtual_packages = []
         msg = ""
 
-        java_ver = configuration.latest_available_java_version
+        # Since this program is not meant to update Java,
+        # Java version is not used.
+        java_ver = ""
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
         java_core_vp.is_installed = False
         java_core_vp.real_files = [
@@ -874,7 +876,7 @@ class MainLogic(object):
                 "checksum": "",
             },
         ]
-        recommended_Java_ver = configuration.latest_available_java_version
+        recommended_Java_ver = ""
         available_virtual_packages.append(java_core_vp)
 
         # Decide which version should be recommended for installation
