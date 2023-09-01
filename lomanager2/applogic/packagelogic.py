@@ -70,12 +70,6 @@ class MainLogic(object):
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if normal procedure for making changes was not blocked
-        if self.global_flags.block_normal_install is True:
-            msg = "Modifications were blocked"
-            self.inform_user(msg, isOK=False)
-            return
-
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
