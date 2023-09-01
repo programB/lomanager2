@@ -774,7 +774,7 @@ def install_using_rpm(
             def progress_parser(input: bytes) -> tuple[str, int]:
                 # regex for stdout output
                 regex_name_and_progress = re.compile(
-                    r"^(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
+                    r"^[0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
                 )
                 last_string = input.decode("utf-8").split("\n")[-1]
                 # Unfortunately rpm outputs 40 backspace control chars
