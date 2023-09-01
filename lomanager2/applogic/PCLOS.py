@@ -30,7 +30,7 @@ log = logging.getLogger("lomanager2_logger")
 
 
 def run_shell_command(
-    cmd: str, shell="bash", timeout=1, err_check=True
+    cmd: str, shell="bash", timeout=20, err_check=True
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
@@ -168,7 +168,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             return (False, False, "Failed to check updates")
 
         status, output = run_shell_command(
-            "apt-get dist-upgrade --fix-broken --simulate", timeout=15, err_check=True
+            "apt-get dist-upgrade --fix-broken --simulate", err_check=True
         )
         if status:
             check_successful = True
@@ -599,7 +599,6 @@ def install_using_apt_get(
     log.debug("Trying dry-run install to check for errors...")
     status, output = run_shell_command(
         f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
-        timeout=15,
         err_check=False,
     )
     if status:
@@ -751,7 +750,6 @@ def install_using_rpm(
     log.debug("Trying dry-run install to check for errors...")
     status, output = run_shell_command(
         "rpm -Uvh --replacepkgs --test " + files_to_install,
-        timeout=5,
         err_check=False,
     )
     if status:
@@ -840,7 +838,6 @@ def uninstall_using_apt_get(
     log.debug("Trying dry-run removal to check for errors...")
     status, output = run_shell_command(
         f"apt-get remove --simulate  {package_nameS_string} -y",
-        timeout=15,
         err_check=False,
     )
     if status:
