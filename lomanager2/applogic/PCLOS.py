@@ -311,42 +311,55 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
         if success and reply:
             log.debug("LibreOffice's ure package is installed")
+            # Get LibreOffice's full version string by quering this rpm package
             ure_package_str = reply.split("\n")[0]
-            # Get full version by quering this rpm package
             success, reply = run_shell_command(
                 f"rpm -q {ure_package_str} --qf %{{version}}"
             )
             full_version = reply.strip()
-            log.debug(
-                f"LibreOffice office version read from ure package is: {full_version}"
-            )
             base_version = make_base_ver(full_version)
+            log.debug(f"LibreOffice version read from ure package: {full_version}")
 
-            # Try to detect language packs installed for that version
+            log.debug("Checking for language packs installed for that version")
             success, reply = run_shell_command(
                 f"rpm -qa | grep libreoffice{base_version}", err_check=False
             )
             if success and reply:
                 regex_lang = re.compile(
-                    rf"^libreoffice{base_version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{full_version}[0-9\-]*[0-9]$"
+                    rf"^libreoffice{base_version}-(?P<det_lang>[a-z]{{2,3}})(?P<det_regio>\-[a-zA-Z]*)?-{full_version}[0-9\-]*[0-9]$"
                 )
                 # example matches:
                 # libreoffice7.5-fr-7.5.4.2-2
-                # (the last digit after the "-" sing is the rpm release version
-                # and is of no interest)
                 # #  det_lang = "fr" det_regio = ""
+                # (the digit after the last "-" is the rpm release version
+                # and is of no interest)
                 # libreoffice7.4-ca-valencia-7.4.4.2-2
                 # #  det_lang = "ca" det_regio = "-valencia"
                 # libreoffice7.4-en-GB-7.4.4.2-2
                 # #  det_lang = "en" det_regio = "-GB"
+                # libreoffice7.4-kmr-Latn-7.4.4.2-2
+                # #  det_lang = "kmr" det_regio = "-Latn"
+                # ALSO !:
+                # libreoffice7.5-ure-7.5.4.2-2
+                # this is not a language package
+                # Alternative approach would be to do another query for
+                # every package detected like so:
+                # rpm -q <package> --qf %{summary}
+                # and rely on summary for language packages being:
+                # "Brand language module"
+                # regex is still needed thoug to extract det_lang and det_regio
+                # For now we just explicitly exclude those pesky packages
+                non_lang_packages = ["ure"]
                 langs_found = []
                 for package in reply.split("\n"):
                     if match := regex_lang.search(package):
                         det_lang = match.group("det_lang")
                         det_regio = match.group("det_regio")
-                        if det_regio:
-                            det_lang = det_lang + det_regio
-                        langs_found.append(det_lang)
+                        if det_lang not in non_lang_packages:
+                            if det_regio:
+                                det_lang = det_lang + det_regio
+                            log.debug(f"Found language {det_lang}")
+                            langs_found.append(det_lang)
                 list_of_detected_suits.append(
                     (
                         "LibreOffice",
