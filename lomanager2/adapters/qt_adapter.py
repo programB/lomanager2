@@ -331,7 +331,7 @@ class Adapter(QtCore.QObject):
     def _lock_unlock_GUI(self):
         is_apply_changes_enabled = (
             self._is_starting_procedures_allowed
-            and not self._app_logic.global_flags.block_normal_procedure
+            and not self._app_logic.global_flags.block_normal_install
         )
         is_local_install_enabled = (
             self._is_starting_procedures_allowed
