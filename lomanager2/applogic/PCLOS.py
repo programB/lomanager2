@@ -358,8 +358,12 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                         if det_lang not in non_lang_packages:
                             if det_regio:
                                 det_lang = det_lang + det_regio
-                            log.debug(f"Found language {det_lang}")
-                            langs_found.append(det_lang)
+                            # en-US language pack it is only installed/removed
+                            # together with core package and should
+                            # not be treated as a standalone addition
+                            if det_lang != "en-US":
+                                log.debug(f"Found language {det_lang}")
+                                langs_found.append(det_lang)
                 list_of_detected_suits.append(
                     (
                         "LibreOffice",

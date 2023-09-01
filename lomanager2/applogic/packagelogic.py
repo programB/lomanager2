@@ -900,7 +900,9 @@ class MainLogic(object):
             },
         ]
         available_virtual_packages.append(office_core_vp)
-        for lang_code in lolangs.supported_langs.keys():
+        # en-US language pack it is only installed/removed together with
+        # core package and should not be offered for install separately
+        for lang_code in lolangs.supported_langs.keys() - {"en-US"}:
             office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
@@ -1413,14 +1415,16 @@ class MainLogic(object):
             # update menus
             PCLOS.update_menus()
 
-        # Now let's deal with LibreOffice's the language packs.
+        # Now let's deal with LibreOffice's language packs.
         # User may want to remove just that (no core package uninstall)
         # in which case we are going to be done.
         # Alternatively core package is also marked for removal and will be
         # uninstalled in the later step.
         # Such ordering will not interfere with dependencies,
         # as language packs are optional additions anyway.
-        # Never remove en-US language pack
+
+        # Never remove en-US language pack on its own
+        # (it is only installed/removed together with core package)
         LibreOfficeLANGS = [
             p
             for p in packages_to_remove
