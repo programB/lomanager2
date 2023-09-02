@@ -1770,46 +1770,19 @@ class MainLogic(object):
 
     def _install_clipart(
         self,
-        clipart_rpmS: dict,
+        clipart_rpmS,
         progress_msg: Callable,
         progress: Callable,
     ) -> tuple[bool, str]:
-        # 1) Move files (clipart-openclipart- and libreoffice-openclipart-)
-        #    from verified copy directory to /var/cache/apt/archives
-        cache_dir = pathlib.Path("/var/cache/apt/archives/")
-        package_names = []
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-        for file in clipart_rpmS:
-            # Full name in to_path (including file.name) causes
-            # move_file to overwrite destination if it exists
-            if not PCLOS.move_file(
-                from_path=file, to_path=cache_dir.joinpath(file.name)
-            ):
-                return (False, "Openclipart not installed, error moving file")
-            # rpm name != rpm filename
-            rpm_name = "-".join(file.name.split("-")[:2])
-            package_names.append(rpm_name)
-        log.debug(f"clipart package_names: {package_names}")
-
-        # 2) Use apt-get to install those 2 files
-        is_installed, msg = PCLOS.install_using_apt_get(
-            package_nameS=package_names,
-            progress_description=progress_msg,
-            progress_percentage=progress,
+        # Use rpm to install clipart rpm packages
+        # (sititing in verified_dir)
+        is_installed, msg = PCLOS.install_using_rpm(
+            clipart_rpmS,
+            progress_msg,
+            progress,
         )
         if is_installed is False:
             return (False, msg)
-
-        # 3) move rpm files back to storage
-        # TODO: What if the user doesn't want to be keeping the files?
-        #       Is it a good place to remove them?
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-        for file in clipart_rpmS:
-            if not PCLOS.move_file(
-                from_path=cache_dir.joinpath(file.name), to_path=file
-            ):
-                return (False, "Openclipart installed but there was error moving file")
-
         return (True, "Openclipart successfully installed")
 
     def _verify_local_copy(
