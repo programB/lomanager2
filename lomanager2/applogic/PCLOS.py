@@ -30,7 +30,7 @@ log = logging.getLogger("lomanager2_logger")
 
 
 def run_shell_command(
-    cmd: str, shell="bash", timeout=1, err_check=True
+    cmd: str, shell="bash", timeout=20, err_check=True
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
@@ -168,7 +168,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             return (False, False, "Failed to check updates")
 
         status, output = run_shell_command(
-            "apt-get dist-upgrade --fix-broken --simulate", timeout=15, err_check=True
+            "apt-get dist-upgrade --fix-broken --simulate", err_check=True
         )
         if status:
             check_successful = True
@@ -311,42 +311,59 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
         if success and reply:
             log.debug("LibreOffice's ure package is installed")
+            # Get LibreOffice's full version string by quering this rpm package
             ure_package_str = reply.split("\n")[0]
-            # Get full version by quering this rpm package
             success, reply = run_shell_command(
                 f"rpm -q {ure_package_str} --qf %{{version}}"
             )
             full_version = reply.strip()
-            log.debug(
-                f"LibreOffice office version read from ure package is: {full_version}"
-            )
             base_version = make_base_ver(full_version)
+            log.debug(f"LibreOffice version read from ure package: {full_version}")
 
-            # Try to detect language packs installed for that version
+            log.debug("Checking for language packs installed for that version")
             success, reply = run_shell_command(
                 f"rpm -qa | grep libreoffice{base_version}", err_check=False
             )
             if success and reply:
                 regex_lang = re.compile(
-                    rf"^libreoffice{base_version}-(?P<det_lang>[a-z][a-z])(?P<det_regio>\-[a-z]*[A-Z]*[A-Z]*)?-{full_version}[0-9\-]*[0-9]$"
+                    rf"^libreoffice{base_version}-(?P<det_lang>[a-z]{{2,3}})(?P<det_regio>\-[a-zA-Z]*)?-{full_version}[0-9\-]*[0-9]$"
                 )
                 # example matches:
                 # libreoffice7.5-fr-7.5.4.2-2
-                # (the last digit after the "-" sing is the rpm release version
-                # and is of no interest)
                 # #  det_lang = "fr" det_regio = ""
+                # (the digit after the last "-" is the rpm release version
+                # and is of no interest)
                 # libreoffice7.4-ca-valencia-7.4.4.2-2
                 # #  det_lang = "ca" det_regio = "-valencia"
                 # libreoffice7.4-en-GB-7.4.4.2-2
                 # #  det_lang = "en" det_regio = "-GB"
+                # libreoffice7.4-kmr-Latn-7.4.4.2-2
+                # #  det_lang = "kmr" det_regio = "-Latn"
+                # ALSO !:
+                # libreoffice7.5-ure-7.5.4.2-2
+                # this is not a language package
+                # Alternative approach would be to do another query for
+                # every package detected like so:
+                # rpm -q <package> --qf %{summary}
+                # and rely on summary for language packages being:
+                # "Brand language module"
+                # regex is still needed thoug to extract det_lang and det_regio
+                # For now we just explicitly exclude those pesky packages
+                non_lang_packages = ["ure"]
                 langs_found = []
                 for package in reply.split("\n"):
                     if match := regex_lang.search(package):
                         det_lang = match.group("det_lang")
                         det_regio = match.group("det_regio")
-                        if det_regio:
-                            det_lang = det_lang + det_regio
-                        langs_found.append(det_lang)
+                        if det_lang not in non_lang_packages:
+                            if det_regio:
+                                det_lang = det_lang + det_regio
+                            # en-US language pack it is only installed/removed
+                            # together with core package and should
+                            # not be treated as a standalone addition
+                            if det_lang != "en-US":
+                                log.debug(f"Found language {det_lang}")
+                                langs_found.append(det_lang)
                 list_of_detected_suits.append(
                     (
                         "LibreOffice",
@@ -526,15 +543,21 @@ def move_dir(from_path: pathlib.Path, to_path: pathlib.Path) -> tuple[bool, str]
 
 
 def run_shell_command_with_progress(
-    cmd,
+    cmd: str,
     progress: Callable,
     progress_description: Callable,
     parser: Callable,
     byte_output=False,
+    shell="bash",
 ) -> tuple[bool, str]:
-    full_command = cmd
+    full_command = [shell] + ["-c"] + [cmd]
     fulloutput = []
-    ctrl_chars = list(map(chr, range(0, 32))) + list(map(chr, range(127, 160)))
+    # control characters excluding new line char "\n"
+    ctrl_chars = (
+        list(map(chr, range(0, 9)))
+        + list(map(chr, range(11, 32)))
+        + list(map(chr, range(127, 160)))
+    )
 
     with subprocess.Popen(
         full_command,
@@ -544,31 +567,26 @@ def run_shell_command_with_progress(
         shell=False,
         universal_newlines=not byte_output,
     ) as proc:
-        concatenated_b = b""
+        concat_normal_chars = b""
         while proc.poll() is None:
             if byte_output:
                 output = proc.stdout.read(1)
-                concatenated_b += output
                 fulloutput.append(output.decode("utf-8"))
+                if parser and output.decode("utf-8") not in ctrl_chars:
+                    # Don't bother calling parser when receiving control chars
+                    concat_normal_chars += output
+                    label, percentage = parser(concat_normal_chars)
+                    if label != "no match":
+                        progress_description(label)
+                        progress(percentage)
             else:  # strings
                 output = proc.stdout.readline()
                 fulloutput.append(output)
-            if parser:
-                if byte_output:
-                    string_to_parse = concatenated_b
-                    # Don't bother reporting progress and spamming
-                    # log if only a control char was read
-                    if output.decode("utf-8") not in ctrl_chars:
-                        label, percentage = parser(string_to_parse)
+                if parser:
+                    label, percentage = parser(output)
+                    if label != "no match":
                         progress_description(label)
                         progress(percentage)
-                    else:
-                        pass
-                else:
-                    string_to_parse = output
-                    label, percentage = parser(string_to_parse)
-                    progress_description(label)
-                    progress(percentage)
     return (True, "".join(fulloutput))
 
 
@@ -582,7 +600,6 @@ def install_using_apt_get(
     log.debug("Trying dry-run install to check for errors...")
     status, output = run_shell_command(
         f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
-        timeout=15,
         err_check=False,
     )
     if status:
@@ -620,10 +637,10 @@ def install_using_apt_get(
         )
         if match := new_regex.search(input):
             return (match.group("p_name"), int(match.group("progress")))
-        return ("", 0)
+        return ("no match", 0)
 
     _, output = run_shell_command_with_progress(
-        ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
+        f"apt-get install --reinstall {package_nameS_string} -y",
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
@@ -734,7 +751,6 @@ def install_using_rpm(
     log.debug("Trying dry-run install to check for errors...")
     status, output = run_shell_command(
         "rpm -Uvh --replacepkgs --test " + files_to_install,
-        timeout=5,
         err_check=False,
     )
     if status:
@@ -756,47 +772,63 @@ def install_using_rpm(
             # progress installing rpm. Counting them to calculate percentage.
             def progress_parser(input: bytes) -> tuple[str, int]:
                 # regex for stdout output
+                regex_verifying = re.compile(r"Verifying[\.]+\s*(?P<p_progress>[\#]+)")
+                regex_preparing = re.compile(r"Preparing[\.]+\s*(?P<p_progress>[\#]+)")
+                regex_updinst = re.compile(r"Updating\s/\sinstalling[\.]+")
                 regex_name_and_progress = re.compile(
-                    r"^(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
+                    r"^[\s0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
                 )
                 last_string = input.decode("utf-8").split("\n")[-1]
-                # Unfortunately rpm outputs 40 backspace control chars
+                # Unfortunately rpm outputs backspace control chars
                 # to do its progress reporting which
                 # means some long rpm names can get trimmed.
                 # To try to deal with that we save the name the first time
                 # regex match is successful and we retain it (and return it)
-                # until we gather 40 # symbols then we reset for next
-                # package name.
+                # until we gather max no of '#' symbols (should be 40 but is 33)
+                # then we reset for next package name.
+                hashes4done = 33
                 first = True
                 p_name = ""
                 p_progress = 0
-                if match := regex_name_and_progress.search(last_string):
-                    # log.debug("match found")
+                match_veryfying = regex_verifying.search(last_string)
+                match_preparing = regex_preparing.search(last_string)
+                match_updinst = regex_updinst.search(last_string)
+                match_n_p = regex_name_and_progress.search(last_string)
+                if match_veryfying:
+                    verifying_msg = "Verifying..."
+                    p_progress = int(
+                        100 * len(match_veryfying.group("p_progress")) / hashes4done
+                    )
+                    return (verifying_msg, p_progress)
+                elif match_preparing:
+                    preparing_msg = "Preparing..."
+                    p_progress = int(
+                        100 * len(match_preparing.group("p_progress")) / hashes4done
+                    )
+                    return (preparing_msg, p_progress)
+                elif match_updinst:
+                    installing_msg = "Installing..."
+                    p_progress = 0
+                    return (installing_msg, p_progress)
+                elif match_n_p:
                     if first:
-                        p_name = match.group("p_name")
-                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        p_name = match_n_p.group("p_name")
+                        p_progress = int(
+                            100 * len(match_n_p.group("p_progress")) / hashes4done
+                        )
                         first = False
                     else:
-                        p_progress = int(100 * len(match.group("p_progress")) / 40)
-                        if len(match.group("p_progress")) == 40:
+                        p_progress = int(
+                            100 * len(match_n_p.group("p_progress")) / hashes4done
+                        )
+                        if len(match_n_p.group("p_progress")) == hashes4done:
                             first = True
                     return (p_name, p_progress)
                 else:
-                    if last_string == b"":
-                        return ("", 0)
-                    else:
-                        return ("Working...", 0)
+                    return ("no match", 0)
 
-            cmd_list = ["bash", "-c"]
-            rpm_cmd = ["rpm -Uvh --replacepkgs " + files_to_install]
             status, msg = run_shell_command_with_progress(
-                cmd_list + rpm_cmd,
-                # Example
-                # [
-                #     "bash",
-                #     "-c",
-                #     "rpm -Uvh /tmp/lomanager2-tmp/working_directory/tanglet-1.6.1.1-1pclos2022.x86_64.rpm",
-                # ],
+                f"rpm -Uvh --replacepkgs {files_to_install}",
                 progress=progress_percentage,
                 progress_description=progress_description,
                 parser=progress_parser,
@@ -823,7 +855,6 @@ def uninstall_using_apt_get(
     log.debug("Trying dry-run removal to check for errors...")
     status, output = run_shell_command(
         f"apt-get remove --simulate  {package_nameS_string} -y",
-        timeout=15,
         err_check=False,
     )
     if status:
@@ -832,14 +863,14 @@ def uninstall_using_apt_get(
         )
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                # Out should contain a line:
+                # "0 upgraded, 0 newly installed, X removed and Y not upgraded."
+                # where X must be != 0, Y doesn't matter, can be anything
                 n_upgraded = match.group("n_upgraded")
                 n_installed = match.group("n_installed")
                 n_removed = match.group("n_removed")
                 n_not_upgraded = match.group("n_not_upgraded")
-                if not (
-                    (n_upgraded == n_installed == n_not_upgraded == "0")
-                    and n_removed != "0"
-                ):
+                if not ((n_upgraded == n_installed == "0") and n_removed != "0"):
                     msg = (
                         "Dry-run removal failed. Packages where not removed: " + output
                     )
@@ -859,10 +890,10 @@ def uninstall_using_apt_get(
         )
         if match := new_regex.search(input):
             return (match.group("p_name"), int(match.group("progress")))
-        return ("", 0)
+        return ("no match", 0)
 
     _, msg = run_shell_command_with_progress(
-        ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
+        f"apt-get remove {package_nameS_string} -y",
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,

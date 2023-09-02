@@ -70,12 +70,6 @@ class MainLogic(object):
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if normal procedure for making changes was not blocked
-        if self.global_flags.block_normal_procedure is True:
-            msg = "Modifications were blocked"
-            self.inform_user(msg, isOK=False)
-            return
-
         # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
@@ -431,14 +425,14 @@ class MainLogic(object):
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_normal_procedure = True
+            self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             self.inform_user(msg, isOK=False)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
-            self.global_flags.block_normal_procedure = True
+            self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = (
@@ -457,13 +451,13 @@ class MainLogic(object):
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
             self.global_flags.block_removal = True
-            self.global_flags.block_normal_procedure = True
+            self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             msg = "Unexpected error. Could not read processes PIDs. Check log."
             self.inform_user(msg, isOK=False)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
-            self.global_flags.block_normal_procedure = True
+            self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             msg = (
                 "Office is running and as a result you "
@@ -488,7 +482,7 @@ class MainLogic(object):
             ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
-                    self.global_flags.block_normal_procedure = True
+                    self.global_flags.block_normal_install = True
                     msg = (
                         "The OS is not fully updated "
                         "and as a result installations are blocked. "
@@ -497,7 +491,7 @@ class MainLogic(object):
                     )
                     self.inform_user(msg, isOK=False)
             else:
-                self.global_flags.block_normal_procedure = True
+                self.global_flags.block_normal_install = True
                 msg = (
                     "Failed to check update status \n"
                     "and as a result you won't be able to install "
@@ -660,7 +654,7 @@ class MainLogic(object):
             if clipart.is_installed:
                 newest_installed_Clipart_version = self._return_newer_ver(
                     clipart.version,
-                    newest_installed_LO_version,
+                    newest_installed_Clipart_version,
                 )
 
         # 0) Disallow everything
@@ -780,7 +774,7 @@ class MainLogic(object):
         block_any_install = (
             True
             if (
-                self.global_flags.block_normal_procedure
+                self.global_flags.block_normal_install
                 or self.global_flags.block_local_copy_install
             )
             else False
@@ -855,7 +849,9 @@ class MainLogic(object):
         available_virtual_packages = []
         msg = ""
 
-        java_ver = configuration.latest_available_java_version
+        # Since this program is not meant to update Java,
+        # Java version is not used.
+        java_ver = ""
         java_core_vp = VirtualPackage("core-packages", "Java", java_ver)
         java_core_vp.is_installed = False
         java_core_vp.real_files = [
@@ -874,7 +870,7 @@ class MainLogic(object):
                 "checksum": "",
             },
         ]
-        recommended_Java_ver = configuration.latest_available_java_version
+        recommended_Java_ver = ""
         available_virtual_packages.append(java_core_vp)
 
         # Decide which version should be recommended for installation
@@ -898,7 +894,9 @@ class MainLogic(object):
             },
         ]
         available_virtual_packages.append(office_core_vp)
-        for lang_code in lolangs.supported_langs.keys():
+        # en-US language pack it is only installed/removed together with
+        # core package and should not be offered for install separately
+        for lang_code in lolangs.supported_langs.keys() - {"en-US"}:
             office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
@@ -1411,14 +1409,16 @@ class MainLogic(object):
             # update menus
             PCLOS.update_menus()
 
-        # Now let's deal with LibreOffice's the language packs.
+        # Now let's deal with LibreOffice's language packs.
         # User may want to remove just that (no core package uninstall)
         # in which case we are going to be done.
         # Alternatively core package is also marked for removal and will be
         # uninstalled in the later step.
         # Such ordering will not interfere with dependencies,
         # as language packs are optional additions anyway.
-        # Never remove en-US language pack
+
+        # Never remove en-US language pack on its own
+        # (it is only installed/removed together with core package)
         LibreOfficeLANGS = [
             p
             for p in packages_to_remove
@@ -1428,27 +1428,34 @@ class MainLogic(object):
         files_to_remove = []
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
-            base_version = PCLOS.make_base_ver(lang.version)
             # LibreOffice langs removal procedures.
+            base_version = PCLOS.make_base_ver(lang.version)
 
+            base_lang_code = lang.kind.split("-")[0]
+            langs_with_the_same_base_code_marked_4_removal = [
+                p.is_marked_for_removal
+                for p in (lang.get_syblings() + [lang])
+                if (p.kind.startswith(base_lang_code) and p.is_installed)
+            ]
+
+            expected_rpm_names = [
+                f"libreoffice{base_version}-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-",
+                f"libobasis{base_version}-{lang.kind}-help-",
+            ]
             # Never remove English, Spanish and French dictionaries when
             # removing langpacks. These 3 dictionaries are provided by the
             # core package and should be kept installed for as long as
             # it is installed.
+            # Only remove dictionary package if no other regional package
+            # sharing this dictionary will remain.
             excluded = ["en", "es", "fr"]
-            if any([lang.kind.startswith(exl) for exl in excluded]):
-                expected_rpm_names = [
-                    f"libreoffice{base_version}-{lang.kind}-",
-                    f"libobasis{base_version}-{lang.kind}-",
-                    f"libobasis{base_version}-{lang.kind}-help-",
-                ]
-            else:
-                expected_rpm_names = [
-                    f"libreoffice{base_version}-{lang.kind}-",
-                    f"libreoffice{base_version}-dict-{lang.kind}-",
-                    f"libobasis{base_version}-{lang.kind}-",
-                    f"libobasis{base_version}-{lang.kind}-help-",
-                ]
+            if not any([lang.kind.startswith(exl) for exl in excluded]) and all(
+                langs_with_the_same_base_code_marked_4_removal
+            ):
+                expected_rpm_names.append(
+                    f"libreoffice{base_version}-dict-{base_lang_code}-"
+                )
 
             for candidate in expected_rpm_names:
                 success, reply = PCLOS.run_shell_command(
@@ -1763,46 +1770,19 @@ class MainLogic(object):
 
     def _install_clipart(
         self,
-        clipart_rpmS: dict,
+        clipart_rpmS,
         progress_msg: Callable,
         progress: Callable,
     ) -> tuple[bool, str]:
-        # 1) Move files (clipart-openclipart- and libreoffice-openclipart-)
-        #    from verified copy directory to /var/cache/apt/archives
-        cache_dir = pathlib.Path("/var/cache/apt/archives/")
-        package_names = []
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-        for file in clipart_rpmS:
-            # Full name in to_path (including file.name) causes
-            # move_file to overwrite destination if it exists
-            if not PCLOS.move_file(
-                from_path=file, to_path=cache_dir.joinpath(file.name)
-            ):
-                return (False, "Openclipart not installed, error moving file")
-            # rpm name != rpm filename
-            rpm_name = "-".join(file.name.split("-")[:2])
-            package_names.append(rpm_name)
-        log.debug(f"clipart package_names: {package_names}")
-
-        # 2) Use apt-get to install those 2 files
-        is_installed, msg = PCLOS.install_using_apt_get(
-            package_nameS=package_names,
-            progress_description=progress_msg,
-            progress_percentage=progress,
+        # Use rpm to install clipart rpm packages
+        # (sititing in verified_dir)
+        is_installed, msg = PCLOS.install_using_rpm(
+            clipart_rpmS,
+            progress_msg,
+            progress,
         )
         if is_installed is False:
             return (False, msg)
-
-        # 3) move rpm files back to storage
-        # TODO: What if the user doesn't want to be keeping the files?
-        #       Is it a good place to remove them?
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-        for file in clipart_rpmS:
-            if not PCLOS.move_file(
-                from_path=cache_dir.joinpath(file.name), to_path=file
-            ):
-                return (False, "Openclipart installed but there was error moving file")
-
         return (True, "Openclipart successfully installed")
 
     def _verify_local_copy(
@@ -2192,9 +2172,25 @@ class ManualSelectionLogic(object):
 
         # Clipart dependency tree
         if package.family == "Clipart":
-            # As this is an independent package no special logic is needed,
-            # just mark the package as requested.
+            # mark yourself
             package.is_marked_for_install = mark
+            #
+            if package.version == self.recommended_clipart_version:
+                for child in self.root.children:
+                    if (
+                        child.family == "Clipart"
+                        and child.version != self.recommended_clipart_version
+                    ):
+                        if mark is True:
+                            # if installing recommended version mark
+                            # other versions for removal
+                            child.mark_for_removal()
+                            child.is_remove_opt_enabled = False
+                        else:
+                            # if unmarking the recommended version
+                            # make the removal option for installed
+                            # one accessible again
+                            child.is_remove_opt_enabled = True
             is_apply_install_successul = True
 
         self._decide_what_to_download()
@@ -2262,8 +2258,7 @@ class ManualSelectionLogic(object):
 
         # Clipart dependency tree
         if package.family == "Clipart":
-            # As this is an independent package no special logic is needed,
-            # just mark the package as requested.
+            # mark the package as requested.
             package.is_marked_for_removal = mark
             is_apply_removal_successul = True
 

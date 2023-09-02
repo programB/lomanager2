@@ -146,7 +146,9 @@ class VirtualPackage(Node):
             return False
 
     def __str__(self) -> str:
-        return f"({self.kind}, {self.family}, {self.version})"
+        info = " : installed" if self.is_installed else " : not installed"
+        info = "" if self.kind == "master-node" else info
+        return f"({self.kind}, {self.family}, {self.version}){info}"
 
     def allow_removal(self) -> None:
         """Set remove flags to allow removal but don't mark for it"""
@@ -251,7 +253,7 @@ class SignalFlags(object):
         self.block_viewing_installed = False
         self.block_viewing_available = False
         self.block_removal = False
-        self.block_normal_procedure = False
+        self.block_normal_install = False
         self.block_local_copy_install = False
         self.block_checking_4_updates = False
         self.ready_to_apply_changes = False
