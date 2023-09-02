@@ -654,7 +654,7 @@ class MainLogic(object):
             if clipart.is_installed:
                 newest_installed_Clipart_version = self._return_newer_ver(
                     clipart.version,
-                    newest_installed_LO_version,
+                    newest_installed_Clipart_version,
                 )
 
         # 0) Disallow everything
