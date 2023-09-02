@@ -543,13 +543,14 @@ def move_dir(from_path: pathlib.Path, to_path: pathlib.Path) -> tuple[bool, str]
 
 
 def run_shell_command_with_progress(
-    cmd,
+    cmd: str,
     progress: Callable,
     progress_description: Callable,
     parser: Callable,
     byte_output=False,
+    shell="bash",
 ) -> tuple[bool, str]:
-    full_command = cmd
+    full_command = [shell] + ["-c"] + [cmd]
     fulloutput = []
     # control characters excluding new line char "\n"
     ctrl_chars = (
@@ -639,7 +640,7 @@ def install_using_apt_get(
         return ("no match", 0)
 
     _, output = run_shell_command_with_progress(
-        ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
+        f"apt-get install --reinstall {package_nameS_string} -y",
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
@@ -826,16 +827,8 @@ def install_using_rpm(
                 else:
                     return ("no match", 0)
 
-            cmd_list = ["bash", "-c"]
-            rpm_cmd = ["rpm -Uvh --replacepkgs " + files_to_install]
             status, msg = run_shell_command_with_progress(
-                cmd_list + rpm_cmd,
-                # Example
-                # [
-                #     "bash",
-                #     "-c",
-                #     "rpm -Uvh /tmp/lomanager2-tmp/working_directory/tanglet-1.6.1.1-1pclos2022.x86_64.rpm",
-                # ],
+                f"rpm -Uvh --replacepkgs {files_to_install}",
                 progress=progress_percentage,
                 progress_description=progress_description,
                 parser=progress_parser,
@@ -900,7 +893,7 @@ def uninstall_using_apt_get(
         return ("no match", 0)
 
     _, msg = run_shell_command_with_progress(
-        ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
+        f"apt-get remove {package_nameS_string} -y",
         progress=progress_percentage,
         progress_description=progress_description,
         parser=progress_parser,
