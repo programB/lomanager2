@@ -863,14 +863,14 @@ def uninstall_using_apt_get(
         )
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                # Out should contain a line:
+                # "0 upgraded, 0 newly installed, X removed and Y not upgraded."
+                # where X must be != 0, Y doesn't matter, can be anything
                 n_upgraded = match.group("n_upgraded")
                 n_installed = match.group("n_installed")
                 n_removed = match.group("n_removed")
                 n_not_upgraded = match.group("n_not_upgraded")
-                if not (
-                    (n_upgraded == n_installed == n_not_upgraded == "0")
-                    and n_removed != "0"
-                ):
+                if not ((n_upgraded == n_installed == "0") and n_removed != "0"):
                     msg = (
                         "Dry-run removal failed. Packages where not removed: " + output
                     )
