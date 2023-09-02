@@ -2199,9 +2199,25 @@ class ManualSelectionLogic(object):
 
         # Clipart dependency tree
         if package.family == "Clipart":
-            # As this is an independent package no special logic is needed,
-            # just mark the package as requested.
+            # mark yourself
             package.is_marked_for_install = mark
+            #
+            if package.version == self.recommended_clipart_version:
+                for child in self.root.children:
+                    if (
+                        child.family == "Clipart"
+                        and child.version != self.recommended_clipart_version
+                    ):
+                        if mark is True:
+                            # if installing recommended version mark
+                            # other versions for removal
+                            child.mark_for_removal()
+                            child.is_remove_opt_enabled = False
+                        else:
+                            # if unmarking the recommended version
+                            # make the removal option for installed
+                            # one accessible again
+                            child.is_remove_opt_enabled = True
             is_apply_install_successul = True
 
         self._decide_what_to_download()
@@ -2269,8 +2285,7 @@ class ManualSelectionLogic(object):
 
         # Clipart dependency tree
         if package.family == "Clipart":
-            # As this is an independent package no special logic is needed,
-            # just mark the package as requested.
+            # mark the package as requested.
             package.is_marked_for_removal = mark
             is_apply_removal_successul = True
 
