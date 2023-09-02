@@ -551,7 +551,12 @@ def run_shell_command_with_progress(
 ) -> tuple[bool, str]:
     full_command = cmd
     fulloutput = []
-    ctrl_chars = list(map(chr, range(0, 32))) + list(map(chr, range(127, 160)))
+    # control characters excluding new line char "\n"
+    ctrl_chars = (
+        list(map(chr, range(0, 9)))
+        + list(map(chr, range(11, 32)))
+        + list(map(chr, range(127, 160)))
+    )
 
     with subprocess.Popen(
         full_command,
@@ -561,31 +566,26 @@ def run_shell_command_with_progress(
         shell=False,
         universal_newlines=not byte_output,
     ) as proc:
-        concatenated_b = b""
+        concat_normal_chars = b""
         while proc.poll() is None:
             if byte_output:
                 output = proc.stdout.read(1)
-                concatenated_b += output
                 fulloutput.append(output.decode("utf-8"))
+                if parser and output.decode("utf-8") not in ctrl_chars:
+                    # Don't bother calling parser when receiving control chars
+                    concat_normal_chars += output
+                    label, percentage = parser(concat_normal_chars)
+                    if label != "no match":
+                        progress_description(label)
+                        progress(percentage)
             else:  # strings
                 output = proc.stdout.readline()
                 fulloutput.append(output)
-            if parser:
-                if byte_output:
-                    string_to_parse = concatenated_b
-                    # Don't bother reporting progress and spamming
-                    # log if only a control char was read
-                    if output.decode("utf-8") not in ctrl_chars:
-                        label, percentage = parser(string_to_parse)
+                if parser:
+                    label, percentage = parser(output)
+                    if label != "no match":
                         progress_description(label)
                         progress(percentage)
-                    else:
-                        pass
-                else:
-                    string_to_parse = output
-                    label, percentage = parser(string_to_parse)
-                    progress_description(label)
-                    progress(percentage)
     return (True, "".join(fulloutput))
 
 
@@ -636,7 +636,7 @@ def install_using_apt_get(
         )
         if match := new_regex.search(input):
             return (match.group("p_name"), int(match.group("progress")))
-        return ("", 0)
+        return ("no match", 0)
 
     _, output = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get install --reinstall {package_nameS_string} -y"],
@@ -824,10 +824,7 @@ def install_using_rpm(
                             first = True
                     return (p_name, p_progress)
                 else:
-                    if last_string == b"":
-                        return ("", 0)
-                    else:
-                        return ("Working...", 0)
+                    return ("no match", 0)
 
             cmd_list = ["bash", "-c"]
             rpm_cmd = ["rpm -Uvh --replacepkgs " + files_to_install]
@@ -900,7 +897,7 @@ def uninstall_using_apt_get(
         )
         if match := new_regex.search(input):
             return (match.group("p_name"), int(match.group("progress")))
-        return ("", 0)
+        return ("no match", 0)
 
     _, msg = run_shell_command_with_progress(
         ["bash", "-c", f"apt-get remove {package_nameS_string} -y"],
