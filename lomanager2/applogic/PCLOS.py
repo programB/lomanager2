@@ -771,29 +771,56 @@ def install_using_rpm(
             # progress installing rpm. Counting them to calculate percentage.
             def progress_parser(input: bytes) -> tuple[str, int]:
                 # regex for stdout output
+                regex_verifying = re.compile(r"Verifying[\.]+\s*(?P<p_progress>[\#]+)")
+                regex_preparing = re.compile(r"Preparing[\.]+\s*(?P<p_progress>[\#]+)")
+                regex_updinst = re.compile(r"Updating\s/\sinstalling[\.]+")
                 regex_name_and_progress = re.compile(
-                    r"^[0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
+                    r"^[\s0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
                 )
                 last_string = input.decode("utf-8").split("\n")[-1]
-                # Unfortunately rpm outputs 40 backspace control chars
+                # Unfortunately rpm outputs backspace control chars
                 # to do its progress reporting which
                 # means some long rpm names can get trimmed.
                 # To try to deal with that we save the name the first time
                 # regex match is successful and we retain it (and return it)
-                # until we gather 40 # symbols then we reset for next
-                # package name.
+                # until we gather max no of '#' symbols (should be 40 but is 33)
+                # then we reset for next package name.
+                hashes4done = 33
                 first = True
                 p_name = ""
                 p_progress = 0
-                if match := regex_name_and_progress.search(last_string):
-                    # log.debug("match found")
+                match_veryfying = regex_verifying.search(last_string)
+                match_preparing = regex_preparing.search(last_string)
+                match_updinst = regex_updinst.search(last_string)
+                match_n_p = regex_name_and_progress.search(last_string)
+                if match_veryfying:
+                    verifying_msg = "Verifying..."
+                    p_progress = int(
+                        100 * len(match_veryfying.group("p_progress")) / hashes4done
+                    )
+                    return (verifying_msg, p_progress)
+                elif match_preparing:
+                    preparing_msg = "Preparing..."
+                    p_progress = int(
+                        100 * len(match_preparing.group("p_progress")) / hashes4done
+                    )
+                    return (preparing_msg, p_progress)
+                elif match_updinst:
+                    installing_msg = "Installing..."
+                    p_progress = 0
+                    return (installing_msg, p_progress)
+                elif match_n_p:
                     if first:
-                        p_name = match.group("p_name")
-                        p_progress = int(100 * len(match.group("p_progress")) / 40)
+                        p_name = match_n_p.group("p_name")
+                        p_progress = int(
+                            100 * len(match_n_p.group("p_progress")) / hashes4done
+                        )
                         first = False
                     else:
-                        p_progress = int(100 * len(match.group("p_progress")) / 40)
-                        if len(match.group("p_progress")) == 40:
+                        p_progress = int(
+                            100 * len(match_n_p.group("p_progress")) / hashes4done
+                        )
+                        if len(match_n_p.group("p_progress")) == hashes4done:
                             first = True
                     return (p_name, p_progress)
                 else:
