@@ -115,13 +115,15 @@ class UnifiedProgressReporter:
             and self._progress_prc_callback is not None
         ):
 
-            def progress_description(txt: str):
-                log.info(txt)
+            def progress_description(txt: str, prc: str = ""):
                 self._progress_dsc_callback(txt)
+                msg = rf"{txt} ({prc})%" if prc else txt
+                log.info(msg)
 
         else:
 
-            def progress_description(txt: str):
-                log.info(txt)
+            def progress_description(txt: str, prc: str = ""):
+                msg = rf"{txt} ({prc})%" if prc else txt
+                log.info(msg)
 
         return progress_description

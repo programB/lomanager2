@@ -574,7 +574,7 @@ def run_shell_command_with_progress(
                     concat_normal_chars += output
                     label, percentage = parser(concat_normal_chars)
                     if label != "no match":
-                        progress_reporter.progress_msg(label)
+                        progress_reporter.progress_msg(label, prc=str(percentage))
                         progress_reporter.progress(percentage)
             else:  # strings
                 output = proc.stdout.readline()
@@ -582,7 +582,7 @@ def run_shell_command_with_progress(
                 if parser:
                     label, percentage = parser(output)
                     if label != "no match":
-                        progress_reporter.progress_msg(label)
+                        progress_reporter.progress_msg(label, prc=str(percentage))
                         progress_reporter.progress(percentage)
     return (True, "".join(fulloutput))
 
