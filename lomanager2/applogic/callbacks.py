@@ -5,16 +5,17 @@ log = logging.getLogger("lomanager2_logger")
 
 class UnifiedProgressReporter:
     def __init__(self, total_steps: int, callbacks={}):
-        self._callbacks = callbacks
-        self._counter = 0
-        self._n_steps = total_steps
+        self._steps_counter = 0
+        self._total_steps = total_steps
 
-        self._overall_progress_dsc_callback = self._callbacks.get(
+        self._overall_progress_dsc_callback = callbacks.get(
             "overall_progress_description"
         )
-        self._overall_progress_prc_callback = self._callbacks.get(
+        self._overall_progress_prc_callback = callbacks.get(
             "overall_progress_percentage"
         )
+        self._progress_dsc_callback = callbacks.get("progress_description")
+        self._progress_prc_callback = callbacks.get("progress_percentage")
 
         self.step_start = self._step_start_closure()
         self.step_skip = self._step_skip_closure()
@@ -46,16 +47,15 @@ class UnifiedProgressReporter:
         ):
 
             def step_skip(txt: str = ""):
-                if txt:
-                    log.info(txt)
-                    self._overall_progress_dsc_callback(txt)
+                # Skipping a step is the same as
+                # starting it and immediately ending
+                self.step_start(txt)
                 self.step_end()
 
         else:
 
             def step_skip(txt: str = ""):
-                if txt:
-                    log.info(txt)
+                self.step_start(txt)
                 self.step_end()
 
         return step_skip
@@ -69,9 +69,9 @@ class UnifiedProgressReporter:
                 if txt:
                     log.info(txt)
                     self._overall_progress_dsc_callback(txt)
-                self._counter += 1
+                self._steps_counter += 1
                 self._overall_progress_prc_callback(
-                    int(100 * (self._counter / self._n_steps))
+                    int(100 * (self._steps_counter / self._total_steps))
                 )
 
         else:
@@ -79,15 +79,18 @@ class UnifiedProgressReporter:
             def step_end(txt: str = ""):
                 if txt:
                     log.info(txt)
-                self._counter += 1
+                self._steps_counter += 1
 
         return step_end
 
     def _progress_closure(self):
-        if "progress_percentage" in self._callbacks.keys():
+        if (
+            self._progress_dsc_callback is not None
+            and self._progress_prc_callback is not None
+        ):
 
             def progress(percentage: int):
-                self._callbacks["progress_percentage"](percentage)
+                self._progress_prc_callback(percentage)
 
         else:
 
@@ -97,11 +100,14 @@ class UnifiedProgressReporter:
         return progress
 
     def _progress_msg_closure(self):
-        if "progress_description" in self._callbacks.keys():
+        if (
+            self._progress_dsc_callback is not None
+            and self._progress_prc_callback is not None
+        ):
 
             def progress_description(txt: str):
                 log.info(txt)
-                self._callbacks["progress_description"](txt)
+                self._progress_dsc_callback(txt)
 
         else:
 
