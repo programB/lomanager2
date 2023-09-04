@@ -3,37 +3,6 @@ import logging
 log = logging.getLogger("lomanager2_logger")
 
 
-def progress_closure(callbacks: dict):
-    if "progress_percentage" in callbacks.keys():
-        progressfunc = callbacks["progress_percentage"]
-
-        def progress(percentage: int):
-            progressfunc(percentage)
-
-    else:
-
-        def progress(percentage: int):
-            pass
-
-    return progress
-
-
-def progress_description_closure(callbacks: dict):
-    if "progress_description" in callbacks.keys():
-        progressdescfunc = callbacks["progress_description"]
-
-        def progress_description(txt: str):
-            log.info(txt)
-            progressdescfunc(txt)
-
-    else:
-
-        def progress_description(txt: str):
-            log.info(txt)
-
-    return progress_description
-
-
 class UnifiedProgressReporter:
     def __init__(self, total_steps: int, callbacks={}):
         self._callbacks = callbacks
