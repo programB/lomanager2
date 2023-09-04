@@ -10,9 +10,9 @@ from typing import Any, Tuple, Callable
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
 from .callbacks import (
-    OverallProgressReporter,
     progress_closure,
     progress_description_closure,
+    UnifiedProgressReporter,
 )
 import logging
 
@@ -90,7 +90,7 @@ class MainLogic(object):
         # Create helper objects for progress reporting
         progress = progress_closure(callbacks=kwargs)
         progress_description = progress_description_closure(callbacks=kwargs)
-        step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Mark Java for download if the user requests that
         java_package = [
@@ -143,7 +143,7 @@ class MainLogic(object):
 
         # STEP
         # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
+        progress_reporter.step_start("Cleaning temporary directories...")
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
             msg = "Failed to (re)create working directory: " + msg_w
@@ -164,13 +164,13 @@ class MainLogic(object):
             ]
             for dir in directories:
                 PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
+        progress_reporter.step_end("...done cleaning temporary directories")
 
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
         # Some packages need to be downloaded
         if packages_to_download:
             # STEP
-            step.start("Checking free disk space for download...")
+            progress_reporter.step_start("Checking free disk space for download...")
             is_enough, needed, available = self._space_for_download(
                 packages_to_download
             )
@@ -179,10 +179,10 @@ class MainLogic(object):
                 f"packages. Needed: {needed}. Available {available}"
                 self.inform_user(msg, isOK=False)
                 return
-            step.end("...disk space OK")
+            progress_reporter.step_end("...disk space OK")
 
             # STEP
-            step.start("Collecting packages...")
+            progress_reporter.step_start("Collecting packages...")
 
             # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
@@ -196,10 +196,10 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             else:
-                step.end("...done collecting files")
+                progress_reporter.step_end("...done collecting files")
         # No need to download anything - just uninstalling
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # Uninstall/Install packages
         self._make_changes(
@@ -208,7 +208,7 @@ class MainLogic(object):
             create_offline_copy=keep_packages,
             progress_description=progress_description,
             progress_percentage=progress,
-            step=step,
+            progress_reporter=progress_reporter,
         )
 
     def install_from_local_copy(self, *args, **kwargs):
@@ -236,7 +236,7 @@ class MainLogic(object):
         # Create helper objects for progress reporting
         progress = progress_closure(callbacks=kwargs)
         progress_description = progress_description_closure(callbacks=kwargs)
-        step = OverallProgressReporter(total_steps=11, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
@@ -255,7 +255,7 @@ class MainLogic(object):
 
         # STEP
         # clean up working directory and verified copies directory
-        step.start("Cleaning temporary directories...")
+        progress_reporter.step_start("Cleaning temporary directories...")
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
             msg = "Failed to (re)create working directory: " + msg_w
@@ -276,7 +276,7 @@ class MainLogic(object):
             ]
             for dir in directories:
                 PCLOS.create_dir(dir)
-        step.end("...done cleaning temporary directories")
+        progress_reporter.step_end("...done cleaning temporary directories")
 
         # Take current state of package tree and create packages list
         virtual_packages = []
@@ -291,17 +291,17 @@ class MainLogic(object):
 
         # STEP
         # Perform verification of local copy directory
-        step.start("Scanning local copy directory for packages...")
+        progress_reporter.step_start("Scanning local copy directory for packages...")
         (
             Java_local_copy,
             LibreOffice_core_local_copy,
             LibreOffice_langs_local_copy,
             Clipart_local_copy,
         ) = self._verify_local_copy(local_copy_directory)
-        step.end("...finished local copy directory scanning")
+        progress_reporter.step_end("...finished local copy directory scanning")
 
         # STEP
-        step.start("Deciding what to install/remove...")
+        progress_reporter.step_start("Deciding what to install/remove...")
         # First, for every package, reset any 'request' flags that the user
         # may have set manually in the menu before changing mind and
         # choosing to install from local copy.
@@ -390,7 +390,7 @@ class MainLogic(object):
                 "directory so Openclipart will not be installed."
             )
             is_modification_needed = is_modification_needed or False
-        step.end()
+        progress_reporter.step_end()
 
         if is_modification_needed is True:
             # Go ahead and make changes
@@ -402,7 +402,7 @@ class MainLogic(object):
                 create_offline_copy=False,
                 progress_description=progress_description,
                 progress_percentage=progress,
-                step=step,
+                progress_reporter=progress_reporter,
             )
         else:
             msg = "Nothing to install. Check logs."
@@ -418,10 +418,10 @@ class MainLogic(object):
         is added to the self.warnings list.
         """
 
-        step = OverallProgressReporter(total_steps=3, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
         msg = ""
 
-        step.start("Looking for running package managers")
+        progress_reporter.step_start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
             self.global_flags.block_removal = True
@@ -445,9 +445,9 @@ class MainLogic(object):
             for manager, pids in running_managers.items():
                 msg += manager + ": " + str(pids) + "  "
             self.inform_user(msg, isOK=False)
-        step.end(msg)
+        progress_reporter.step_end(msg)
 
-        step.start("Looking for running Office")
+        progress_reporter.step_start("Looking for running Office")
         status, running_office_suits = PCLOS.get_running_Office_processes()
         if status is False:
             self.global_flags.block_removal = True
@@ -470,10 +470,10 @@ class MainLogic(object):
             for office, pids in running_office_suits.items():
                 msg += office + ": " + str(pids) + "  "
             self.inform_user(msg, isOK=False)
-        step.end(msg)
+        progress_reporter.step_end(msg)
 
         # no running manager prevents access to system rpm database
-        step.start("Checking for system updates")
+        progress_reporter.step_start("Checking for system updates")
         if self.global_flags.block_checking_4_updates is False:
             (
                 check_successfull,
@@ -502,7 +502,7 @@ class MainLogic(object):
                 if explanation:
                     msg += "\n" + explanation
                 self.inform_user(msg, isOK=False)
-        step.end(msg)
+        progress_reporter.step_end(msg)
 
         if PCLOS.is_live_session_active():
             msg = (
@@ -517,14 +517,14 @@ class MainLogic(object):
         self.rebuild_package_tree(*args, **kwargs)
 
     def rebuild_package_tree(self, *args, **kwargs):
-        step = OverallProgressReporter(total_steps=4, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
         msg = ""
 
-        step.start("Detecting installed software")
+        progress_reporter.step_start("Detecting installed software")
         installed_vps = self._detect_installed_software()
-        step.end()
+        progress_reporter.step_end()
 
-        step.start("Building available software list")
+        progress_reporter.step_start("Building available software list")
         (
             available_vps,
             recommended_Java_ver,
@@ -532,17 +532,17 @@ class MainLogic(object):
             recommended_Clip_ver,
             msg,
         ) = self._get_available_software()
-        step.end()
+        progress_reporter.step_end()
 
-        step.start("Building dependency tree")
+        progress_reporter.step_start("Building dependency tree")
         # Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         self._build_dependency_tree(joint_package_list)
         log.debug("TREE \n" + self.package_tree_root.tree_representation())
-        step.end()
+        progress_reporter.step_end()
 
-        step.start("Applying restrictions")
+        progress_reporter.step_start("Applying restrictions")
         (
             newest_Java_ver,
             newest_LO_ver,
@@ -552,7 +552,7 @@ class MainLogic(object):
             recommended_LO_ver,
             recommended_Clip_ver,
         )
-        step.end()
+        progress_reporter.step_end()
 
         self._package_menu = ManualSelectionLogic(
             root_node=self.package_tree_root,
@@ -1010,15 +1010,15 @@ class MainLogic(object):
         create_offline_copy,
         progress_description,
         progress_percentage,
-        step,
+        progress_reporter,
     ):
         # At this point normal changes procedure and local_copy_install
         # procedures converge and thus use the same function
 
         # STEP
-        step.start("Trying to stop LibreOffice quickstarter...")
+        progress_reporter.step_start("Trying to stop LibreOffice quickstarter...")
         self._terminate_LO_quickstarter()
-        step.end()
+        progress_reporter.step_end()
 
         # STEP
         # Java needs to be installed?
@@ -1031,7 +1031,7 @@ class MainLogic(object):
             java_package.is_marked_for_install
             and rpms_and_tgzs_to_use["files_to_install"]["Java"]
         ):
-            step.start("Installing Java...")
+            progress_reporter.step_start("Installing Java...")
 
             is_installed, msg = self._install_Java(
                 rpms_and_tgzs_to_use["files_to_install"]["Java"],
@@ -1042,10 +1042,10 @@ class MainLogic(object):
                 msg = "Java installation failed: " + msg
                 self.inform_user(msg, isOK=False)
                 return
-            step.end("...done installing Java")
+            progress_reporter.step_end("...done installing Java")
         # No Java install requested
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # At this point everything that is needed is downloaded and verified,
         # also Java is installed (except in unlikely case in which the user
@@ -1062,7 +1062,7 @@ class MainLogic(object):
             and (p.family == "OpenOffice" or p.family == "LibreOffice")
         ]
         if office_packages_to_remove:
-            step.start("Removing selected Office components...")
+            progress_reporter.step_start("Removing selected Office components...")
 
             is_removed, msg = self._uninstall_office_components(
                 office_packages_to_remove,
@@ -1082,10 +1082,10 @@ class MainLogic(object):
                 msg = "Failed to remove Office components: " + msg
                 self.inform_user(msg, isOK=False)
                 return
-            step.end("...done removing selected Office components")
+            progress_reporter.step_end("...done removing selected Office components")
         # No Office packages marked for removal
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # STEP
         # Any Office components need to be installed?
@@ -1093,7 +1093,7 @@ class MainLogic(object):
             rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"]
             or rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"]
         ):
-            step.start("Installing selected Office components...")
+            progress_reporter.step_start("Installing selected Office components...")
 
             is_installed, msg = self._install_office_components(
                 rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"],
@@ -1106,10 +1106,10 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
 
-            step.end("...done installing selected Office components")
+            progress_reporter.step_end("...done installing selected Office components")
         # No Office packages marked for install
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # STEP
         # Clipart library is to be removed?
@@ -1119,7 +1119,7 @@ class MainLogic(object):
             if p.family == "Clipart" and p.is_marked_for_removal
         ]
         if clipart_packages_to_remove:
-            step.start("Removing Clipart library...")
+            progress_reporter.step_start("Removing Clipart library...")
 
             is_removed, msg = self._uninstall_clipart(
                 clipart_packages_to_remove,
@@ -1131,15 +1131,15 @@ class MainLogic(object):
                 msg = "Failed to remove Clipart library: " + msg
                 self.inform_user(msg, isOK=False)
                 return
-            step.end("...done removing Clipart library")
+            progress_reporter.step_end("...done removing Clipart library")
         # Clipart was not marked for removal
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # STEP
         # Clipart library is to be installed?
         if rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
-            step.start("Installing Clipart library...")
+            progress_reporter.step_start("Installing Clipart library...")
 
             is_installed, msg = self._install_clipart(
                 rpms_and_tgzs_to_use["files_to_install"]["Clipart"],
@@ -1150,15 +1150,15 @@ class MainLogic(object):
                 msg = "Openclipart installation failed: " + msg
                 self.inform_user(msg, isOK=False)
                 return
-            step.end("...done installing Clipart library")
+            progress_reporter.step_end("...done installing Clipart library")
         # Clipart was not marked for install
         else:
-            step.skip()
+            progress_reporter.step_skip()
 
         # STEP
         # Should downloaded packages be kept ?
         if create_offline_copy is True:
-            step.start("Saving packages...")
+            progress_reporter.step_start("Saving packages...")
 
             is_saved, msg = PCLOS.move_dir(
                 configuration.verified_dir, configuration.offline_copy_dir
@@ -1173,11 +1173,11 @@ class MainLogic(object):
                     + f"Packages saved to {configuration.offline_copy_dir}"
                 )
                 self.inform_user(msg, isOK=True)
-            step.end("...done saving packages")
+            progress_reporter.step_end("...done saving packages")
         else:
             msg = f"All changes successful"
             self.inform_user(msg, isOK=True)
-            step.skip()
+            progress_reporter.step_skip()
 
     def _collect_packages(
         self,
