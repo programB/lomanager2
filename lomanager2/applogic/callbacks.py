@@ -29,7 +29,7 @@ class UnifiedProgressReporter:
             self._overall_progress_prc_callback is not None
         ):
 
-            def step_start(txt: str = ""):
+            def step_start(txt: str):
                 # When starting a new step clear/reset the
                 # fine grained progress indicator first
                 self.progress(0)
@@ -42,7 +42,7 @@ class UnifiedProgressReporter:
 
         else:
 
-            def step_start(txt: str = ""):
+            def step_start(txt: str):
                 self.progress(0)
                 self.progress_msg("")
                 self._current_step_description = txt
@@ -55,15 +55,16 @@ class UnifiedProgressReporter:
             self._overall_progress_prc_callback is not None
         ):
 
-            def step_skip(txt: str = ""):
+            def step_skip(txt: str):
                 # Skipping a step is the same as
                 # starting it and immediately ending
+                # but without logging the step_end message
                 self.step_start(txt)
-                self.step_end()
+                self.step_end(show_msg=False)
 
         else:
 
-            def step_skip(txt: str = ""):
+            def step_skip(txt: str):
                 self.step_start(txt)
                 self.step_end()
 
@@ -74,21 +75,23 @@ class UnifiedProgressReporter:
             self._overall_progress_prc_callback is not None
         ):
 
-            def step_end(txt: str = ""):
-                msg = txt if txt else self._current_step_description + " ...done"
-                log.info(msg)
-                self._overall_progress_dsc_callback(msg)
+            def step_end(txt: str = "", show_msg=True):
                 self._steps_counter += 1
                 self._overall_progress_prc_callback(
                     int(100 * (self._steps_counter / self._total_steps))
                 )
+                msg = txt if txt else self._current_step_description + " ...done"
+                if show_msg:
+                    log.info(msg)
+                    self._overall_progress_dsc_callback(msg)
 
         else:
 
-            def step_end(txt: str = ""):
-                msg = txt if txt else self._current_step_description + " ...done"
-                log.info(msg)
+            def step_end(txt: str = "", show_msg=True):
                 self._steps_counter += 1
+                msg = txt if txt else self._current_step_description + " ...done"
+                if show_msg:
+                    log.info(msg)
 
         return step_end
 

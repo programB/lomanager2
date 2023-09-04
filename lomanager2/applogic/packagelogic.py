@@ -190,9 +190,8 @@ class MainLogic(object):
                 return
             else:
                 progress_reporter.step_end("...done collecting files")
-        # No need to download anything - just uninstalling
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("Nothing to download")
 
         # Uninstall/Install packages
         self._make_changes(
@@ -1026,9 +1025,8 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             progress_reporter.step_end("...done installing Java")
-        # No Java install requested
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("No Java install requested")
 
         # At this point everything that is needed is downloaded and verified,
         # also Java is installed (except in unlikely case in which the user
@@ -1065,9 +1063,8 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             progress_reporter.step_end("...done removing selected Office components")
-        # No Office packages marked for removal
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("No Office packages marked for removal")
 
         # STEP
         # Any Office components need to be installed?
@@ -1088,9 +1085,8 @@ class MainLogic(object):
                 return
 
             progress_reporter.step_end("...done installing selected Office components")
-        # No Office packages marked for install
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("No Office packages marked for install")
 
         # STEP
         # Clipart library is to be removed?
@@ -1112,9 +1108,8 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             progress_reporter.step_end("...done removing Clipart library")
-        # Clipart was not marked for removal
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("Clipart was not marked for removal")
 
         # STEP
         # Clipart library is to be installed?
@@ -1130,9 +1125,8 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
                 return
             progress_reporter.step_end("...done installing Clipart library")
-        # Clipart was not marked for install
         else:
-            progress_reporter.step_skip()
+            progress_reporter.step_skip("Clipart was not marked for install")
 
         # STEP
         # Should downloaded packages be kept ?
@@ -1156,7 +1150,7 @@ class MainLogic(object):
         else:
             msg = f"All changes successful"
             self.inform_user(msg, isOK=True)
-            progress_reporter.step_skip()
+            progress_reporter.step_skip(msg)
 
     def _collect_packages(
         self,
