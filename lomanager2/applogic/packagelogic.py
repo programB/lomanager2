@@ -9,11 +9,8 @@ import lolangs
 from typing import Any, Tuple, Callable
 from . import PCLOS
 from .datatypes import VirtualPackage, SignalFlags
-from .callbacks import (
-    progress_closure,
-    progress_description_closure,
-    UnifiedProgressReporter,
-)
+from .callbacks import UnifiedProgressReporter
+
 import logging
 
 log = logging.getLogger("lomanager2_logger")
@@ -87,9 +84,6 @@ class MainLogic(object):
             return
 
         # We are good to go
-        # Create helper objects for progress reporting
-        progress = progress_closure(callbacks=kwargs)
-        progress_description = progress_description_closure(callbacks=kwargs)
         progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Mark Java for download if the user requests that
@@ -187,8 +181,7 @@ class MainLogic(object):
             # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
-                progress_description=progress_description,
-                progress_percentage=progress,
+                progress_reporter=progress_reporter,
             )
 
             if is_every_pkg_collected is False:
@@ -206,8 +199,6 @@ class MainLogic(object):
             virtual_packages,
             rpms_and_tgzs_to_use=collected_files,
             create_offline_copy=keep_packages,
-            progress_description=progress_description,
-            progress_percentage=progress,
             progress_reporter=progress_reporter,
         )
 
@@ -233,9 +224,6 @@ class MainLogic(object):
             return
 
         # We are good to go
-        # Create helper objects for progress reporting
-        progress = progress_closure(callbacks=kwargs)
-        progress_description = progress_description_closure(callbacks=kwargs)
         progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
 
         # Block any other calls of this function...
@@ -400,8 +388,6 @@ class MainLogic(object):
                 virtual_packages,
                 rpms_and_tgzs_to_use=rpms_and_tgzs_to_use,
                 create_offline_copy=False,
-                progress_description=progress_description,
-                progress_percentage=progress,
                 progress_reporter=progress_reporter,
             )
         else:
@@ -1008,8 +994,6 @@ class MainLogic(object):
         virtual_packages,
         rpms_and_tgzs_to_use,
         create_offline_copy,
-        progress_description,
-        progress_percentage,
         progress_reporter,
     ):
         # At this point normal changes procedure and local_copy_install
@@ -1035,8 +1019,7 @@ class MainLogic(object):
 
             is_installed, msg = self._install_Java(
                 rpms_and_tgzs_to_use["files_to_install"]["Java"],
-                progress_description,
-                progress_percentage,
+                progress_reporter,
             )
             if is_installed is False:
                 msg = "Java installation failed: " + msg
@@ -1066,8 +1049,7 @@ class MainLogic(object):
 
             is_removed, msg = self._uninstall_office_components(
                 office_packages_to_remove,
-                progress_description,
-                progress_percentage,
+                progress_reporter,
             )
 
             # If the procedure failed completely (no packages got uninstalled)
@@ -1098,8 +1080,7 @@ class MainLogic(object):
             is_installed, msg = self._install_office_components(
                 rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"],
                 rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"],
-                progress_description,
-                progress_percentage,
+                progress_reporter,
             )
             if is_installed is False:
                 msg = "Failed to install Office components: " + msg
@@ -1123,8 +1104,7 @@ class MainLogic(object):
 
             is_removed, msg = self._uninstall_clipart(
                 clipart_packages_to_remove,
-                progress_description,
-                progress_percentage,
+                progress_reporter,
             )
 
             if is_removed is False:
@@ -1143,8 +1123,7 @@ class MainLogic(object):
 
             is_installed, msg = self._install_clipart(
                 rpms_and_tgzs_to_use["files_to_install"]["Clipart"],
-                progress_description,
-                progress_percentage,
+                progress_reporter,
             )
             if is_installed is False:
                 msg = "Openclipart installation failed: " + msg
@@ -1182,8 +1161,7 @@ class MainLogic(object):
     def _collect_packages(
         self,
         packages_to_download: list,
-        progress_description,
-        progress_percentage,
+        progress_reporter,
         skip_verify=False,
     ) -> tuple[bool, str, dict]:
         rpms_and_tgzs_to_use = {
@@ -1224,8 +1202,7 @@ class MainLogic(object):
                 is_downloaded, error_msg = PCLOS.download_file(
                     f_url,
                     f_dest,
-                    progress_percentage,
-                    progress_description,
+                    progress_reporter,
                 )
                 if not is_downloaded:
                     msg = f"Error while trying to download {f_url}: "
@@ -1240,8 +1217,7 @@ class MainLogic(object):
                     is_downloaded, error_msg = PCLOS.download_file(
                         csf_url,
                         csf_dest,
-                        progress_percentage,
-                        progress_description,
+                        progress_reporter,
                     )
                     if not is_downloaded:
                         msg = f"Error while trying to download {csf_url}: "
@@ -1249,7 +1225,7 @@ class MainLogic(object):
                         return (False, msg, rpms_and_tgzs_to_use)
 
                     is_correct = PCLOS.verify_checksum(
-                        f_dest, csf_dest, progress_percentage, progress_description
+                        f_dest, csf_dest, progress_reporter
                     )
                     if not is_correct:
                         msg = f"Verification of the {file['name']} failed"
@@ -1300,8 +1276,7 @@ class MainLogic(object):
     def _install_Java(
         self,
         java_rpms: dict,
-        progress_msg: Callable,
-        progress: Callable,
+        progress_reporter: Callable,
     ) -> tuple[bool, str]:
         # 1) Move files (task-java and java-sun) from
         #    verified copy directory to /var/cache/apt/archives
@@ -1320,8 +1295,7 @@ class MainLogic(object):
         # 2) Use apt-get to install those 2 files
         is_installed, msg = PCLOS.install_using_apt_get(
             package_nameS=package_names,
-            progress_description=progress_msg,
-            progress_percentage=progress,
+            progress_reporter=progress_reporter,
         )
         if is_installed is False:
             return (False, msg)
@@ -1341,8 +1315,7 @@ class MainLogic(object):
     def _uninstall_office_components(
         self,
         packages_to_remove: list,
-        progress_msg: Callable,
-        progress: Callable,
+        progress_reporter: Callable,
     ) -> tuple[bool, str]:
         # rpms_to_rm is always a minimal subset of rpms that once
         # marked for removal will cause all dependencies to be removed too.
@@ -1398,7 +1371,7 @@ class MainLogic(object):
         if OpenOfficeS:
             # Remove
             log.debug(f"OO rpms_to_rm: {rpms_to_rm}")
-            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
             if not s:
                 return (False, msg)
             # Do post-removal cleanup
@@ -1468,7 +1441,7 @@ class MainLogic(object):
                         rpms_to_rm.append(candidate[:-1])
         if LibreOfficeLANGS:
             log.debug(f"LO langs rpms_to_rm: {rpms_to_rm}")
-            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
             if not s:
                 return (False, msg)
 
@@ -1548,7 +1521,7 @@ class MainLogic(object):
         if LibreOfficeCORE:
             # Remove
             log.debug(f"LO core rpms_to_rm: {rpms_to_rm}")
-            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+            s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
             if not s:
                 return (False, msg)
             # Do post-removal cleanup
@@ -1566,8 +1539,7 @@ class MainLogic(object):
         self,
         LO_core_tgzS: dict,
         LO_langs_tgzS: dict,
-        progress_msg: Callable,
-        progress: Callable,
+        progress_reporter: Callable,
     ) -> tuple[bool, str]:
         PCLOS.clean_dir(configuration.working_dir)
 
@@ -1597,8 +1569,7 @@ class MainLogic(object):
 
             is_installed, msg = PCLOS.install_using_rpm(
                 rpms_to_install,
-                progress_msg,
-                progress,
+                progress_reporter,
             )
 
             PCLOS.clean_dir(configuration.working_dir)
@@ -1746,8 +1717,7 @@ class MainLogic(object):
     def _uninstall_clipart(
         self,
         c_art_pkgs_to_rm: list,
-        progress_msg: Callable,
-        progress: Callable,
+        progress_reporter: Callable,
     ) -> tuple[bool, str]:
         # For now it doesn't seem that openclipart rpm package name
         # includes version number so getting this information
@@ -1763,7 +1733,7 @@ class MainLogic(object):
             else:
                 if reply:
                     rpms_to_rm.append(candidate)
-        s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_msg, progress)
+        s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
         if not s:
             return (False, msg)
         return (True, "Clipart successfully uninstalled")
@@ -1771,15 +1741,13 @@ class MainLogic(object):
     def _install_clipart(
         self,
         clipart_rpmS,
-        progress_msg: Callable,
-        progress: Callable,
+        progress_reporter: Callable,
     ) -> tuple[bool, str]:
         # Use rpm to install clipart rpm packages
         # (sititing in verified_dir)
         is_installed, msg = PCLOS.install_using_rpm(
             clipart_rpmS,
-            progress_msg,
-            progress,
+            progress_reporter,
         )
         if is_installed is False:
             return (False, msg)

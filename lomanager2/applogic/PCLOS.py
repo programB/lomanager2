@@ -408,8 +408,7 @@ def detect_installed_clipart() -> tuple[bool, str]:
 def download_file(
     src_url: str,
     dest_path: pathlib.Path,
-    progress: Callable,
-    progress_description: Callable,
+    progress_reporter: Callable,
     max_retries: int = 3,
     retry_delay_sec: int = 5,
 ) -> tuple[bool, str]:
@@ -421,10 +420,10 @@ def download_file(
             pass
         else:
             percent_p = int(100 * (already_got_bytes / file_tot_size))
-            progress(percent_p)
+            progress_reporter.progress(percent_p)
 
     filename = src_url.split("/")[-1]
-    progress_description(f"Now downloading: {filename}")
+    progress_reporter.progress_msg(f"Now downloading: {filename}")
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -433,7 +432,7 @@ def download_file(
                 filename=dest_path,
                 reporthook=progress_reporthook,
             )
-            progress_description(f"Downloaded:      {filename}")
+            progress_reporter.progress_msg(f"Downloaded:      {filename}")
             return (True, "")
         except Exception as error:
             log.error(f"Attempt {attempt} of {max_retries} failed")
@@ -447,10 +446,9 @@ def download_file(
 def verify_checksum(
     file: pathlib.Path,
     checksum_file: pathlib.Path,
-    progress: Callable,
-    progress_description: Callable,
+    progress_reporter: Callable,
 ) -> bool:
-    progress_description(f"Verifying:       {file.name}")
+    progress_reporter.progress_msg(f"Verifying:       {file.name}")
 
     with open(file, "rb") as f:
         file_tot_size = file.stat().st_size
@@ -461,7 +459,7 @@ def verify_checksum(
         while chunk := f.read(chunk_size):
             file_hash.update(chunk)
             progress_p = int((i / (steps)) * 100)
-            progress(progress_p)
+            progress_reporter.progress(progress_p)
             i += 1
 
     calculated_hash = file_hash.hexdigest()
@@ -471,7 +469,7 @@ def verify_checksum(
     checksum = lines[0].split()[0]  # first word in the first line
 
     if is_correct := calculated_hash == checksum:
-        progress_description(f"hash OK:         {file.name}")
+        progress_reporter.progress_msg(f"hash OK:         {file.name}")
     return is_correct
 
 
@@ -544,8 +542,7 @@ def move_dir(from_path: pathlib.Path, to_path: pathlib.Path) -> tuple[bool, str]
 
 def run_shell_command_with_progress(
     cmd: str,
-    progress: Callable,
-    progress_description: Callable,
+    progress_reporter: Callable,
     parser: Callable,
     byte_output=False,
     shell="bash",
@@ -577,23 +574,22 @@ def run_shell_command_with_progress(
                     concat_normal_chars += output
                     label, percentage = parser(concat_normal_chars)
                     if label != "no match":
-                        progress_description(label)
-                        progress(percentage)
+                        progress_reporter.progress_msg(label)
+                        progress_reporter.progress(percentage)
             else:  # strings
                 output = proc.stdout.readline()
                 fulloutput.append(output)
                 if parser:
                     label, percentage = parser(output)
                     if label != "no match":
-                        progress_description(label)
-                        progress(percentage)
+                        progress_reporter.progress_msg(label)
+                        progress_reporter.progress(percentage)
     return (True, "".join(fulloutput))
 
 
 def install_using_apt_get(
     package_nameS: list,
-    progress_description: Callable,
-    progress_percentage: Callable,
+    progress_reporter: Callable,
 ):
     package_nameS_string = " ".join(package_nameS)
 
@@ -641,8 +637,7 @@ def install_using_apt_get(
 
     _, output = run_shell_command_with_progress(
         f"apt-get install --reinstall {package_nameS_string} -y",
-        progress=progress_percentage,
-        progress_description=progress_description,
+        progress_reporter=progress_reporter,
         parser=progress_parser,
     )
     if "needs" in output:
@@ -742,8 +737,7 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
 
 def install_using_rpm(
     rpm_fileS: list,
-    progress_description: Callable,
-    progress_percentage: Callable,
+    progress_reporter: Callable,
 ) -> tuple[bool, str]:
     files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
 
@@ -829,8 +823,7 @@ def install_using_rpm(
 
             status, msg = run_shell_command_with_progress(
                 f"rpm -Uvh --replacepkgs {files_to_install}",
-                progress=progress_percentage,
-                progress_description=progress_description,
+                progress_reporter=progress_reporter,
                 parser=progress_parser,
                 byte_output=True,
             )
@@ -847,8 +840,7 @@ def install_using_rpm(
 
 def uninstall_using_apt_get(
     package_nameS: list,
-    progress_description: Callable,
-    progress_percentage: Callable,
+    progress_reporter: Callable,
 ):
     package_nameS_string = " ".join(package_nameS)
 
@@ -894,8 +886,7 @@ def uninstall_using_apt_get(
 
     _, msg = run_shell_command_with_progress(
         f"apt-get remove {package_nameS_string} -y",
-        progress=progress_percentage,
-        progress_description=progress_description,
+        progress_reporter=progress_reporter,
         parser=progress_parser,
     )
     if "error" in msg or "Error" in msg:
