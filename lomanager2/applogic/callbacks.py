@@ -33,7 +33,7 @@ class UnifiedProgressReporter:
                 # When starting a new step clear/reset the
                 # fine grained progress indicator first
                 self.progress(0)
-                self.progress_msg("")
+                self.progress_msg("", show_msg=False)
                 # Save description to reuse it in step_end
                 self._current_step_description = txt
                 # Set step name
@@ -44,7 +44,7 @@ class UnifiedProgressReporter:
 
             def step_start(txt: str):
                 self.progress(0)
-                self.progress_msg("")
+                self.progress_msg("", show_msg=False)
                 self._current_step_description = txt
                 log.info(txt)
 
@@ -115,15 +115,17 @@ class UnifiedProgressReporter:
             and self._progress_prc_callback is not None
         ):
 
-            def progress_description(txt: str, prc: str = ""):
-                self._progress_dsc_callback(txt)
-                msg = rf"{txt} ({prc})%" if prc else txt
-                log.info(msg)
+            def progress_description(txt: str, prc: str = "", show_msg=True):
+                if show_msg:
+                    self._progress_dsc_callback(txt)
+                    msg = rf"{txt} ({prc})%" if prc else txt
+                    log.info(msg)
 
         else:
 
-            def progress_description(txt: str, prc: str = ""):
-                msg = rf"{txt} ({prc})%" if prc else txt
-                log.info(msg)
+            def progress_description(txt: str, prc: str = "", show_msg=True):
+                if show_msg:
+                    msg = rf"{txt} ({prc})%" if prc else txt
+                    log.info(msg)
 
         return progress_description
