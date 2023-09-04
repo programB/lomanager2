@@ -274,7 +274,6 @@ class Adapter(QtCore.QObject):
         self._progress_view.progress_bar.setValue(0)
         self._progress_view.overall_progress_description.setText("")
         self._progress_view.overall_progress_bar.setValue(0)
-        self._progress_view.overall_progress_bar.setTextVisible(False)
         self._progress_view.show()
 
         # Change cursor to indicate program is busy

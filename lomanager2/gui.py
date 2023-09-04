@@ -108,6 +108,7 @@ class ProgressDialog(QtWidgets.QDialog):
         self.progress_bar = QtWidgets.QProgressBar()
         self.overall_progress_description = QtWidgets.QLabel()
         self.overall_progress_bar = QtWidgets.QProgressBar()
+        self.overall_progress_bar.setFormat("%v / %m")
         self.button_terminate = QtWidgets.QPushButton("Terminate install (dangerous)!")
 
         main_layout.addWidget(self.progress_description)
