@@ -166,6 +166,9 @@ class Adapter(QtCore.QObject):
                 overall_progress_description=self.overall_progress_description_signal.emit,
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
+            # Number of steps differs depending on procedure
+            proc_steps = self._app_logic.local_copy_procedure_step_count
+            self._progress_view.overall_progress_bar.setRange(0, proc_steps)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -231,6 +234,9 @@ class Adapter(QtCore.QObject):
                 overall_progress_description=self.overall_progress_description_signal.emit,
                 overall_progress_percentage=self.overall_progress_signal.emit,
             )
+            # Number of steps differs depending on procedure
+            proc_steps = self._app_logic.normal_procedure_step_count
+            self._progress_view.overall_progress_bar.setRange(0, proc_steps)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -353,6 +359,10 @@ class Adapter(QtCore.QObject):
             overall_progress_description=self.overall_progress_description_signal.emit,
             overall_progress_percentage=self.overall_progress_signal.emit,
         )
+        # Number of steps differs depending on procedure
+        proc_steps = self._app_logic.check_system_procedure_step_count
+        self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+        #
         self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()

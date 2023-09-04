@@ -77,9 +77,7 @@ class UnifiedProgressReporter:
 
             def step_end(txt: str = "", show_msg=True):
                 self._steps_counter += 1
-                self._overall_progress_prc_callback(
-                    int(100 * (self._steps_counter / self._total_steps))
-                )
+                self._overall_progress_prc_callback(self._steps_counter)
                 msg = txt if txt else self._current_step_description + " ...done"
                 if show_msg:
                     log.info(msg)

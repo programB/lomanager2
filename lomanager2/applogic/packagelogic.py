@@ -25,6 +25,14 @@ class MainLogic(object):
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
     def __init__(self) -> None:
+        make_changes_count = 7
+        self.normal_procedure_step_count = 3 + make_changes_count
+        self.local_copy_procedure_step_count = 3 + make_changes_count
+        self.rebuild_tree_procedure_step_count = 4
+        self.check_system_procedure_step_count = (
+            4 + self.rebuild_tree_procedure_step_count
+        )
+
         self.rebuild_timestamp = 0
         self.warnings = []
         self.global_flags = SignalFlags()
@@ -84,7 +92,9 @@ class MainLogic(object):
             return
 
         # We are good to go
-        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(
+            total_steps=self.normal_procedure_step_count, callbacks=kwargs
+        )
 
         # Mark Java for download if the user requests that
         java_package = [
@@ -223,7 +233,9 @@ class MainLogic(object):
             return
 
         # We are good to go
-        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(
+            total_steps=self.local_copy_procedure_step_count, callbacks=kwargs
+        )
 
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
@@ -403,7 +415,9 @@ class MainLogic(object):
         is added to the self.warnings list.
         """
 
-        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
+        progress_reporter = UnifiedProgressReporter(
+            total_steps=self.check_system_procedure_step_count, callbacks=kwargs
+        )
         msg = ""
 
         progress_reporter.step_start("Looking for running package managers")
@@ -489,6 +503,7 @@ class MainLogic(object):
                 self.inform_user(msg, isOK=False)
         progress_reporter.step_end(msg)
 
+        progress_reporter.step_start("Checking if live session is active")
         if PCLOS.is_live_session_active():
             msg = (
                 "OS is running in live session mode.\n "
@@ -498,11 +513,15 @@ class MainLogic(object):
                 + "to inssufficient virtual disk space."
             )
             self.inform_user(msg, isOK=False)
+        progress_reporter.step_end(msg)
 
-        self.rebuild_package_tree(*args, **kwargs)
+        self.rebuild_package_tree(progress_reporter, *args, **kwargs)
 
-    def rebuild_package_tree(self, *args, **kwargs):
-        progress_reporter = UnifiedProgressReporter(total_steps=11, callbacks=kwargs)
+    def rebuild_package_tree(self, progress_reporter=None, *args, **kwargs):
+        if progress_reporter is None:
+            progress_reporter = UnifiedProgressReporter(
+                total_steps=self.rebuild_tree_procedure_step_count, callbacks=kwargs
+            )
         msg = ""
 
         progress_reporter.step_start("Detecting installed software")
