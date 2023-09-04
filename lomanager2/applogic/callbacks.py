@@ -6,6 +6,7 @@ log = logging.getLogger("lomanager2_logger")
 class UnifiedProgressReporter:
     def __init__(self, total_steps: int, callbacks={}):
         self._steps_counter = 0
+        self._current_step_description = ""
         self._total_steps = total_steps
 
         self._overall_progress_dsc_callback = callbacks.get(
@@ -29,15 +30,23 @@ class UnifiedProgressReporter:
         ):
 
             def step_start(txt: str = ""):
-                if txt:
-                    log.info(txt)
-                    self._overall_progress_dsc_callback(txt)
+                # When starting a new step clear/reset the
+                # fine grained progress indicator first
+                self.progress(0)
+                self.progress_msg("")
+                # Save description to reuse it in step_end
+                self._current_step_description = txt
+                # Set step name
+                log.info(txt)
+                self._overall_progress_dsc_callback(txt)
 
         else:
 
             def step_start(txt: str = ""):
-                if txt:
-                    log.info(txt)
+                self.progress(0)
+                self.progress_msg("")
+                self._current_step_description = txt
+                log.info(txt)
 
         return step_start
 
@@ -66,9 +75,9 @@ class UnifiedProgressReporter:
         ):
 
             def step_end(txt: str = ""):
-                if txt:
-                    log.info(txt)
-                    self._overall_progress_dsc_callback(txt)
+                msg = txt if txt else self._current_step_description + " ...done"
+                log.info(msg)
+                self._overall_progress_dsc_callback(msg)
                 self._steps_counter += 1
                 self._overall_progress_prc_callback(
                     int(100 * (self._steps_counter / self._total_steps))
@@ -77,8 +86,8 @@ class UnifiedProgressReporter:
         else:
 
             def step_end(txt: str = ""):
-                if txt:
-                    log.info(txt)
+                msg = txt if txt else self._current_step_description + " ...done"
+                log.info(msg)
                 self._steps_counter += 1
 
         return step_end
