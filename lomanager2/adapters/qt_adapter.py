@@ -350,7 +350,7 @@ class Adapter(QtCore.QObject):
         self._langs_view.setEnabled(is_langs_view_enabled)
 
     def _check_system_state(self):
-        print("check system state signal emitted")
+        log.debug("check system state signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._app_logic.check_system_state,
             progress_description=self.progress_description_signal.emit,
