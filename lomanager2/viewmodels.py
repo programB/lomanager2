@@ -22,6 +22,8 @@ column_idx = {
 
 
 class SoftwareMenuModel(QtCore.QAbstractTableModel):
+    """Main model translating app logic data into table representation"""
+
     def __init__(self, app_logic, column_names):
         super().__init__()
 
@@ -48,8 +50,8 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
 
         Any Java goes first followed by OpenOffice core packages sorted
         by version (newest first). Then LibreOffice core (LO cores sorted
-        by version) immediately followed by its langpacks (sorted by country code)
-        Finally Clipart core packages (newest first).
+        by version) immediately followed by its langpacks
+        (sorted by country code). Finally Clipart core packages (newest first).
         """
 
         OOfficeS = []
@@ -72,7 +74,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
             # (this sorting is safe, already sorted core packages will not move)
             LOfficeS.sort(key=lambda p: p.kind if p.is_langpack() else "a")
 
-        ClipartS = [child for child in root.children if child.family == "Clipart"]
+        ClipartS = [c for c in root.children if c.family == "Clipart"]
         ClipartS.sort(key=cmp_to_key(compare_versions))
 
         return JavaS + OOfficeS + LOfficeS + ClipartS
@@ -244,20 +246,19 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
     # To enable editing, the following functions must be implemented correctly:
     # setData(), setHeaderData(), flags()
     def setData(self, index, value, role) -> bool:
-        """Attempts to set data in the PackageMenu based on user input
+        """Attempts to set install or remove flag of a package
 
-        Set package's flag (T/F) indicated by index
-        (effectively row and column)
-        by calling PackageMenu method set_package_field()
+        Tries to set the flag of the package indicated by the index
+        (package flag: is_marked_for_removal or is_marked_for_install)
+        by calling app logic methods
 
         Parameters
         ----------
         index : QtCore.QModelIndex | QPeristentModelIndex
             Points to a specific data item in data model
 
-        value : str
-          Although any string can be provided only strings: "True", "False",
-          "1", "0" representing booleans will have effect.
+        value : bool
+        T/F - mark/unmark for removal or install
 
         role : DisplayRole
            Each data item in data model may have many data elements
@@ -267,7 +268,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         Returns
         -------
         bool
-          True: PackageMenu successfully applied package logic
+          True: logic has successfully marked the package
           False: non flag column, package logic failed, index not valid
         """
 
@@ -286,9 +287,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         # because the flags() method already
         # prevents the user from modifying other columns.
         if not isinstance(value, bool):
-            log.error(
-                f"expected boolean to set mark state, received {type(value)}"
-            )
+            log.error(f"expected boolean to set mark state, received {type(value)}")
 
         if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
             if column == column_idx.get("marked_for_removal"):
@@ -325,6 +324,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         return super().setHeaderData(section, orientation, value, role)
 
     def flags(self, index):
+        """Tells which column/rows can be changed"""
         if index.isValid() is False:
             return QtCore.Qt.ItemFlag.ItemIsEnabled
         # Only allow marked_for_removal|install fields to be editable

@@ -1,14 +1,6 @@
 """
-This module gathers functions to get or set operating system state.
-Functions that use basic operations on the operating system either
-to get information or to cause some changes in the operating system
-and this by directly calling external, system program or by methods
-from python standard library.
-These are service providing functions, not procedures in app's logic.
-
-These functions must not not hold any state (or be made to hold it
-by turning them into closures or classes) - they should get the information
-directly from the system on each call.
+This module gathers functions to return some information about current
+operating system state or change that state.
 """
 
 
@@ -41,9 +33,9 @@ def run_shell_command(
                 full_command,
                 check=err_check,  # some commands return non-zero exit code if successful
                 timeout=timeout,  # fail on command taking to long to exec.
-                capture_output=True,  # capture output (both stdout and stderr)
+                capture_output=True,  # capture both stdout and stderr
                 text=True,  # give the output as a string not bytes
-                encoding="utf-8",  # explicitly set the encoding for the text
+                encoding="utf-8",
             )
             answer = (shellcommand.stdout + shellcommand.stderr).strip()
             log.debug(f"Received answer: {answer}")
@@ -81,6 +73,7 @@ def get_PIDs_by_name(names: list[str]) -> dict:
 
 
 def get_running_package_managers() -> tuple[bool, dict]:
+    """Checks if any package manager is running"""
     package_managers = [
         "synaptic",
         "smart",
@@ -100,10 +93,11 @@ def get_running_package_managers() -> tuple[bool, dict]:
 
 
 def get_running_Office_processes() -> tuple[bool, dict]:
+    """Checks if any Office is running"""
     binaries_to_check = ["soffice.bin"]
     running_office_suits = {}
     returned_pids = get_PIDs_by_name(binaries_to_check)
-    is_successful = True if not "Error" in running_office_suits.keys() else False
+    is_successful = not "Error" in running_office_suits.keys()
     if is_successful:
         for key, item in returned_pids.items():
             if item:
@@ -225,6 +219,20 @@ def detect_installed_java() -> tuple[bool, str]:
 
 
 def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
+    """Checks for installed OpenOffice and LibreOffice version
+
+    This function checks the presence of certain files, directories
+    and rpm packages that indicate OpenOffice/LibreOffice of specific
+    version is installed. Those checks are based on which version
+    of aforementioned software was offered by PCLOS
+
+    Returns
+    -------
+    list[tuple[str, str, tuple]]
+    List of detected Offices. LibreOffice/OpenOffice, version string,
+    tuple of language codes for this version
+    """
+
     list_of_detected_suits = []
 
     # Look for OpenOffice 2.x (was on 2007 CD)
@@ -377,6 +385,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 
 
 def detect_installed_clipart() -> tuple[bool, str]:
+    """Checks if libreoffice-openclipart rpm package is installed"""
     success, reply = run_shell_command(
         "rpm -qa | grep libreoffice-openclipart", err_check=False
     )
@@ -583,6 +592,32 @@ def install_using_apt_get(
     package_nameS: list,
     progress_reporter: Callable,
 ):
+    """Install rpm packages using apt-get command provided by the OS
+
+    This function first performs dry-run to check if the list of
+    rpm packages provided can be installed and if so proceeds with
+    actual install reporting progress using progress_reporter callback
+    If there is no network connection the packages should already be
+    in the apt's cache directory for this command to work.
+    If there is network connection apt-get will download the request packages
+    by itself if they not present in the cache or the one in the cache
+    are outdated.
+    The rpm command used to do the job is 'apt-get install'
+
+    Parameters
+    ----------
+    rpm_fileS : list
+    list of rpm packages (not rpm filenames) that need to be installed
+
+    progress_reporter : Callable
+    callback function for installation progress reporting
+
+    Returns
+    -------
+    tuple[bool, str]
+    T/F indication installation status, string with reason of failure,
+    empty string if success
+    """
     package_nameS_string = " ".join(package_nameS)
 
     progress_reporter.progress_msg("Checking if packages can be installed...")
@@ -647,7 +682,7 @@ def install_using_apt_get(
 
 
 def clean_dir(dir_path: pathlib.Path) -> tuple[bool, str]:
-    # remove and recreate dir to make sure it is empty
+    """Removes and recreates a dir to make sure it is empty"""
     try:
         if dir_path.exists():
             shutil.rmtree(dir_path)
@@ -731,6 +766,28 @@ def install_using_rpm(
     rpm_fileS: list,
     progress_reporter: Callable,
 ) -> tuple[bool, str]:
+    """Install rpm packages using rpm binary installed in the OS
+
+    This function first performs dry-run to check if the list of
+    rpm files provided can be installed and if so proceeds with
+    actual install reporting progress using progress_reporter callback
+    The rpm command used to do the job is 'rpm -Uvh'
+
+    Parameters
+    ----------
+    rpm_fileS : list
+    list of absolute paths to rpm files that need to be installed
+
+    progress_reporter : Callable
+    callback function for installation progress reporting
+
+    Returns
+    -------
+    tuple[bool, str]
+    T/F indication installation status, string with reason of failure,
+    empty string if success
+    """
+
     files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
 
     progress_reporter.progress_msg("Checking if packages can be installed...")
@@ -833,6 +890,28 @@ def uninstall_using_apt_get(
     package_nameS: list,
     progress_reporter: Callable,
 ):
+    """Uninstalls rpm packages using apt-get command provided by the OS
+
+    This function first performs dry-run to check if the list of
+    rpm files provided can be removed without conflicts
+    and if so proceeds with actual uninstall reporting progress
+    using progress_reporter callback
+    The command used to do the job is 'apt-get remove'
+
+    Parameters
+    ----------
+    rpm_fileS : list
+    list rpm packages (not rpm filenames) need to be removed
+
+    progress_reporter : Callable
+    callback function for installation progress reporting
+
+    Returns
+    -------
+    tuple[bool, str]
+    T/F indication status status, string with reason of failure,
+    empty string if success
+    """
     package_nameS_string = " ".join(package_nameS)
 
     progress_reporter.progress_msg("Checking if packages can be uninstalled...")
@@ -895,6 +974,7 @@ def force_rm_directory(path: pathlib.Path):
 
 
 def update_menus():
+    """Updates KDE/GNOME/LXDE etc. menus"""
     log.info("updating menus")
     run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
     run_shell_command("update-menus -n", err_check=False)
@@ -902,6 +982,7 @@ def update_menus():
 
 
 def make_dir_tree(target_dir: pathlib.Path):
+    """Recursivly create directories needed to contain the leaf directory"""
     os.makedirs(target_dir, exist_ok=True)
 
 

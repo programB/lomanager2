@@ -64,6 +64,12 @@ class MainLogic(object):
         )
 
     def apply_changes(self, *args, **kwargs):
+        """Does the preparations and collects files before calling _make_changes
+
+        This method does the final decision of what should installed/removed
+        and calls file download procedure if any files have to be collected.
+        When done it calls _make_changes to do modify system state.
+        """
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
             self.inform_user(msg, isOK=False)
@@ -201,6 +207,12 @@ class MainLogic(object):
         )
 
     def install_from_local_copy(self, *args, **kwargs):
+        """Applies local copy installation logic before calling _make_changes
+
+        This method checks if the directory provided by the user contains
+        files that can be used to install Java, LibreOffice or Clipart
+        When done it calls _make_changes to do modify system state.
+        """
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
             self.inform_user(msg, isOK=False)
@@ -240,13 +252,13 @@ class MainLogic(object):
 
         # STEP
         progress_reporter.step_start("Cleaning temporary directories")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
+        is_wd_cleaned, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_wd_cleaned is False:
             msg = "Failed to (re)create working directory: " + msg_w
             self.inform_user(msg, isOK=False)
             return
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
+        is_vd_cleaned, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_vd_cleaned is False:
             msg = "Failed to (re)create verified directory: " + msg_v
             self.inform_user(msg, isOK=False)
             return
@@ -397,7 +409,7 @@ class MainLogic(object):
         This method performs checks of the operating system and
         sets the status of the flags in the self.global_flags object
         to TRUE if some operations need to be BLOCKED.
-        If so a human readable messages for the cause
+        If this happens a human readable messages for the cause
         is added to the self.warnings list.
         """
 
@@ -528,6 +540,15 @@ class MainLogic(object):
         self.rebuild_package_tree(progress_reporter, *args, **kwargs)
 
     def rebuild_package_tree(self, progress_reporter=None, *args, **kwargs):
+        """Replaces old package tree with new one with THE SAME root
+
+        Called every time the state of the actually installed rpm packages
+        in the OS changes. It detects installed software, creates a list
+        of packages available for installation and using both builds a
+        package dependency tree (dependencies are predetermined).
+        It finishes by applying restriction to what can be installed/removed
+        based on OS state.
+        """
         if progress_reporter is None:
             progress_reporter = UnifiedProgressReporter(
                 total_steps=self.rebuild_tree_procedure_step_count, callbacks=kwargs
@@ -1176,6 +1197,36 @@ class MainLogic(object):
         progress_reporter,
         skip_verify=False,
     ) -> tuple[bool, str, dict]:
+        """Checks files availability on remote server(s) and downloads them
+
+        Files to download (with URLs) are obtained from the
+        VirtualPackage objects passed.
+        This function first verifies that all requested files exists
+        on the server(s) before starting the download process.
+        (Returns False if any uri is not valid)
+        Each file and its MD5 checksum (if one exist) is downloaded
+        and file is verified against it. Function will return error at any point
+        during this process (eg. file can't be downloaded or verification fails)
+        and will not continue with download.
+
+        Parameters
+        ----------
+        progress_reporter : Callable
+        Callback used to report download progress
+
+        skip_verify : bool
+        Skip the md5 verification if set True (default False)
+
+        packages_to_download : list
+        Virtual packages list to download
+
+        Returns
+        -------
+        tuple[bool, str, dict]
+        T/F success/failure, str with explanation for error (empty is success)
+        dict with absolute path do downloaded files
+        """
+
         rpms_and_tgzs_to_use = {
             "files_to_install": {
                 "Java": [],
