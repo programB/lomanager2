@@ -39,7 +39,7 @@ def run_shell_command(
         try:
             shellcommand = subprocess.run(
                 full_command,
-                check=err_check,  # some commads return non-zero exit code if successful
+                check=err_check,  # some commands return non-zero exit code if successful
                 timeout=timeout,  # fail on command taking to long to exec.
                 capture_output=True,  # capture output (both stdout and stderr)
                 text=True,  # give the output as a string not bytes
@@ -90,26 +90,26 @@ def get_running_package_managers() -> tuple[bool, dict]:
     ]
     running_managers = {}
     returned_pids = get_PIDs_by_name(package_managers)
-    is_succesful = True if not "Error" in returned_pids.keys() else False
-    if is_succesful:
+    is_successful = True if not "Error" in returned_pids.keys() else False
+    if is_successful:
         for key, item in returned_pids.items():
             if item:
                 running_managers[key] = ", ".join(item)
     log.debug(f"running managers: {running_managers}")
-    return (is_succesful, running_managers)
+    return (is_successful, running_managers)
 
 
 def get_running_Office_processes() -> tuple[bool, dict]:
     binaries_to_check = ["soffice.bin"]
     running_office_suits = {}
     returned_pids = get_PIDs_by_name(binaries_to_check)
-    is_succesful = True if not "Error" in running_office_suits.keys() else False
-    if is_succesful:
+    is_successful = True if not "Error" in running_office_suits.keys() else False
+    if is_successful:
         for key, item in returned_pids.items():
             if item:
                 log.debug(f"ITEM: {item}, {type(item)}")
                 running_office_suits[key] = ", ".join(item)
-    return (is_succesful, running_office_suits)
+    return (is_successful, running_office_suits)
 
 
 class HumanUser:
@@ -123,7 +123,7 @@ def get_system_users() -> list[HumanUser]:
 
     The criteria are that the user has a login shell that is one
     of the shells listed in /etc/shells and has a home folder in /home.
-    Additioanly root user is included.
+    Additionally root user is included.
     """
     system_shells = []
     with open("/etc/shells", "r") as f:
@@ -340,7 +340,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 # rpm -q <package> --qf %{summary}
                 # and rely on summary for language packages being:
                 # "Brand language module"
-                # regex is still needed thoug to extract det_lang and det_regio
+                # regex is still needed though to extract det_lang and det_regio
                 # For now we just explicitly exclude those pesky packages
                 non_lang_packages = ["ure"]
                 langs_found = []
@@ -776,14 +776,14 @@ def install_using_rpm(
                 first = True
                 p_name = ""
                 p_progress = 0
-                match_veryfying = regex_verifying.search(last_string)
+                match_verifying = regex_verifying.search(last_string)
                 match_preparing = regex_preparing.search(last_string)
                 match_updinst = regex_updinst.search(last_string)
                 match_n_p = regex_name_and_progress.search(last_string)
-                if match_veryfying:
+                if match_verifying:
                     verifying_msg = "Verifying..."
                     p_progress = int(
-                        100 * len(match_veryfying.group("p_progress")) / hashes4done
+                        100 * len(match_verifying.group("p_progress")) / hashes4done
                     )
                     return (verifying_msg, p_progress)
                 elif match_preparing:

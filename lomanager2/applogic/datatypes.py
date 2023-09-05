@@ -24,7 +24,7 @@ class Node:
                 child.get_subtree(nodeslist)
         nodeslist.append(self)
 
-    def get_syblings(self) -> list:
+    def get_siblings(self) -> list:
         if self.parent is not None:
             s = [child for child in self.parent.children if child is not self]
         else:

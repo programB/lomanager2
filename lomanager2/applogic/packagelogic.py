@@ -242,7 +242,7 @@ class MainLogic(object):
         # Block any other calls of this function...
         self.global_flags.ready_to_apply_changes = False
         # ...and proceed with the procedure
-        log.info("*** Begining local copy install procedure ***")
+        log.info("*** Beginning local copy install procedure ***")
 
         is_modification_needed = False
         rpms_and_tgzs_to_use = {
@@ -422,7 +422,7 @@ class MainLogic(object):
         )
         msg = ""
 
-        log.info("*** Begining system check procedure ***")
+        log.info("*** Beginning system check procedure ***")
         progress_reporter.step_start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
@@ -488,18 +488,18 @@ class MainLogic(object):
                     "your system! Use at your own risk."
                 )
                 (
-                    check_successfull,
+                    check_successful,
                     is_updated,
                     explanation,
                 ) = (True, True, "")
                 self.inform_user(msg, isOK=False)
             else:
                 (
-                    check_successfull,
+                    check_successful,
                     is_updated,
                     explanation,
                 ) = PCLOS.check_system_update_status()
-            if check_successfull:
+            if check_successful:
                 if not is_updated:
                     self.global_flags.block_normal_install = True
                     msg = (
@@ -532,9 +532,9 @@ class MainLogic(object):
             msg = (
                 "OS is running in live session mode.\n "
                 + "All modifications made will be lost on reboot unless you "
-                + "intall the system on a permanent drive. Also note that in "
-                + "live sesssion mode LibreOffice may fail to install due "
-                + "to inssufficient virtual disk space."
+                + "install the system on a permanent drive. Also note that in "
+                + "live session mode LibreOffice may fail to install due "
+                + "to insufficient virtual disk space."
             )
             self.inform_user(msg, isOK=False)
         else:
@@ -796,7 +796,7 @@ class MainLogic(object):
                 if clipart.version == recommended_Clipart_version:
                     clipart.allow_install()
 
-        # If some operations are not permited because
+        # If some operations are not permitted because
         # of the system state not allowing for it
         # block them here
         block_any_install = (
@@ -1051,7 +1051,7 @@ class MainLogic(object):
 
         # STEP
         # Java needs to be installed?
-        # (Nonte that Java may have been downloaded as a result of
+        # (Note that Java may have been downloaded as a result of
         #  force_java_download but not actually marked for install)
         java_package = [
             c for c in self.package_tree_root.children if "Java" in c.family
@@ -1325,7 +1325,7 @@ class MainLogic(object):
                         f"quickstarter PID ({pid}) is suspiciously low - refusing to kill process"
                     )
         if (not LO_PIDs) and (not OO_PIDs):
-            log.info("No runnig quickstarter found ...good")
+            log.info("No running quickstarter found ...good")
 
     def _install_Java(
         self,
@@ -1465,7 +1465,7 @@ class MainLogic(object):
             base_lang_code = lang.kind.split("-")[0]
             langs_with_the_same_base_code_marked_4_removal = [
                 p.is_marked_for_removal
-                for p in (lang.get_syblings() + [lang])
+                for p in (lang.get_siblings() + [lang])
                 if (p.kind.startswith(base_lang_code) and p.is_installed)
             ]
 
@@ -1536,7 +1536,7 @@ class MainLogic(object):
                     files_to_remove.append(icon)
 
             # All version (with subvariants) starting from 3.4 and later
-            # (Historicaly these were:
+            # (Historically these were:
             #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
             #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
             else:
@@ -1635,12 +1635,12 @@ class MainLogic(object):
             if is_installed is False:
                 return (False, msg)
 
-            # Postinstall stuff
+            # Post install stuff
             self._disable_LO_update_checks()
             self._modify_dot_desktop_files()
             self._fix_LXDE_icons()
 
-            # Finaly return success
+            # Finally return success
             return (True, "LibreOffice packages successfully installed")
 
         else:
@@ -2111,9 +2111,9 @@ class ManualSelectionLogic(object):
           False otherwise
         """
 
-        log.debug(">>> Install logic triggerd <<<")
+        log.debug(">>> Install logic triggered <<<")
 
-        is_apply_install_successul = False
+        is_apply_install_successful = False
 
         java_pkgs = [c for c in self.root.children if "Java" in c.family]
         java = None if not java_pkgs else java_pkgs[0]
@@ -2133,12 +2133,12 @@ class ManualSelectionLogic(object):
                 #    and decides not to install any new languages) -
                 #    allow to uninstall the existing (if any) core-packages.
                 if package.is_langpack():
-                    syblings = package.get_syblings()
-                    is_any_sybling_marked_for_install = any(
-                        [s for s in syblings if s.is_marked_for_install]
+                    siblings = package.get_siblings()
+                    is_any_sibling_marked_for_install = any(
+                        [s for s in siblings if s.is_marked_for_install]
                     )
                     if (
-                        not is_any_sybling_marked_for_install
+                        not is_any_sibling_marked_for_install
                         and package.parent is not None
                         and package.parent.is_installed
                     ):
@@ -2163,7 +2163,7 @@ class ManualSelectionLogic(object):
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
                                     lang.is_remove_opt_enabled = True
-                is_apply_install_successul = True
+                is_apply_install_successful = True
 
             # requesting install
             if mark is True:
@@ -2196,7 +2196,7 @@ class ManualSelectionLogic(object):
                 #     and thus the latest LO was added to packages
                 #     there is no need to care about other installed LO suits
                 #     Such situation should never occur.
-                is_apply_install_successul = True
+                is_apply_install_successful = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
@@ -2219,11 +2219,11 @@ class ManualSelectionLogic(object):
                             # make the removal option for installed
                             # one accessible again
                             child.is_remove_opt_enabled = True
-            is_apply_install_successul = True
+            is_apply_install_successful = True
 
         self._decide_what_to_download()
         self._update_changes_info()
-        return is_apply_install_successul
+        return is_apply_install_successful
 
     def apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
         """Marks package for removal changing flags of other packages accordingly
@@ -2245,9 +2245,9 @@ class ManualSelectionLogic(object):
           True if packages removal logic was applied successfully,
           False otherwise
         """
-        log.debug(">>> Removal logic triggerd <<<")
+        log.debug(">>> Removal logic triggered <<<")
 
-        is_apply_removal_successul = False
+        is_apply_removal_successful = False
 
         # OpenOffice dependency tree
         # OpenOffice cannot be installed, it can only be uninstalled
@@ -2267,7 +2267,7 @@ class ManualSelectionLogic(object):
                         lang.is_marked_for_removal = False
                         if not lang.is_installed:
                             lang.is_install_opt_enabled = True
-                is_apply_removal_successul = True
+                is_apply_removal_successful = True
 
             # requesting removal
             if mark is True:
@@ -2282,17 +2282,17 @@ class ManualSelectionLogic(object):
                         else:
                             lang.is_install_opt_enabled = False
                             lang.is_marked_for_install = False
-                is_apply_removal_successul = True
+                is_apply_removal_successful = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
             # mark the package as requested.
             package.is_marked_for_removal = mark
-            is_apply_removal_successul = True
+            is_apply_removal_successful = True
 
         self._decide_what_to_download()
         self._update_changes_info()
-        return is_apply_removal_successul
+        return is_apply_removal_successful
 
     # -- end Public interface for ManualSelectionLogic
 

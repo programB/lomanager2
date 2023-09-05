@@ -17,7 +17,7 @@ parser.add_argument(
 parser.add_argument(
     "--force_english_logs",
     action="store_true",
-    help="ignores locale setting for loggig purposes and uses hardcoded "
+    help="ignores locale setting for logging purposes and uses hard coded "
     "strings instead. Note that the interface will still be localized.",
 )
 args = parser.parse_args()

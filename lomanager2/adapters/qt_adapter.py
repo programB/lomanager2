@@ -57,8 +57,8 @@ class Adapter(QtCore.QObject):
         )
 
         # Delegates
-        # contructing delegate with main WINDOW as parent ensures it will
-        # be propertly deleted
+        # constructing delegate with main WINDOW as parent ensures it will
+        # be properly deleted
         self.check_button = CheckButtonDelegate(parent=self._app_main_view)
         self._software_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
@@ -317,10 +317,10 @@ class Adapter(QtCore.QObject):
         self._app_main_view.unsetCursor()
         self._progress_view.progress_bar.setVisible(True)
 
-        log.debug("Emiting rebuild_tree_signal")
+        log.debug("Emitting rebuild_tree_signal")
         self.rebuild_tree_signal.emit()
 
-        log.debug("Emiting GUI locks signal to unlock GUI elements")
+        log.debug("Emitting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
         self.lock_unlock_GUI_signal.emit()
