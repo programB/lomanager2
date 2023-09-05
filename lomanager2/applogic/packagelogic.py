@@ -24,7 +24,9 @@ class MainLogic(object):
     # and I don't want to put import statements
     # in the middle of a code or brake code's intelligibility
     # by importing some logic at the top of the main file.
-    def __init__(self) -> None:
+    def __init__(self, skip_update_check: bool) -> None:
+        self.skip_update_check = skip_update_check
+
         make_changes_count = 7
         self.normal_procedure_step_count = 3 + make_changes_count
         self.local_copy_procedure_step_count = 3 + make_changes_count
@@ -479,11 +481,24 @@ class MainLogic(object):
         # no running manager prevents access to system rpm database
         progress_reporter.step_start("Checking for system updates")
         if self.global_flags.block_checking_4_updates is False:
-            (
-                check_successfull,
-                is_updated,
-                explanation,
-            ) = PCLOS.check_system_update_status()
+            if self.skip_update_check:
+                msg = (
+                    "Checking for OS updates was bypassed. "
+                    "Installing packages in this mode can potentially mess up "
+                    "your system! Use at your own risk."
+                )
+                (
+                    check_successfull,
+                    is_updated,
+                    explanation,
+                ) = (True, True, "")
+                self.inform_user(msg, isOK=False)
+            else:
+                (
+                    check_successfull,
+                    is_updated,
+                    explanation,
+                ) = PCLOS.check_system_update_status()
             if check_successfull:
                 if not is_updated:
                     self.global_flags.block_normal_install = True
