@@ -77,7 +77,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
 
         return JavaS + OOfficeS + LOfficeS + ClipartS
 
-    # -- start "Getters" --
+    # -- "Getters" --
     def data(self, index, role) -> Any:
         """Returns data item as requested by the View.
 
@@ -240,7 +240,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
 
     # -- end "Getters" --
 
-    # -- start "Setters" --
+    # -- "Setters" --
     # To enable editing, the following functions must be implemented correctly:
     # setData(), setHeaderData(), flags()
     def setData(self, index, value, role) -> bool:
@@ -338,7 +338,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
     # -- end "Setters" --
 
 
-# Custom Proxy Model
+# Custom Proxy Models
 class SoftwareMenuRenderModel(QtCore.QSortFilterProxyModel):
     def __init__(self, model, parent=None):
         super(SoftwareMenuRenderModel, self).__init__(parent)

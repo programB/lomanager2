@@ -150,7 +150,6 @@ def is_live_session_active() -> bool:
 
 
 def check_system_update_status() -> tuple[bool, bool, str]:
-    # Update package index
     # Since the apt-get update command fetches data from
     # repo server it make take a while hence setting timeout to 45 sek.
     status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
@@ -586,7 +585,7 @@ def install_using_apt_get(
 ):
     package_nameS_string = " ".join(package_nameS)
 
-    progress_reporter.progress_msg("Checking for potential problems...")
+    progress_reporter.progress_msg("Checking if packages can be installed...")
     status, output = run_shell_command(
         f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
         err_check=False,
@@ -734,7 +733,7 @@ def install_using_rpm(
 ) -> tuple[bool, str]:
     files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
 
-    progress_reporter.progress_msg("Checking for potential problems...")
+    progress_reporter.progress_msg("Checking if packages can be installed...")
     status, output = run_shell_command(
         "rpm -Uvh --replacepkgs --test " + files_to_install,
         err_check=False,
@@ -754,7 +753,7 @@ def install_using_rpm(
 
             # It seems rpm is manipulating TTY directly :(
             # Although TTY can be captured the method below relies
-            # on up 40 # symbols being written to stodout when rpm is making
+            # on '#' symbols being written to stdout when rpm is making
             # progress installing rpm. Counting them to calculate percentage.
             def progress_parser(input: bytes) -> tuple[str, int]:
                 # regex for stdout output
@@ -836,7 +835,7 @@ def uninstall_using_apt_get(
 ):
     package_nameS_string = " ".join(package_nameS)
 
-    progress_reporter.progress_msg("Checking for potential problems...")
+    progress_reporter.progress_msg("Checking if packages can be uninstalled...")
     status, output = run_shell_command(
         f"apt-get remove --simulate  {package_nameS_string} -y",
         err_check=False,
