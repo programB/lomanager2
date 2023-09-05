@@ -1,7 +1,7 @@
 from typing import Any
 from functools import cmp_to_key
 
-from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
+from . pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 from lolangs import supported_langs
 from applogic.datatypes import compare_versions
 import logging

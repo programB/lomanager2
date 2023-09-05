@@ -9,8 +9,8 @@ import lolangs
 from typing import Callable
 from . import PCLOS
 from . import net
-from .datatypes import VirtualPackage, SignalFlags, compare_versions
-from .callbacks import UnifiedProgressReporter
+from . datatypes import VirtualPackage, SignalFlags, compare_versions
+from . callbacks import UnifiedProgressReporter
 
 import logging
 

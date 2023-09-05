@@ -1,6 +1,6 @@
 import time
 
-from pysidecompat import QtCore  # pyright: ignore
+from . pysidecompat import QtCore  # pyright: ignore
 import logging
 
 log = logging.getLogger("lomanager2_logger")
