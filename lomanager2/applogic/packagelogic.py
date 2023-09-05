@@ -9,7 +9,7 @@ import lolangs
 from typing import Callable
 from . import PCLOS
 from . import net
-from .datatypes import VirtualPackage, SignalFlags
+from .datatypes import VirtualPackage, SignalFlags, compare_versions
 from .callbacks import UnifiedProgressReporter
 
 import logging
@@ -669,24 +669,40 @@ class MainLogic(object):
             newest_installed_Java_version = java.version
         # java install/remove options are never visible
 
-        newest_installed_LO_version = ""
+        installed_LOs = [
+            c for c in java.children if "LibreOffice" in c.family and c.is_installed
+        ]
+        if installed_LOs:
+            newest_installed_LO_version = installed_LOs[0].version
+            for office in installed_LOs:
+                newest_installed_LO_version = (
+                    office.version
+                    if compare_versions(office.version, newest_installed_LO_version)
+                    >= 1
+                    else newest_installed_LO_version
+                )
+        else:
+            newest_installed_LO_version = ""
+
+        installed_clipartS = [
+            c for c in root.children if "Clipart" in c.family and c.is_installed
+        ]
+        if installed_clipartS:
+            newest_installed_Clipart_version = installed_clipartS[0].version
+            for clipart in installed_clipartS:
+                newest_installed_Clipart_version = (
+                    clipart.version
+                    if compare_versions(
+                        clipart.version, newest_installed_Clipart_version
+                    )
+                    >= 1
+                    else newest_installed_Clipart_version
+                )
+        else:
+            newest_installed_Clipart_version = ""
+
         LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
-        for office in LibreOfficeS:
-            if office.is_installed:
-                newest_installed_LO_version = self._return_newer_ver(
-                    office.version,
-                    newest_installed_LO_version,
-                )
-
-        newest_installed_Clipart_version = ""
         clipartS = [c for c in root.children if "Clipart" in c.family]
-        for clipart in clipartS:
-            if clipart.is_installed:
-                newest_installed_Clipart_version = self._return_newer_ver(
-                    clipart.version,
-                    newest_installed_Clipart_version,
-                )
-
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
 
@@ -816,58 +832,6 @@ class MainLogic(object):
             newest_installed_LO_version,
             newest_installed_Clipart_version,
         )
-
-    def _return_newer_ver(self, v1: str, v2: str) -> str:
-        """Returns the newer of two versions passed
-
-        Version strings are assumed to be dot
-        separated eg. "4.5"
-        These strings MUST follow the pattern
-        but need not to be of the same length.
-        (in such case shorter version string is padded
-         with zeros before comparison)
-        Any version is newer then an empty string.
-        Empty string is returned is both v1 and v2
-        are empty strings.
-
-        Parameters
-        ----------
-        v1 : str
-          package version string eg. "9.1"
-
-        v2 : str
-          package version string eg. "9.1.2"
-
-        Returns
-        -------
-        str
-          newer of the v1 and v2, here 9.1.2 because it's newer then 9.1,
-          or empty string.
-        """
-
-        if v1 != v2:
-            if v1 == "":
-                return v2
-            elif v2 == "":
-                return v1
-            else:
-                v1_int = [int(i) for i in v1.split(".")]
-                v2_int = [int(i) for i in v2.split(".")]
-
-                # pad shorter list with zeros to match sizes
-                diff = abs(len(v1_int) - len(v2_int))
-                v1_int.extend([0] * diff) if len(v1_int) <= len(
-                    v2_int
-                ) else v2_int.extend([0] * diff)
-
-                for i in range(len(v1_int)):
-                    if v1_int[i] == v2_int[i]:
-                        continue
-                    elif v1_int[i] > v2_int[i]:
-                        return v1
-                    else:
-                        return v2
-        return v1  # ver1 == ver2
 
     def _get_available_software(self):
         available_virtual_packages = []
