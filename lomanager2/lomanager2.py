@@ -30,7 +30,7 @@ if os.geteuid() == 0:
     # Setup logging
     log_level = logging.DEBUG if args.debug else logging.INFO
 
-    # Create log(s) folder
+    # Create log(s) directory
     logs_path = "/root/.lomanager2/log/"
     os.makedirs(logs_path, exist_ok=True)
 

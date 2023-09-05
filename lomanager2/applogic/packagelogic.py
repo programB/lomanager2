@@ -211,10 +211,10 @@ class MainLogic(object):
             self.inform_user(msg, isOK=False)
             return
 
-        if "local_copy_folder" in kwargs.keys():
-            local_copy_directory = kwargs["local_copy_folder"]
+        if "local_copy_dir" in kwargs.keys():
+            local_copy_directory = kwargs["local_copy_dir"]
         else:
-            msg = "local_copy_folder argument is obligatory"
+            msg = "local_copy_dir argument is obligatory"
             self.inform_user(msg, isOK=False)
             return
 
@@ -1258,11 +1258,11 @@ class MainLogic(object):
                     else:
                         ending = "-core"
                     label = package.family + ending
-                    folder_name = label + "_tgzs"
+                    dir_name = label + "_tgzs"
                 else:
                     label = package.family
-                    folder_name = label + "_rpms"
-                f_verified = configuration.verified_dir.joinpath(folder_name)
+                    dir_name = label + "_rpms"
+                f_verified = configuration.verified_dir.joinpath(dir_name)
                 f_verified = f_verified.joinpath(file["name"])
                 if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
                     msg = f"Error moving file {f_dest} to {f_verified}"

@@ -122,7 +122,7 @@ def get_system_users() -> list[HumanUser]:
     """Looks for regular (not services) system users.
 
     The criteria are that the user has a login shell that is one
-    of the shells listed in /etc/shells and has a home folder in /home.
+    of the shells listed in /etc/shells and has a home directory in /home.
     Additionally root user is included.
     """
     system_shells = []
@@ -686,19 +686,19 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
         log.error(f"Could not inspect archive: {error}")
         return []
     log.debug(f"Top level dir name in the archive: {resulting_dir_name}")
-    unpacked_folder = pathlib.Path(target_dir).joinpath(resulting_dir_name)
+    unpacked_dir = pathlib.Path(target_dir).joinpath(resulting_dir_name)
 
     # Unpack the archive
     try:
         shutil.unpack_archive(archive_path, target_dir, format="gztar")
-        log.debug(f"Was archive extracted?: {unpacked_folder.exists()}")
+        log.debug(f"Was archive extracted?: {unpacked_dir.exists()}")
     except Exception as error:
         log.error(f"Could not extract archive: {error}")
         return []
 
     # Gather rpm filenames (strings)
-    RPMS_folder = unpacked_folder.joinpath("RPMS")
-    success, output = run_shell_command("ls " + str(RPMS_folder))
+    RPMS_dir = unpacked_dir.joinpath("RPMS")
+    success, output = run_shell_command("ls " + str(RPMS_dir))
     rpm_files_names = []
     if success:
         for item in output.split():
@@ -709,12 +709,12 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
 
     # Move all files from the unpackaged /target_dir/resulting_dir_name/RPMS
     # directly to /target_dir
-    for rpm_file in RPMS_folder.iterdir():
+    for rpm_file in RPMS_dir.iterdir():
         move_file(from_path=rpm_file, to_path=target_dir)
 
-    # Remove the remanent of unpacked_folder
+    # Remove the remanent of unpacked_dir
     try:
-        shutil.rmtree(unpacked_folder)
+        shutil.rmtree(unpacked_dir)
     except Exception as error:
         log.error(f"Could not delete directory: {error}")
         return []
@@ -891,7 +891,7 @@ def force_rm_directory(path: pathlib.Path):
         if path.exists():
             shutil.rmtree(path)
     except Exception as error:
-        log.error("Failed to remove folder" + str(error))
+        log.error("Failed to remove directory" + str(error))
 
 
 def update_menus():

@@ -157,7 +157,7 @@ class Adapter(QtCore.QObject):
             # pass any variables required by this procedure as well.
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._app_logic.install_from_local_copy,
-                local_copy_folder=selected_dir,
+                local_copy_dir=selected_dir,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
