@@ -904,7 +904,7 @@ class MainLogic(object):
         else:
             LO_ver = configuration.latest_available_LO_version
         recommended_LO_ver = LO_ver
-        LO_minor_ver = PCLOS.make_minor_ver(LO_ver)
+        LO_minor_ver = configuration.make_minor_ver(LO_ver)
         # Build VP for LO core package
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
@@ -1470,7 +1470,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
             # LibreOffice langs removal procedures.
-            base_version = PCLOS.make_base_ver(lang.version)
+            base_version = configuration.make_base_ver(lang.version)
 
             expected_rpm_names = [
                 f"libreoffice{base_version}-{lang.kind}-",
@@ -1550,7 +1550,7 @@ class MainLogic(object):
             #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
             #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
             else:
-                base_version = PCLOS.make_base_ver(core.version)
+                base_version = configuration.make_base_ver(core.version)
                 # All if-s in case (extremely unlikely) someone managed to
                 # install more then one version
                 if core.version.startswith("3.4"):

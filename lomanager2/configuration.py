@@ -20,3 +20,15 @@ PCLOS_repo_base_url = "https://ftp.nluug.nl/"
 PCLOS_repo_path = "/os/Linux/distr/pclinuxos/pclinuxos/apt/pclinuxos/64bit/RPMS.x86_64/"
 DocFund_base_url = "http://download.documentfoundation.org/libreoffice/stable/"
 DocFund_path_ending = "/rpm/x86_64/"
+
+
+def make_base_ver(full_version: str) -> str:
+    # base version comprises of the first 2 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5
+    return ".".join(full_version.split(".")[:2])
+
+
+def make_minor_ver(full_version: str) -> str:
+    # minor version comprises of the first 3 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5.4
+    return ".".join(full_version.split(".")[:3])

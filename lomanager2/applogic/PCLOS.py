@@ -313,7 +313,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 f"rpm -q {ure_package_str} --qf %{{version}}"
             )
             full_version = reply.strip()
-            base_version = make_base_ver(full_version)
+            base_version = configuration.make_base_ver(full_version)
             log.debug(f"LibreOffice version read from ure package: {full_version}")
 
             log.debug("Checking for language packs installed for that version")
@@ -912,15 +912,3 @@ def update_menus():
 def make_dir_tree(target_dir: pathlib.Path):
     """Recursivly create directories needed to contain the leaf directory"""
     os.makedirs(target_dir, exist_ok=True)
-
-
-def make_base_ver(full_version: str) -> str:
-    # base version comprises of the first 2 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5
-    return ".".join(full_version.split(".")[:2])
-
-
-def make_minor_ver(full_version: str) -> str:
-    # minor version comprises of the first 3 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5.4
-    return ".".join(full_version.split(".")[:3])
