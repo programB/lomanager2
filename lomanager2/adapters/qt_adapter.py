@@ -30,10 +30,10 @@ class Adapter(QtCore.QObject):
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
 
-        # Application's business logic
+        # Application's logic
         self._app_logic = app_logic
 
-        # Model (transforms data from app logic to form digestible by views)
+        # Model (transforms data from app logic to a form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
             column_names=[column for column in columns],
@@ -56,9 +56,7 @@ class Adapter(QtCore.QObject):
             model=self._software_menu_model, parent=self._langs_view
         )
 
-        # Delegates
-        # contructing delegate with main WINDOW as parent ensures it will
-        # be propertly deleted
+        # Delegates (custom pseudo button inside views)
         self.check_button = CheckButtonDelegate(parent=self._app_main_view)
         self._software_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
@@ -76,18 +74,18 @@ class Adapter(QtCore.QObject):
         self._langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
-        # Option available for the user: Select additional language packs
+        # Option available to the user: Select additional language packs
         self._app_main_view.button_add_langs.clicked.connect(self._add_langs)
 
-        # Option available for the user: Apply selected changes
+        # Option available to the user: Apply selected changes
         self._app_main_view.button_apply_changes.clicked.connect(self._apply_changes)
 
-        # Option available for the user: Install from local copy
+        # Option available to the user: Install from local copy
         self._app_main_view.button_install_from_local_copy.clicked.connect(
             self._install_from_local_copy
         )
 
-        # Option available for the user: Quit the app
+        # Option available to the user: Quit the app
         # TODO: Some cleanup procedures should be called here first
         #       like eg. closing the log file.
         #       ...and these should not be done here directly
@@ -119,7 +117,6 @@ class Adapter(QtCore.QObject):
 
     def _rebuild_tree(self):
         log.debug("Starting package tree rebuild!")
-        # Rebuild package tree
         self._app_logic.rebuild_package_tree()
         # Inform model that underlying data source has finished changing
         # (corresponding beginResetModel is in the _thread_start)
@@ -160,7 +157,7 @@ class Adapter(QtCore.QObject):
             # pass any variables required by this procedure as well.
             self.procedure_thread = ProcedureWorker(
                 function_to_run=self._app_logic.install_from_local_copy,
-                local_copy_folder=selected_dir,
+                local_copy_dir=selected_dir,
                 progress_description=self.progress_description_signal.emit,
                 progress_percentage=self.progress_signal.emit,
                 overall_progress_description=self.overall_progress_description_signal.emit,
@@ -317,10 +314,10 @@ class Adapter(QtCore.QObject):
         self._app_main_view.unsetCursor()
         self._progress_view.progress_bar.setVisible(True)
 
-        log.debug("Emiting rebuild_tree_signal")
+        log.debug("Emitting rebuild_tree_signal")
         self.rebuild_tree_signal.emit()
 
-        log.debug("Emiting GUI locks signal to unlock GUI elements")
+        log.debug("Emitting GUI locks signal to unlock GUI elements")
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
         self.lock_unlock_GUI_signal.emit()

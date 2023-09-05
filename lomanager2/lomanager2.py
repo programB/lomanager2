@@ -17,7 +17,7 @@ parser.add_argument(
 parser.add_argument(
     "--force_english_logs",
     action="store_true",
-    help="ignores locale setting for loggig purposes and uses hardcoded "
+    help="ignores locale setting for logging purposes and uses hard coded "
     "strings instead. Note that the interface will still be localized.",
 )
 args = parser.parse_args()
@@ -30,7 +30,7 @@ if os.geteuid() == 0:
     # Setup logging
     log_level = logging.DEBUG if args.debug else logging.INFO
 
-    # Create log(s) folder
+    # Create log(s) directory
     logs_path = "/root/.lomanager2/log/"
     os.makedirs(logs_path, exist_ok=True)
 

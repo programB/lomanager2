@@ -15,7 +15,6 @@ class ProcedureWorker(QtCore.QThread):
     def __init__(self, function_to_run, *args, **kwargs):
         super().__init__()
 
-        # Keep the reference to the arguments
         self.function_to_run = function_to_run
         self.args = args
         self.kwargs = kwargs
@@ -42,7 +41,7 @@ class ProcedureWorker(QtCore.QThread):
             time.sleep(0)
 
             # Take the function passed to the constructor and call(run) it,
-            # with args/kwargs (extended with emit method of progress signal).
+            # with args/kwargs.
             self.output = self.function_to_run(*self.args, **self.kwargs)
             self.result.emit(self.output)
             return self.output

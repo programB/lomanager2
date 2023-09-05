@@ -25,26 +25,20 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.software_view.setFocusPolicy(QtGui.Qt.NoFocus)
         # Hide grid for better UX
         self.software_view.setShowGrid(False)
-        # -- end define Main View
 
         # -- define Languages window
         self.extra_langs_window = LangsModalWindow(parent=self)
-        # -- end define Languages window
 
         # -- define Progress dialog
         self.progress_dialog = ProgressDialog(parent=self)
-        # -- end define Progress dialog
 
         # -- define Apply changes confirmation dialog
         self.confirm_apply_dialog = ConfirmApplyDialog(parent=self)
-        # -- end define Apply changes confirmation dialog
 
         # -- define Local copy install confirmation dialog
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
-        # -- end define Local copy install confirmation dialog
 
         # -- define other GUI elements
-        #    (not being real views)
         self.button_install_from_local_copy = QtWidgets.QPushButton(
             "Install from local copy"
         )
@@ -52,7 +46,6 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.button_apply_changes = QtWidgets.QPushButton("Apply changes")
         self.button_quit = QtWidgets.QPushButton("Quit")
         self.info_dialog = QtWidgets.QMessageBox()
-        # -- end define other GUI elements
 
         main_layout.addWidget(self.button_install_from_local_copy)
         main_layout.addWidget(self.software_view)
@@ -80,19 +73,18 @@ class LangsModalWindow(QtWidgets.QDialog):
         # (model to which this view will get attached decides which
         #  column(s) are keyed for sorting)
         self.langs_view.setSortingEnabled(True)
-        # -- end define Langs View
 
         # -- define other GUI elements
         flag_OK = QtWidgets.QDialogButtonBox.StandardButton.Close
         buttons = flag_OK
         self.buttonBox = QtWidgets.QDialogButtonBox(buttons)
-        # -- end define other GUI elements
+
         modal_layout.addWidget(self.langs_view)
         modal_layout.addWidget(self.buttonBox)
 
         self.setLayout(modal_layout)
         # To close the window some signal has to be emitted.
-        # Close button sends reject signal but this not used
+        # Although close button sends reject signal this is not used
         # to take any meaningful actions.
         self.buttonBox.rejected.connect(self.reject)
 
@@ -149,7 +141,7 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
         self.setLayout(main_layout)
 
         self.checkbox_keep_packages.stateChanged.connect(self._offer_java)
-        # Cancel button sends rejected signal so it can be connect directly
+        # Cancel button sends rejected signal so it can be connected directly
         self.buttonBox.rejected.connect(self.reject)
         # Apply button is not sending accepted signal but something else.
         # Check which button was pressed and ...
@@ -198,17 +190,15 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         self.button_choose_directory.clicked.connect(self._chose_directory)
         # Cancel button sends this so we can connect directly
         self.buttonBox.rejected.connect(self.reject)
-        # Apply button sends something else so we will
-        # check which button was pressed and ...
+        # Apply button is not sending accepted signal but something else.
+        # Check which button was pressed and ...
         self.buttonBox.clicked.connect(self._which_button)
         self.buttonBox.accepted.connect(self.accept)
 
         self.set_initial_dir()
 
     def _which_button(self, clicked_button):
-        # ... if it is the apply button we will
-        #     emit the 'accepted' signal that is connected
-        #     to the accept slot.
+        # ... if it's the apply button send the 'accepted' signal
         if clicked_button is self.apply_button:
             self.buttonBox.accepted.emit()
 

@@ -17,13 +17,6 @@ log = logging.getLogger("lomanager2_logger")
 
 
 class MainLogic(object):
-    # Only 1 objects of this class will exists.
-    # So this could have been done by placing
-    # the variables, statements and functions directly in a module.
-    # But this would then run these at module import
-    # and I don't want to put import statements
-    # in the middle of a code or brake code's intelligibility
-    # by importing some logic at the top of the main file.
     def __init__(self, skip_update_check: bool) -> None:
         self.skip_update_check = skip_update_check
 
@@ -71,13 +64,17 @@ class MainLogic(object):
         )
 
     def apply_changes(self, *args, **kwargs):
-        # Check if we can proceed with applying changes
+        """Does the preparations and collects files before calling _make_changes
+
+        This method does the final decision of what should installed/removed
+        and calls file download procedure if any files have to be collected.
+        When done it calls _make_changes to do modify system state.
+        """
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if keep_package option was passed
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
         else:
@@ -85,7 +82,6 @@ class MainLogic(object):
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if force_java_download option was passed
         if "force_java_download" in kwargs.keys():
             force_java_download = kwargs["force_java_download"]
         else:
@@ -98,7 +94,7 @@ class MainLogic(object):
             total_steps=self.normal_procedure_step_count, callbacks=kwargs
         )
 
-        # Mark Java for download if the user requests that
+        # Mark Java for download if the user requested that
         java_package = [
             c for c in self.package_tree_root.children if "Java" in c.family
         ][0]
@@ -129,9 +125,9 @@ class MainLogic(object):
                 },
             ]
 
-        # Block any other calls of this function...
+        # Block any other calls of this function and proceed
         self.global_flags.ready_to_apply_changes = False
-        # ...and proceed with the procedure
+
         log.info("*** Applying selected changes ***")
 
         virtual_packages = []
@@ -148,7 +144,6 @@ class MainLogic(object):
         }
 
         # STEP
-        # clean up working directory and verified copies directory
         progress_reporter.step_start("Cleaning temporary directories")
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
@@ -173,8 +168,8 @@ class MainLogic(object):
         progress_reporter.step_end()
 
         packages_to_download = [p for p in virtual_packages if p.is_marked_for_download]
-        # Some packages need to be downloaded
         if packages_to_download:
+            # Some packages need to be downloaded
             # STEP
             progress_reporter.step_start("Checking free disk space for download")
             is_enough, needed, available = self._space_for_download(
@@ -189,8 +184,6 @@ class MainLogic(object):
 
             # STEP
             progress_reporter.step_start("Collecting files")
-
-            # Run collect_packages procedure
             is_every_pkg_collected, msg, collected_files = self._collect_packages(
                 packages_to_download,
                 progress_reporter=progress_reporter,
@@ -214,23 +207,26 @@ class MainLogic(object):
         )
 
     def install_from_local_copy(self, *args, **kwargs):
-        # Check if we can proceed with applying changes
+        """Applies local copy installation logic before calling _make_changes
+
+        This method checks if the directory provided by the user contains
+        files that can be used to install Java, LibreOffice or Clipart
+        When done it calls _make_changes to do modify system state.
+        """
         if self.global_flags.ready_to_apply_changes is False:
             msg = "Not ready to apply changes"
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if local copy installation was not blocked
         if self.global_flags.block_local_copy_install is True:
             msg = "Local copy installation was blocked"
             self.inform_user(msg, isOK=False)
             return
 
-        # Check if local copy directory was passed
-        if "local_copy_folder" in kwargs.keys():
-            local_copy_directory = kwargs["local_copy_folder"]
+        if "local_copy_dir" in kwargs.keys():
+            local_copy_directory = kwargs["local_copy_dir"]
         else:
-            msg = "local_copy_folder argument is obligatory"
+            msg = "local_copy_dir argument is obligatory"
             self.inform_user(msg, isOK=False)
             return
 
@@ -239,10 +235,10 @@ class MainLogic(object):
             total_steps=self.local_copy_procedure_step_count, callbacks=kwargs
         )
 
-        # Block any other calls of this function...
+        # Block any other calls of this function and proceed
         self.global_flags.ready_to_apply_changes = False
-        # ...and proceed with the procedure
-        log.info("*** Begining local copy install procedure ***")
+
+        log.info("*** Beginning local copy install procedure ***")
 
         is_modification_needed = False
         rpms_and_tgzs_to_use = {
@@ -255,15 +251,14 @@ class MainLogic(object):
         }
 
         # STEP
-        # clean up working directory and verified copies directory
         progress_reporter.step_start("Cleaning temporary directories")
-        is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
-        if is_cleaned_w is False:
+        is_wd_cleaned, msg_w = PCLOS.clean_dir(configuration.working_dir)
+        if is_wd_cleaned is False:
             msg = "Failed to (re)create working directory: " + msg_w
             self.inform_user(msg, isOK=False)
             return
-        is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
-        if is_cleaned_v is False:
+        is_vd_cleaned, msg_v = PCLOS.clean_dir(configuration.verified_dir)
+        if is_vd_cleaned is False:
             msg = "Failed to (re)create verified directory: " + msg_v
             self.inform_user(msg, isOK=False)
             return
@@ -284,14 +279,13 @@ class MainLogic(object):
         self.package_tree_root.get_subtree(virtual_packages)
         virtual_packages.remove(self.package_tree_root)
 
-        # local_copy_directory exists?
+        # Checks if local_copy_directory exists at all
         if not pathlib.Path(local_copy_directory).is_dir():
             msg = "Could not find directory with saved packages"
             self.inform_user(msg, isOK=False)
             return
 
         # STEP
-        # Perform verification of local copy directory
         progress_reporter.step_start("Scanning local copy directory for packages")
         (
             Java_local_copy,
@@ -337,6 +331,7 @@ class MainLogic(object):
 
             # Reaching this point means Java is or will be installed
             log.info("LibreOffice packages found will be installed.")
+
             # No complex checks/comparisons for Office. To make sure
             # nothing gets messed up simply remove every Office package
             # that is installed.
@@ -350,12 +345,13 @@ class MainLogic(object):
                     package.is_marked_for_removal = True
                     log.info(f"Package ({package}) will be removed")
 
+            # Add LibreOffice core packages and langpacks (if any)
+            # to the list of files
             rpms_and_tgzs_to_use["files_to_install"][
                 "LibreOffice-core"
             ] = LibreOffice_core_local_copy["tgz_abs_paths"]
 
             if LibreOffice_langs_local_copy["isPresent"]:
-                # There are also some language packs that can be installed
                 log.info("Found LibreOffice langpack(s) will be installed.")
                 rpms_and_tgzs_to_use["files_to_install"][
                     "LibreOffice-langs"
@@ -413,7 +409,7 @@ class MainLogic(object):
         This method performs checks of the operating system and
         sets the status of the flags in the self.global_flags object
         to TRUE if some operations need to be BLOCKED.
-        If so a human readable messages for the cause
+        If this happens a human readable messages for the cause
         is added to the self.warnings list.
         """
 
@@ -422,7 +418,7 @@ class MainLogic(object):
         )
         msg = ""
 
-        log.info("*** Begining system check procedure ***")
+        log.info("*** Beginning system check procedure ***")
         progress_reporter.step_start("Looking for running package managers")
         status, running_managers = PCLOS.get_running_package_managers()
         if status is False:
@@ -478,9 +474,9 @@ class MainLogic(object):
             log.info("No running Office suits found ...good")
         progress_reporter.step_end()
 
-        # no running manager prevents access to system rpm database
-        progress_reporter.step_start("Checking for system updates")
         if self.global_flags.block_checking_4_updates is False:
+            # no running manager prevents access to system rpm database
+            progress_reporter.step_start("Checking for system updates")
             if self.skip_update_check:
                 msg = (
                     "Checking for OS updates was bypassed. "
@@ -488,18 +484,18 @@ class MainLogic(object):
                     "your system! Use at your own risk."
                 )
                 (
-                    check_successfull,
+                    check_successful,
                     is_updated,
                     explanation,
                 ) = (True, True, "")
                 self.inform_user(msg, isOK=False)
             else:
                 (
-                    check_successfull,
+                    check_successful,
                     is_updated,
                     explanation,
                 ) = PCLOS.check_system_update_status()
-            if check_successfull:
+            if check_successful:
                 if not is_updated:
                     self.global_flags.block_normal_install = True
                     msg = (
@@ -532,9 +528,9 @@ class MainLogic(object):
             msg = (
                 "OS is running in live session mode.\n "
                 + "All modifications made will be lost on reboot unless you "
-                + "intall the system on a permanent drive. Also note that in "
-                + "live sesssion mode LibreOffice may fail to install due "
-                + "to inssufficient virtual disk space."
+                + "install the system on a permanent drive. Also note that in "
+                + "live session mode LibreOffice may fail to install due "
+                + "to insufficient virtual disk space."
             )
             self.inform_user(msg, isOK=False)
         else:
@@ -544,6 +540,15 @@ class MainLogic(object):
         self.rebuild_package_tree(progress_reporter, *args, **kwargs)
 
     def rebuild_package_tree(self, progress_reporter=None, *args, **kwargs):
+        """Replaces old package tree with new one with THE SAME root
+
+        Called every time the state of the actually installed rpm packages
+        in the OS changes. It detects installed software, creates a list
+        of packages available for installation and using both builds a
+        package dependency tree (dependencies are predetermined).
+        It finishes by applying restriction to what can be installed/removed
+        based on OS state.
+        """
         if progress_reporter is None:
             progress_reporter = UnifiedProgressReporter(
                 total_steps=self.rebuild_tree_procedure_step_count, callbacks=kwargs
@@ -565,7 +570,6 @@ class MainLogic(object):
         progress_reporter.step_end()
 
         progress_reporter.step_start("Building dependency tree")
-        # Create joint list of packages
         complement = [p for p in available_vps if p not in installed_vps]
         joint_package_list = installed_vps + complement
         self._build_dependency_tree(joint_package_list)
@@ -603,7 +607,7 @@ class MainLogic(object):
     # -- Private methods of MainLogic
     def _build_dependency_tree(self, packageS: list[VirtualPackage]):
         # Make master node forget its children
-        # (this will hopefully delete all descendent virtual package objects)
+        # (this will should delete all descendent virtual package objects)
         self.package_tree_root.children = []
         current_parent = self.package_tree_root
 
@@ -613,17 +617,17 @@ class MainLogic(object):
             if package.family == "Clipart" and package.kind == "core-packages":
                 current_parent.add_child(package)
                 already_handled.append(package)
+        # and remove from packageS list
         packageS = [p for p in packageS if p not in already_handled]
+        # Warning: packageS now becomes and independent copy of original
+        #          packageS passed in the argument so this selective
+        #          copying is not removing items from the original list
 
         for package in packageS:
             if package.family == "Java" and package.kind == "core-packages":
                 current_parent.add_child(package)
                 already_handled.append(package)
                 current_parent = package
-        # and remove from packageS list
-        # Warning: packageS now becomes and independent copy of original
-        #          packageS passed in the argument so this selective
-        #          copying is not removing items from the original list
         packageS = [p for p in packageS if p not in already_handled]
 
         # 2nd tier: Link OO and LO core packages to Java
@@ -635,7 +639,6 @@ class MainLogic(object):
                 current_parent.add_child(package)
                 already_handled.append(package)
                 Office_parents.append(package)
-        # and remove from packageS list
         packageS = [p for p in packageS if p not in already_handled]
 
         # 3rd tier: Link OO and LO lang packages to their parent core packages
@@ -645,7 +648,6 @@ class MainLogic(object):
                     if matching_parent.version == package.version:
                         matching_parent.add_child(package)
                         already_handled.append(package)
-        # and remove from packageS list
         packageS = [p for p in packageS if p not in already_handled]
         # At this point packageS should be empty
 
@@ -660,7 +662,6 @@ class MainLogic(object):
 
         # For each software component (Java, LibreOffice, Clipart) check:
         # - the newest installed version
-        # - the latest available version from the repo
         newest_installed_Java_version = ""
         java = [c for c in root.children if "Java" in c.family][0]
         if java.is_installed:
@@ -713,7 +714,6 @@ class MainLogic(object):
             java.is_remove_opt_visible = False
 
         # 4) Check options for LibreOffice
-        #
         # LibreOffice is installed?
         if newest_installed_LO_version:
             log.debug(f"Newest installed LO: {newest_installed_LO_version}")
@@ -721,9 +721,9 @@ class MainLogic(object):
             # a) is recommended version already installed ?
             if newest_installed_LO_version == recommended_LO_version:
                 log.debug("Recommended LibreOffice version is already installed")
-                # Allow for additional lang packs installation
+                # Allow for additional langpacks installation
                 # - LibreOffice only !!! OpenOffice office is not supported.
-                # - skip lang packs that are already installed (obvious)
+                # - skip langpacks that are already installed
                 for office in LibreOfficeS:
                     if office.version == recommended_LO_version:
                         for lang in office.children:
@@ -767,13 +767,10 @@ class MainLogic(object):
                         lang.allow_install()
 
         # 5) Check options for Clipart
-        #
         # Clipart is installed
         if newest_installed_Clipart_version:
-            # a) Installed Clipart already at recommended version,
             if newest_installed_Clipart_version == recommended_Clipart_version:
                 log.debug("Clipart is already at latest available version")
-            # b) different version is recommended
             else:
                 log.debug(
                     "Recommended Clipart version "
@@ -788,7 +785,6 @@ class MainLogic(object):
                     if clipart.version == recommended_Clipart_version:
                         clipart.allow_install()
 
-        # Clipart is not installed at all
         else:
             log.debug("No installed Clipart library found")
             # Allow the recommended version to be installed
@@ -796,9 +792,8 @@ class MainLogic(object):
                 if clipart.version == recommended_Clipart_version:
                     clipart.allow_install()
 
-        # If some operations are not permited because
-        # of the system state not allowing for it
-        # block them here
+        # If some operations are not permitted because
+        # of the system state not allowing for it block them here
         block_any_install = (
             True
             if (
@@ -901,7 +896,7 @@ class MainLogic(object):
         recommended_Java_ver = ""
         available_virtual_packages.append(java_core_vp)
 
-        # Decide which version should be recommended for installation
+        # Decide which LO version should be recommended for installation
         if configuration.force_specific_LO_version != "":
             LO_ver = configuration.force_specific_LO_version
             msg += f"Downgrade of LibreOffice to version {LO_ver} is recommended. "
@@ -909,6 +904,7 @@ class MainLogic(object):
             LO_ver = configuration.latest_available_LO_version
         recommended_LO_ver = LO_ver
         LO_minor_ver = PCLOS.make_minor_ver(LO_ver)
+        # Build VP for LO core package
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
         office_core_vp.real_files = [
@@ -922,7 +918,9 @@ class MainLogic(object):
             },
         ]
         available_virtual_packages.append(office_core_vp)
-        # en-US language pack it is only installed/removed together with
+
+        # Build VPs for langpacks except en-US language pack,
+        # it is only installed/removed together with
         # core package and should not be offered for install separately
         for lang_code in lolangs.supported_langs.keys() - {"en-US"}:
             office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
@@ -958,6 +956,7 @@ class MainLogic(object):
                 )
             available_virtual_packages.append(office_lang_vp)
 
+        # Build VP for Clipart core package
         clipart_ver = configuration.latest_available_clipart_version
         clipart_core_vp = VirtualPackage("core-packages", "Clipart", clipart_ver)
         clipart_core_vp.is_installed = False
@@ -1041,8 +1040,8 @@ class MainLogic(object):
         create_offline_copy,
         progress_reporter,
     ):
-        # At this point normal changes procedure and local_copy_install
-        # procedures converge and thus use the same function
+        # At this point normal changes procedure and local copy install
+        # procedure converge and thus use the same function
 
         # STEP
         progress_reporter.step_start("Trying to stop LibreOffice quickstarter")
@@ -1051,7 +1050,7 @@ class MainLogic(object):
 
         # STEP
         # Java needs to be installed?
-        # (Nonte that Java may have been downloaded as a result of
+        # (Note that Java may have been downloaded as a result of
         #  force_java_download but not actually marked for install)
         java_package = [
             c for c in self.package_tree_root.children if "Java" in c.family
@@ -1076,7 +1075,7 @@ class MainLogic(object):
 
         # At this point everything that is needed is downloaded and verified,
         # also Java is installed (except in unlikely case in which the user
-        # installs only the Openclipart).
+        # only installs Clipart).
         # We can remove old Office components (if there are any to remove)
         # in preparation for the install step.
 
@@ -1096,14 +1095,6 @@ class MainLogic(object):
                 progress_reporter,
             )
 
-            # If the procedure failed completely (no packages got uninstalled)
-            # there is no problem - system state has not changed.
-            # If however it succeeded but only partially this is a problem
-            # because current Office might have gotten corrupted and a new
-            # one will not be installed. Recovery from such a condition is
-            # likely to require manual user intervention - not good.
-            # TODO: Can office_uninstall procedure be made to have dry-run option
-            #       to make sure that uninstall is atomic (all or none)?
             if is_removed is False:
                 msg = "Failed to remove Office components: " + msg
                 self.inform_user(msg, isOK=False)
@@ -1206,6 +1197,36 @@ class MainLogic(object):
         progress_reporter,
         skip_verify=False,
     ) -> tuple[bool, str, dict]:
+        """Checks files availability on remote server(s) and downloads them
+
+        Files to download (with URLs) are obtained from the
+        VirtualPackage objects passed.
+        This function first verifies that all requested files exists
+        on the server(s) before starting the download process.
+        (Returns False if any uri is not valid)
+        Each file and its MD5 checksum (if one exist) is downloaded
+        and file is verified against it. Function will return error at any point
+        during this process (eg. file can't be downloaded or verification fails)
+        and will not continue with download.
+
+        Parameters
+        ----------
+        progress_reporter : Callable
+        Callback used to report download progress
+
+        skip_verify : bool
+        Skip the md5 verification if set True (default False)
+
+        packages_to_download : list
+        Virtual packages list to download
+
+        Returns
+        -------
+        tuple[bool, str, dict]
+        T/F success/failure, str with explanation for error (empty is success)
+        dict with absolute path do downloaded files
+        """
+
         rpms_and_tgzs_to_use = {
             "files_to_install": {
                 "Java": [],
@@ -1288,16 +1309,16 @@ class MainLogic(object):
                     else:
                         ending = "-core"
                     label = package.family + ending
-                    folder_name = label + "_tgzs"
+                    dir_name = label + "_tgzs"
                 else:
                     label = package.family
-                    folder_name = label + "_rpms"
-                f_verified = configuration.verified_dir.joinpath(folder_name)
+                    dir_name = label + "_rpms"
+                f_verified = configuration.verified_dir.joinpath(dir_name)
                 f_verified = f_verified.joinpath(file["name"])
                 if not PCLOS.move_file(from_path=f_dest, to_path=f_verified):
                     msg = f"Error moving file {f_dest} to {f_verified}"
                     return (False, msg, rpms_and_tgzs_to_use)
-                # Add file path to verified files list
+                # Add absolute file path to verified files list
                 rpms_and_tgzs_to_use["files_to_install"][label].append(f_verified)
 
         log.debug(f"rpms_and_tgzs_to_use: {rpms_and_tgzs_to_use}")
@@ -1325,7 +1346,7 @@ class MainLogic(object):
                         f"quickstarter PID ({pid}) is suspiciously low - refusing to kill process"
                     )
         if (not LO_PIDs) and (not OO_PIDs):
-            log.info("No runnig quickstarter found ...good")
+            log.info("No running quickstarter found ...good")
 
     def _install_Java(
         self,
@@ -1336,7 +1357,6 @@ class MainLogic(object):
         #    verified copy directory to /var/cache/apt/archives
         cache_dir = pathlib.Path("/var/cache/apt/archives/")
         package_names = []
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
         for file in java_rpms:
             if not PCLOS.move_file(
                 from_path=file, to_path=cache_dir.joinpath(file.name)
@@ -1355,9 +1375,6 @@ class MainLogic(object):
             return (False, msg)
 
         # 3) move rpm files back to storage
-        # TODO: What if the user doesn't want to be keeping the files?
-        #       Is it a good place to remove them?
-        # for file in rpms_and_tgzs_to_use["files_to_install"]["Java"]:
         for file in java_rpms:
             if not PCLOS.move_file(
                 from_path=cache_dir.joinpath(file.name), to_path=file
@@ -1462,25 +1479,25 @@ class MainLogic(object):
             # LibreOffice langs removal procedures.
             base_version = PCLOS.make_base_ver(lang.version)
 
-            base_lang_code = lang.kind.split("-")[0]
-            langs_with_the_same_base_code_marked_4_removal = [
-                p.is_marked_for_removal
-                for p in (lang.get_syblings() + [lang])
-                if (p.kind.startswith(base_lang_code) and p.is_installed)
-            ]
-
             expected_rpm_names = [
                 f"libreoffice{base_version}-{lang.kind}-",
                 f"libobasis{base_version}-{lang.kind}-",
                 f"libobasis{base_version}-{lang.kind}-help-",
             ]
-            # Never remove English, Spanish and French dictionaries when
+            # a) Never remove English, Spanish and French dictionaries when
             # removing langpacks. These 3 dictionaries are provided by the
             # core package and should be kept installed for as long as
             # it is installed.
-            # Only remove dictionary package if no other regional package
-            # sharing this dictionary will remain.
             excluded = ["en", "es", "fr"]
+            # b) Only remove dictionary package if no other regional package
+            # sharing this dictionary will remain.
+            base_lang_code = lang.kind.split("-")[0]
+            langs_with_the_same_base_code_marked_4_removal = [
+                p.is_marked_for_removal
+                for p in (lang.get_siblings() + [lang])
+                if (p.kind.startswith(base_lang_code) and p.is_installed)
+            ]
+
             if not any([lang.kind.startswith(exl) for exl in excluded]) and all(
                 langs_with_the_same_base_code_marked_4_removal
             ):
@@ -1503,7 +1520,7 @@ class MainLogic(object):
             if not s:
                 return (False, msg)
 
-        # Finaly remove LibreOffice core if mareked for removal
+        # Finally remove LibreOffice core if marked for removal
         LibreOfficeCORE = [
             p
             for p in packages_to_remove
@@ -1535,8 +1552,8 @@ class MainLogic(object):
                 for icon in pathlib.Path("/usr/share/icons").glob("libreoffice-*"):
                     files_to_remove.append(icon)
 
-            # All version (with subvariants) starting from 3.4 and later
-            # (Historicaly these were:
+            # All other versions (with subvariants) starting from 3.4 and later
+            # (Historically these were:
             #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
             #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
             else:
@@ -1635,12 +1652,12 @@ class MainLogic(object):
             if is_installed is False:
                 return (False, msg)
 
-            # Postinstall stuff
+            # Post install stuff
             self._disable_LO_update_checks()
             self._modify_dot_desktop_files()
             self._fix_LXDE_icons()
 
-            # Finaly return success
+            # Finally return success
             return (True, "LibreOffice packages successfully installed")
 
         else:
@@ -1804,7 +1821,7 @@ class MainLogic(object):
         progress_reporter: Callable,
     ) -> tuple[bool, str]:
         # Use rpm to install clipart rpm packages
-        # (sititing in verified_dir)
+        # (sitting in verified_dir)
         is_installed, msg = PCLOS.install_using_rpm(
             clipart_rpmS,
             progress_reporter,
@@ -1859,7 +1876,7 @@ class MainLogic(object):
         Java_dir = pathlib.Path(local_copy_directory).joinpath("Java_rpms")
         log.info(f"Checking {Java_dir}")
         if Java_dir.is_dir():
-            # Search for: task-java-<something>.rpm ,  java-sun-<something>.rpm
+            # Search for: task-java-<something>.rpm, java-sun-<something>.rpm
             tj_regX = re.compile(
                 r"^task-java-20[0-9][0-9]-[0-9]+pclos20[0-9][0-9]\.noarch\.rpm$"
             )
@@ -1915,8 +1932,6 @@ class MainLogic(object):
             log.error("LibreOffice-core_tgzs directory not found")
 
         # 3) LibreOffice lang and help packages directory
-        #    (its content is not critical for the decision procedure
-        #     so just check if it exists and is non empty)
         LO_lang_dir = pathlib.Path(local_copy_directory)
         LO_lang_dir = LO_lang_dir.joinpath("LibreOffice-langs_tgzs")
         log.info(f"Checking {LO_lang_dir}")
@@ -1946,7 +1961,7 @@ class MainLogic(object):
             # Only langpacks are required
             # (helppacks don't exist at all for some languages)
             # (Condition when a helppack exists without matching langpack
-            #  is not checked - don't do it guys)
+            #  is not checked)
             if LO_lang_tgzs:
                 if all_versions_the_same(ver_langs + ver_helps):
                     msg = ""
@@ -2083,7 +2098,6 @@ class ManualSelectionLogic(object):
         self.recommended_clipart_version = recommended_Clipart_version
         self.newest_installed_LO_version = newest_installed_LO_version
 
-        # Object representing items in the menu
         self.root = root_node
 
         self.info_to_install = []
@@ -2111,9 +2125,9 @@ class ManualSelectionLogic(object):
           False otherwise
         """
 
-        log.debug(">>> Install logic triggerd <<<")
+        log.debug(">>> Install logic triggered <<<")
 
-        is_apply_install_successul = False
+        is_apply_install_successful = False
 
         java_pkgs = [c for c in self.root.children if "Java" in c.family]
         java = None if not java_pkgs else java_pkgs[0]
@@ -2133,12 +2147,12 @@ class ManualSelectionLogic(object):
                 #    and decides not to install any new languages) -
                 #    allow to uninstall the existing (if any) core-packages.
                 if package.is_langpack():
-                    syblings = package.get_syblings()
-                    is_any_sybling_marked_for_install = any(
-                        [s for s in syblings if s.is_marked_for_install]
+                    siblings = package.get_siblings()
+                    is_any_sibling_marked_for_install = any(
+                        [s for s in siblings if s.is_marked_for_install]
                     )
                     if (
-                        not is_any_sybling_marked_for_install
+                        not is_any_sibling_marked_for_install
                         and package.parent is not None
                         and package.parent.is_installed
                     ):
@@ -2163,7 +2177,7 @@ class ManualSelectionLogic(object):
                                 office.is_remove_opt_enabled = True
                                 for lang in office.children:
                                     lang.is_remove_opt_enabled = True
-                is_apply_install_successul = True
+                is_apply_install_successful = True
 
             # requesting install
             if mark is True:
@@ -2190,13 +2204,7 @@ class ManualSelectionLogic(object):
                         else:
                             # parent not installed - install it as well
                             package.parent.is_marked_for_install = True
-                # TODO: Possible not true anymore
-                #     As the install option is only available
-                #     when no installed LO was detected
-                #     and thus the latest LO was added to packages
-                #     there is no need to care about other installed LO suits
-                #     Such situation should never occur.
-                is_apply_install_successul = True
+                is_apply_install_successful = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
@@ -2219,11 +2227,11 @@ class ManualSelectionLogic(object):
                             # make the removal option for installed
                             # one accessible again
                             child.is_remove_opt_enabled = True
-            is_apply_install_successul = True
+            is_apply_install_successful = True
 
         self._decide_what_to_download()
         self._update_changes_info()
-        return is_apply_install_successul
+        return is_apply_install_successful
 
     def apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
         """Marks package for removal changing flags of other packages accordingly
@@ -2245,9 +2253,9 @@ class ManualSelectionLogic(object):
           True if packages removal logic was applied successfully,
           False otherwise
         """
-        log.debug(">>> Removal logic triggerd <<<")
+        log.debug(">>> Removal logic triggered <<<")
 
-        is_apply_removal_successul = False
+        is_apply_removal_successful = False
 
         # OpenOffice dependency tree
         # OpenOffice cannot be installed, it can only be uninstalled
@@ -2267,7 +2275,7 @@ class ManualSelectionLogic(object):
                         lang.is_marked_for_removal = False
                         if not lang.is_installed:
                             lang.is_install_opt_enabled = True
-                is_apply_removal_successul = True
+                is_apply_removal_successful = True
 
             # requesting removal
             if mark is True:
@@ -2282,17 +2290,17 @@ class ManualSelectionLogic(object):
                         else:
                             lang.is_install_opt_enabled = False
                             lang.is_marked_for_install = False
-                is_apply_removal_successul = True
+                is_apply_removal_successful = True
 
         # Clipart dependency tree
         if package.family == "Clipart":
             # mark the package as requested.
             package.is_marked_for_removal = mark
-            is_apply_removal_successul = True
+            is_apply_removal_successful = True
 
         self._decide_what_to_download()
         self._update_changes_info()
-        return is_apply_removal_successul
+        return is_apply_removal_successful
 
     # -- end Public interface for ManualSelectionLogic
 

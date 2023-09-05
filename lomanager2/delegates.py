@@ -150,7 +150,7 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 # selection/focus state
                 painter.eraseRect(option.rect)
 
-                # set border color (and text color)
+                # set border color (also controls text color)
                 pen = painter.pen()
                 pen.setColor(button_border_color)
                 painter.setPen(pen)

@@ -24,7 +24,7 @@ class Node:
                 child.get_subtree(nodeslist)
         nodeslist.append(self)
 
-    def get_syblings(self) -> list:
+    def get_siblings(self) -> list:
         if self.parent is not None:
             s = [child for child in self.parent.children if child is not self]
         else:
@@ -43,24 +43,18 @@ class VirtualPackage(Node):
 
     A bundle is one or more rpm packages that are or should be
     installed/uninstalled together without side effects.
-    Such a VirtualPackage is a unit on package selection logic operates.
+    Such a VirtualPackage is a unit on which package selection logic operates.
 
     Each VirtualPackage objects holds the information of what real
-    rpm packages it represents and how much disk space each of them
-    occupies when installed.
+    rpm packages it represents
 
-    There are 2 kinds of these virtual packages / bundles:
-        - "core-packages" is the package representing OpenOffice
-        or LibreOffice base package and base help package.
-        These are always installed/removed together and provide required
-        and sufficient functionality to use the Office suite.
-
-        This kind of package also represents a single rpm package with
-        Clipart library.
+    There are 2 kinds of virtual packages:
+        - "core-packages" is the package representing OpenOffice or LibreOffice
+        base rpms (usually coming packed in single tar.gz archive)
+        or all Java rpms (2 off) or all Clipart rpms (2 off)
 
         - "<language code>" this virtual package represents a bundle of
-        localization rpm packages for specific language that is
-        a language pack and a language help pack.
+        localization rpm packages for specific language
 
     Each virtual package has a state, represented by a number of
     flags/attributes. These describe whether:
@@ -69,7 +63,7 @@ class VirtualPackage(Node):
           (install/removal)
         - if it can be marked for such operation,
         - should the operation be visible to the user and
-        - should it be in enabled state
+        - should the operation be in enabled state
           (or disabled even if it is visible).
 
     Each package also has the
@@ -82,7 +76,7 @@ class VirtualPackage(Node):
     kind : str
     family :str
     version : str
-    real_packages = list[dict[str, int]]
+    real_files = list[dict[str, int]]
     is_installed: bool
     is_remove_opt_visible : bool
     is_remove_opt_enabled : bool
@@ -201,7 +195,7 @@ class VirtualPackage(Node):
 
 
 def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
-    """Compares versions of VirtualPackages
+    """Compares versions of virtual packages
 
     Meant for sorting. Returns -1,0,1 depending on which
     version is newer.
@@ -249,6 +243,8 @@ def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
 
 
 class SignalFlags(object):
+    """Hold global flags disallowing certain operations"""
+
     def __init__(self) -> None:
         self.block_viewing_installed = False
         self.block_viewing_available = False
