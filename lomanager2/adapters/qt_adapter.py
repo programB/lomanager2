@@ -189,7 +189,7 @@ class Adapter(QtCore.QObject):
 
         summary = ""
         if install_list:
-            summary += "Following components will be installed:\n"
+            summary += "Following components will be downloaded & installed:\n"
             for p in install_list:
                 summary += "- " + p + "\n"
         summary += "\n"
@@ -221,6 +221,18 @@ class Adapter(QtCore.QObject):
             is_force_java_download_checked = (
                 self._apply_changes_view.checkbox_force_java_download.isChecked()
             )
+            summary = summary.replace("\n", " ")
+            summary += (
+                "Following components will be downloaded: - Java  "
+                if is_force_java_download_checked
+                else " "
+            )
+            summary += (
+                "Packages will be kept for later use"
+                if is_keep_packages_checked
+                else "Packages will not be kept for later use"
+            )
+            log.info(summary)
 
             # Create a separate thread worker that will run
             # selected procedure from the applogic,
@@ -350,7 +362,7 @@ class Adapter(QtCore.QObject):
         self._langs_view.setEnabled(is_langs_view_enabled)
 
     def _check_system_state(self):
-        print("check system state signal emitted")
+        log.debug("check system state signal emitted")
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._app_logic.check_system_state,
             progress_description=self.progress_description_signal.emit,

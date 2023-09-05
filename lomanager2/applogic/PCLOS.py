@@ -46,14 +46,7 @@ def run_shell_command(
                 encoding="utf-8",  # explicitly set the encoding for the text
             )
             answer = (shellcommand.stdout + shellcommand.stderr).strip()
-            if err_check:
-                log.debug(
-                    f"(error checking is ON) Received answer (stdout+stderr): {answer}"
-                )
-            else:
-                log.debug(
-                    f"(error checking is OFF) Received answer (stdout+stderr): {answer}"
-                )
+            log.debug(f"Received answer: {answer}")
             return (True, answer)
         except FileNotFoundError as exc:
             msg = "Executable not be found. " + str(exc)
@@ -380,7 +373,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
     inf_message = ("All detected office suits (and langs): {}").format(
         list_of_detected_suits
     )
-    log.info(inf_message)
+    log.debug(inf_message)
     return list_of_detected_suits
 
 
@@ -593,7 +586,7 @@ def install_using_apt_get(
 ):
     package_nameS_string = " ".join(package_nameS)
 
-    log.debug("Trying dry-run install to check for errors...")
+    progress_reporter.progress_msg("Checking for potential problems...")
     status, output = run_shell_command(
         f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
         err_check=False,
@@ -741,8 +734,7 @@ def install_using_rpm(
 ) -> tuple[bool, str]:
     files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
 
-    # Before going ahead with actual installation, test for potential problems
-    log.debug("Trying dry-run install to check for errors...")
+    progress_reporter.progress_msg("Checking for potential problems...")
     status, output = run_shell_command(
         "rpm -Uvh --replacepkgs --test " + files_to_install,
         err_check=False,
@@ -844,7 +836,7 @@ def uninstall_using_apt_get(
 ):
     package_nameS_string = " ".join(package_nameS)
 
-    log.debug("Trying dry-run removal to check for errors...")
+    progress_reporter.progress_msg("Checking for potential problems...")
     status, output = run_shell_command(
         f"apt-get remove --simulate  {package_nameS_string} -y",
         err_check=False,
@@ -904,7 +896,7 @@ def force_rm_directory(path: pathlib.Path):
 
 
 def update_menus():
-    log.debug("updating menus")
+    log.info("updating menus")
     run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
     run_shell_command("update-menus -n", err_check=False)
     run_shell_command("update-menus -v", err_check=False)
