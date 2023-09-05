@@ -8,6 +8,13 @@ parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")
 parser.add_argument("--debug", action="store_true", help="run in debug mode")
 parser.add_argument(
+    "--skip-update-check",
+    action="store_true",
+    help="skips checking OS update status. Only works with --debug flag. "
+    "Installing packages in this mode can potentially mess up your system! "
+    "Use at your own risk.",
+)
+parser.add_argument(
     "--force_english_logs",
     action="store_true",
     help="ignores locale setting for loggig purposes and uses hardcoded "
@@ -56,10 +63,10 @@ if os.geteuid() == 0:
     if args.gui is True:
         from adapters import qt_adapter
 
-        qt_adapter.main()
+        qt_adapter.main(skip_update_check=args.debug and args.skip_update_check)
     else:
         from adapters import cli_adapter
 
-        cli_adapter.main()
+        cli_adapter.main(skip_update_check=args.debug and args.skip_update_check)
 else:
     print("This program requires root privileges to run.")

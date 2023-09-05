@@ -379,11 +379,11 @@ class Adapter(QtCore.QObject):
         self.thread_worker_ready_signal.emit()
 
 
-def main():
+def main(skip_update_check: bool = False):
     lomanager2App = QtWidgets.QApplication([])
 
     # Business logic
-    app_logic = MainLogic()
+    app_logic = MainLogic(skip_update_check)
 
     # View
     main_window = AppMainWindow()
