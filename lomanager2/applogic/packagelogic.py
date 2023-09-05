@@ -6,8 +6,9 @@ from copy import deepcopy
 import xml.etree.ElementTree as ET
 import configuration
 import lolangs
-from typing import Any, Tuple, Callable
+from typing import Callable
 from . import PCLOS
+from . import net
 from .datatypes import VirtualPackage, SignalFlags
 from .callbacks import UnifiedProgressReporter
 
@@ -1249,16 +1250,8 @@ class MainLogic(object):
         for package in packages_to_download:
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
-                try:
-                    resp = urllib.request.urlopen(url, timeout=7)
-                    log.debug(f"Resource is reachable: {url}")
-                except urllib.error.HTTPError as error:
-                    msg = f"While trying to open {url} an error occurred: "
-                    msg = msg + f"HTTP error {error.code}: {error.reason}"
-                    return (False, msg, rpms_and_tgzs_to_use)
-                except urllib.error.URLError as error:
-                    msg = f"While trying to open {url} an error occurred: "
-                    msg = msg + f"{error.reason}"
+                is_available, msg = net.check_url_available(url)
+                if not is_available:
                     return (False, msg, rpms_and_tgzs_to_use)
 
         for package in packages_to_download:
@@ -1266,7 +1259,7 @@ class MainLogic(object):
                 f_url = file["base_url"] + file["name"]
                 f_dest = configuration.working_dir.joinpath(file["name"])
 
-                is_downloaded, error_msg = PCLOS.download_file(
+                is_downloaded, error_msg = net.download_file(
                     f_url,
                     f_dest,
                     progress_reporter,
@@ -1281,7 +1274,7 @@ class MainLogic(object):
                     csf_url = file["base_url"] + checksum_file
                     csf_dest = configuration.working_dir.joinpath(checksum_file)
 
-                    is_downloaded, error_msg = PCLOS.download_file(
+                    is_downloaded, error_msg = net.download_file(
                         csf_url,
                         csf_dest,
                         progress_reporter,
@@ -1291,7 +1284,7 @@ class MainLogic(object):
                         msg = msg + error_msg
                         return (False, msg, rpms_and_tgzs_to_use)
 
-                    is_correct = PCLOS.verify_checksum(
+                    is_correct = net.verify_checksum(
                         f_dest, csf_dest, progress_reporter
                     )
                     if not is_correct:
