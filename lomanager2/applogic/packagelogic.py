@@ -5,7 +5,6 @@ import urllib.request, urllib.error
 from copy import deepcopy
 import xml.etree.ElementTree as ET
 import configuration
-import lolangs
 from typing import Callable
 from . import PCLOS
 from . import net
@@ -887,7 +886,7 @@ class MainLogic(object):
         # Build VPs for langpacks except en-US language pack,
         # it is only installed/removed together with
         # core package and should not be offered for install separately
-        for lang_code in lolangs.supported_langs.keys() - {"en-US"}:
+        for lang_code in configuration.supported_langs.keys() - {"en-US"}:
             office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
@@ -904,7 +903,7 @@ class MainLogic(object):
                     "checksum": "md5",
                 }
             ]
-            if lang_code in lolangs.existing_helppacks:
+            if lang_code in configuration.existing_helppacks:
                 office_lang_vp.real_files.append(
                     {
                         "name": "LibreOffice_"
