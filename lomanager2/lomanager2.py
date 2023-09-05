@@ -52,6 +52,7 @@ if os.geteuid() == 0:
     logger.addHandler(logfile_handler)
 
     # Run the app with chosen interface
+    logger.info("Log started")
     if args.gui is True:
         from adapters import qt_adapter
 

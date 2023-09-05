@@ -17,6 +17,7 @@ class UnifiedProgressReporter:
         )
         self._progress_dsc_callback = callbacks.get("progress_description")
         self._progress_prc_callback = callbacks.get("progress_percentage")
+        self._last_seen_progress_dsc = ""
 
         self.step_start = self._step_start_closure()
         self.step_skip = self._step_skip_closure()
@@ -35,10 +36,12 @@ class UnifiedProgressReporter:
                 self.progress(0)
                 self.progress_msg("", show_msg=False)
                 # Save description to reuse it in step_end
+                if txt:
+                    txt = txt[0].upper() + txt[1:]
                 self._current_step_description = txt
                 # Set step name
-                log.info(txt)
-                self._overall_progress_dsc_callback(txt)
+                log.info(txt + " ...")
+                self._overall_progress_dsc_callback(txt + " ...")
 
         else:
 
@@ -78,7 +81,9 @@ class UnifiedProgressReporter:
             def step_end(txt: str = "", show_msg=True):
                 self._steps_counter += 1
                 self._overall_progress_prc_callback(self._steps_counter)
-                msg = txt if txt else self._current_step_description + " ...done"
+                msg = (
+                    txt if txt else "... done " + self._current_step_description.lower()
+                )
                 if show_msg:
                     log.info(msg)
                     self._overall_progress_dsc_callback(msg)
@@ -87,7 +92,9 @@ class UnifiedProgressReporter:
 
             def step_end(txt: str = "", show_msg=True):
                 self._steps_counter += 1
-                msg = txt if txt else self._current_step_description + " ...done"
+                msg = (
+                    txt if txt else "... done " + self._current_step_description.lower()
+                )
                 if show_msg:
                     log.info(msg)
 
@@ -119,13 +126,21 @@ class UnifiedProgressReporter:
                 if show_msg:
                     self._progress_dsc_callback(txt)
                     msg = rf"{txt} ({prc})%" if prc else txt
-                    log.info(msg)
+                    if txt == self._last_seen_progress_dsc:
+                        log.debug(msg)
+                    else:
+                        self._last_seen_progress_dsc = txt
+                        log.info(txt)
 
         else:
 
             def progress_description(txt: str, prc: str = "", show_msg=True):
                 if show_msg:
                     msg = rf"{txt} ({prc})%" if prc else txt
-                    log.info(msg)
+                    if txt == self._last_seen_progress_dsc:
+                        log.debug(msg)
+                    else:
+                        self._last_seen_progress_dsc = txt
+                        log.info(txt)
 
         return progress_description

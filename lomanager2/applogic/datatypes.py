@@ -146,9 +146,9 @@ class VirtualPackage(Node):
             return False
 
     def __str__(self) -> str:
-        info = " : installed" if self.is_installed else " : not installed"
+        info = "(+)installed" if self.is_installed else "(—)not installed"
         info = "" if self.kind == "master-node" else info
-        return f"({self.kind}, {self.family}, {self.version}){info}"
+        return f"{self.family} {self.version} {self.kind} {info}"
 
     def allow_removal(self) -> None:
         """Set remove flags to allow removal but don't mark for it"""
