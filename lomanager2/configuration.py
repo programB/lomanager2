@@ -4,10 +4,30 @@ import pathlib
 log = logging.getLogger("lomanager2_logger")
 
 
+def make_base_ver(full_version: str) -> str:
+    # base version comprises of the first 2 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5
+    return ".".join(full_version.split(".")[:2])
+
+
+def make_minor_ver(full_version: str) -> str:
+    # minor version comprises of the first 3 numbers of the full version
+    # eg. 7.5.4.2 -> 7.5.4
+    return ".".join(full_version.split(".")[:3])
+
+
+# latest_available_LO_version should be full version number (4 segments)
+# (all version strings are derived from it unless overridden by
+#  non empty force_specific_LO_version which should also comprise 4 segments)
 latest_available_LO_version = "7.5.4.2"
-# force_specific_LO_version = "7.3.6.3"
 force_specific_LO_version = ""
-latest_available_clipart_version = "7.5"
+# force_specific_LO_version = "7.3.6.3"
+
+latest_available_clipart_version = (
+    make_base_ver(latest_available_LO_version)
+    if not force_specific_LO_version
+    else make_base_ver(force_specific_LO_version)
+)
 
 
 # Global read-only definitions
@@ -163,15 +183,3 @@ existing_helppacks = [
     "ru", "ta", "uk", "bn-IN", "ja", "km", "el"
     ]
 # fmt: on
-
-
-def make_base_ver(full_version: str) -> str:
-    # base version comprises of the first 2 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5
-    return ".".join(full_version.split(".")[:2])
-
-
-def make_minor_ver(full_version: str) -> str:
-    # minor version comprises of the first 3 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5.4
-    return ".".join(full_version.split(".")[:3])
