@@ -1,17 +1,16 @@
-import time
-import re
-import pathlib
-import urllib.request, urllib.error
-from copy import deepcopy
-import xml.etree.ElementTree as ET
-import configuration
-from typing import Callable
-from . import PCLOS
-from . import net
-from . datatypes import VirtualPackage, SignalFlags, compare_versions
-from . callbacks import UnifiedProgressReporter
-
+import copy
 import logging
+import pathlib
+import re
+import time
+import xml.etree.ElementTree as ET
+from typing import Callable
+
+import configuration
+
+from . import PCLOS, net
+from .callbacks import UnifiedProgressReporter
+from .datatypes import SignalFlags, VirtualPackage, compare_versions
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -45,7 +44,7 @@ class MainLogic(object):
         return self._package_menu.apply_install_logic(package, mark)
 
     def get_warnings(self):
-        warnings = deepcopy(self.warnings)
+        warnings = copy.deepcopy(self.warnings)
         # clear warnings object
         self.warnings = []
         return warnings

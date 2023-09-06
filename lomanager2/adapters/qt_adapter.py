@@ -1,16 +1,15 @@
+import logging
 import sys
 
 from applogic.packagelogic import MainLogic
-from qtinterface.pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
-from qtinterface.gui import AppMainWindow
 from qtinterface.delegates import CheckButtonDelegate, columns
-from qtinterface.viewmodels import (
-    SoftwareMenuModel,
-    SoftwareMenuRenderModel,
-    LanguageMenuRenderModel,
-)
+from qtinterface.gui import AppMainWindow
+from qtinterface.pysidecompat import QtCore  # pyright: ignore
+from qtinterface.pysidecompat import QtGui  # pyright: ignore
+from qtinterface.pysidecompat import QtWidgets  # pyright: ignore
 from qtinterface.threads import ProcedureWorker
-import logging
+from qtinterface.viewmodels import (LanguageMenuRenderModel, SoftwareMenuModel,
+                                    SoftwareMenuRenderModel)
 
 log = logging.getLogger("lomanager2_logger")
 

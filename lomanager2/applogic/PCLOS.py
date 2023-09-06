@@ -3,16 +3,17 @@ This module gathers functions to return some information about current
 operating system state or change that state.
 """
 
-import os
-import shutil
-import pathlib
 import logging
-from typing import Callable
-import configuration
-import subprocess
-import re
-import tarfile
+import os
+import pathlib
 import pwd
+import re
+import shutil
+import subprocess
+import tarfile
+from typing import Callable
+
+import configuration
 
 log = logging.getLogger("lomanager2_logger")
 

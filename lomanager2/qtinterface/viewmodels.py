@@ -1,10 +1,11 @@
-from typing import Any
-from functools import cmp_to_key
-
-from . pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
-from configuration import supported_langs
-from applogic.datatypes import compare_versions
 import logging
+from functools import cmp_to_key
+from typing import Any
+
+from applogic.datatypes import compare_versions
+from configuration import supported_langs
+
+from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
 log = logging.getLogger("lomanager2_logger")
 

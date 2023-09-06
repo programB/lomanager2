@@ -3,8 +3,9 @@ import logging
 import pathlib
 import socket
 import time
+import urllib.error
+import urllib.request
 from typing import Callable
-import urllib.request, urllib.error
 
 log = logging.getLogger("lomanager2_logger")
 connections_timeout = 15
