@@ -1,17 +1,17 @@
-import time
-import re
-import pathlib
-import urllib.request, urllib.error
-from copy import deepcopy
-import xml.etree.ElementTree as ET
-import configuration
-import lolangs
-from typing import Any, Tuple, Callable
-from . import PCLOS
-from .datatypes import VirtualPackage, SignalFlags
-from .callbacks import UnifiedProgressReporter
-
+import copy
 import logging
+import pathlib
+import re
+import time
+import xml.etree.ElementTree as ET
+from typing import Callable
+
+import configuration
+
+from . import PCLOS, net
+from .callbacks import UnifiedProgressReporter
+from .datatypes import SignalFlags, VirtualPackage, compare_versions
+from .manualselection import ManualSelectionLogic
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -45,7 +45,7 @@ class MainLogic(object):
         return self._package_menu.apply_install_logic(package, mark)
 
     def get_warnings(self):
-        warnings = deepcopy(self.warnings)
+        warnings = copy.deepcopy(self.warnings)
         # clear warnings object
         self.warnings = []
         return warnings
@@ -66,7 +66,7 @@ class MainLogic(object):
     def apply_changes(self, *args, **kwargs):
         """Does the preparations and collects files before calling _make_changes
 
-        This method does the final decision of what should installed/removed
+        This method does the final decision of what should be installed/removed
         and calls file download procedure if any files have to be collected.
         When done it calls _make_changes to do modify system state.
         """
@@ -668,24 +668,40 @@ class MainLogic(object):
             newest_installed_Java_version = java.version
         # java install/remove options are never visible
 
-        newest_installed_LO_version = ""
+        installed_LOs = [
+            c for c in java.children if "LibreOffice" in c.family and c.is_installed
+        ]
+        if installed_LOs:
+            newest_installed_LO_version = installed_LOs[0].version
+            for office in installed_LOs:
+                newest_installed_LO_version = (
+                    office.version
+                    if compare_versions(office.version, newest_installed_LO_version)
+                    >= 1
+                    else newest_installed_LO_version
+                )
+        else:
+            newest_installed_LO_version = ""
+
+        installed_clipartS = [
+            c for c in root.children if "Clipart" in c.family and c.is_installed
+        ]
+        if installed_clipartS:
+            newest_installed_Clipart_version = installed_clipartS[0].version
+            for clipart in installed_clipartS:
+                newest_installed_Clipart_version = (
+                    clipart.version
+                    if compare_versions(
+                        clipart.version, newest_installed_Clipart_version
+                    )
+                    >= 1
+                    else newest_installed_Clipart_version
+                )
+        else:
+            newest_installed_Clipart_version = ""
+
         LibreOfficeS = [c for c in java.children if "LibreOffice" in c.family]
-        for office in LibreOfficeS:
-            if office.is_installed:
-                newest_installed_LO_version = self._return_newer_ver(
-                    office.version,
-                    newest_installed_LO_version,
-                )
-
-        newest_installed_Clipart_version = ""
         clipartS = [c for c in root.children if "Clipart" in c.family]
-        for clipart in clipartS:
-            if clipart.is_installed:
-                newest_installed_Clipart_version = self._return_newer_ver(
-                    clipart.version,
-                    newest_installed_Clipart_version,
-                )
-
         # 0) Disallow everything
         # This is already done - every flag in VirtualPackage is False by default
 
@@ -816,58 +832,6 @@ class MainLogic(object):
             newest_installed_Clipart_version,
         )
 
-    def _return_newer_ver(self, v1: str, v2: str) -> str:
-        """Returns the newer of two versions passed
-
-        Version strings are assumed to be dot
-        separated eg. "4.5"
-        These strings MUST follow the pattern
-        but need not to be of the same length.
-        (in such case shorter version string is padded
-         with zeros before comparison)
-        Any version is newer then an empty string.
-        Empty string is returned is both v1 and v2
-        are empty strings.
-
-        Parameters
-        ----------
-        v1 : str
-          package version string eg. "9.1"
-
-        v2 : str
-          package version string eg. "9.1.2"
-
-        Returns
-        -------
-        str
-          newer of the v1 and v2, here 9.1.2 because it's newer then 9.1,
-          or empty string.
-        """
-
-        if v1 != v2:
-            if v1 == "":
-                return v2
-            elif v2 == "":
-                return v1
-            else:
-                v1_int = [int(i) for i in v1.split(".")]
-                v2_int = [int(i) for i in v2.split(".")]
-
-                # pad shorter list with zeros to match sizes
-                diff = abs(len(v1_int) - len(v2_int))
-                v1_int.extend([0] * diff) if len(v1_int) <= len(
-                    v2_int
-                ) else v2_int.extend([0] * diff)
-
-                for i in range(len(v1_int)):
-                    if v1_int[i] == v2_int[i]:
-                        continue
-                    elif v1_int[i] > v2_int[i]:
-                        return v1
-                    else:
-                        return v2
-        return v1  # ver1 == ver2
-
     def _get_available_software(self):
         available_virtual_packages = []
         msg = ""
@@ -903,7 +867,7 @@ class MainLogic(object):
         else:
             LO_ver = configuration.latest_available_LO_version
         recommended_LO_ver = LO_ver
-        LO_minor_ver = PCLOS.make_minor_ver(LO_ver)
+        LO_minor_ver = configuration.make_minor_ver(LO_ver)
         # Build VP for LO core package
         office_core_vp = VirtualPackage("core-packages", "LibreOffice", LO_ver)
         office_core_vp.is_installed = False
@@ -922,7 +886,7 @@ class MainLogic(object):
         # Build VPs for langpacks except en-US language pack,
         # it is only installed/removed together with
         # core package and should not be offered for install separately
-        for lang_code in lolangs.supported_langs.keys() - {"en-US"}:
+        for lang_code in configuration.supported_langs.keys() - {"en-US"}:
             office_lang_vp = VirtualPackage(lang_code, "LibreOffice", LO_ver)
             office_lang_vp.is_installed = False
             office_lang_vp.real_files = [
@@ -939,7 +903,7 @@ class MainLogic(object):
                     "checksum": "md5",
                 }
             ]
-            if lang_code in lolangs.existing_helppacks:
+            if lang_code in configuration.existing_helppacks:
                 office_lang_vp.real_files.append(
                     {
                         "name": "LibreOffice_"
@@ -1249,16 +1213,8 @@ class MainLogic(object):
         for package in packages_to_download:
             for file in package.real_files:
                 url = file["base_url"] + file["name"]
-                try:
-                    resp = urllib.request.urlopen(url, timeout=7)
-                    log.debug(f"Resource is reachable: {url}")
-                except urllib.error.HTTPError as error:
-                    msg = f"While trying to open {url} an error occurred: "
-                    msg = msg + f"HTTP error {error.code}: {error.reason}"
-                    return (False, msg, rpms_and_tgzs_to_use)
-                except urllib.error.URLError as error:
-                    msg = f"While trying to open {url} an error occurred: "
-                    msg = msg + f"{error.reason}"
+                is_available, msg = net.check_url_available(url)
+                if not is_available:
                     return (False, msg, rpms_and_tgzs_to_use)
 
         for package in packages_to_download:
@@ -1266,7 +1222,7 @@ class MainLogic(object):
                 f_url = file["base_url"] + file["name"]
                 f_dest = configuration.working_dir.joinpath(file["name"])
 
-                is_downloaded, error_msg = PCLOS.download_file(
+                is_downloaded, error_msg = net.download_file(
                     f_url,
                     f_dest,
                     progress_reporter,
@@ -1281,7 +1237,7 @@ class MainLogic(object):
                     csf_url = file["base_url"] + checksum_file
                     csf_dest = configuration.working_dir.joinpath(checksum_file)
 
-                    is_downloaded, error_msg = PCLOS.download_file(
+                    is_downloaded, error_msg = net.download_file(
                         csf_url,
                         csf_dest,
                         progress_reporter,
@@ -1291,7 +1247,7 @@ class MainLogic(object):
                         msg = msg + error_msg
                         return (False, msg, rpms_and_tgzs_to_use)
 
-                    is_correct = PCLOS.verify_checksum(
+                    is_correct = net.verify_checksum(
                         f_dest, csf_dest, progress_reporter
                     )
                     if not is_correct:
@@ -1477,7 +1433,7 @@ class MainLogic(object):
         rpms_to_rm = []
         for lang in LibreOfficeLANGS:
             # LibreOffice langs removal procedures.
-            base_version = PCLOS.make_base_ver(lang.version)
+            base_version = configuration.make_base_ver(lang.version)
 
             expected_rpm_names = [
                 f"libreoffice{base_version}-{lang.kind}-",
@@ -1557,7 +1513,7 @@ class MainLogic(object):
             #  3.4, 3.5, 3.6, 4.0, 4.1, 4.2, 4.3, 4.4, 5.0, 5.1, 5.2, 5.3,
             #  5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0,7.1, 7.2, 7.3, 7.4, 7.5)
             else:
-                base_version = PCLOS.make_base_ver(core.version)
+                base_version = configuration.make_base_ver(core.version)
                 # All if-s in case (extremely unlikely) someone managed to
                 # install more then one version
                 if core.version.startswith("3.4"):
@@ -2081,264 +2037,3 @@ class MainLogic(object):
         return (is_enough, needed_str, available_str)
 
     # -- end Private methods of MainLogic
-
-
-class ManualSelectionLogic(object):
-    def __init__(
-        self,
-        root_node: VirtualPackage,
-        latest_Java_version: str,
-        newest_Java_version: str,
-        recommended_LO_version: str,
-        newest_installed_LO_version: str,
-        recommended_Clipart_version: str,
-        newest_Clipart_version: str,
-    ) -> None:
-        self.recommended_LO_version = recommended_LO_version
-        self.recommended_clipart_version = recommended_Clipart_version
-        self.newest_installed_LO_version = newest_installed_LO_version
-
-        self.root = root_node
-
-        self.info_to_install = []
-        self.info_to_remove = []
-
-    # -- Public interface for ManualSelectionLogic
-    def apply_install_logic(self, package: VirtualPackage, mark: bool):
-        """Marks package for install changing flags of other packages accordingly
-
-        This procedure will mark requested package for install and make
-        sure this causes other packages to be also installed or prevented
-        from being removed respecting dependencies.
-
-        Parameters
-        ----------
-        package : VirtualPackage
-
-        mark : bool
-          True - mark for installed, False - unmark (give up installing)
-
-        Returns
-        -------
-        bool
-          True if packages install logic was applied successfully,
-          False otherwise
-        """
-
-        log.debug(">>> Install logic triggered <<<")
-
-        is_apply_install_successful = False
-
-        java_pkgs = [c for c in self.root.children if "Java" in c.family]
-        java = None if not java_pkgs else java_pkgs[0]
-
-        # OpenOffice dependency tree
-        # OpenOffice cannot be installed, it can only be uninstalled
-        # and is always marked for removal if detected.
-
-        # LibreOffice dependency tree
-        if package.family == "LibreOffice":
-            # unmarking the request for install
-            if mark is False:
-                # 1) unmark yourself
-                package.is_marked_for_install = False
-                # 2) If this is the request to unmark the last of all
-                #    new lang packs marked for install (user changes mind
-                #    and decides not to install any new languages) -
-                #    allow to uninstall the existing (if any) core-packages.
-                if package.is_langpack():
-                    siblings = package.get_siblings()
-                    is_any_sibling_marked_for_install = any(
-                        [s for s in siblings if s.is_marked_for_install]
-                    )
-                    if (
-                        not is_any_sibling_marked_for_install
-                        and package.parent is not None
-                        and package.parent.is_installed
-                    ):
-                        package.parent.is_remove_opt_enabled = True
-                # 3) If this IS the core-packages
-                #    don't leave your lang packs hanging - unmark them
-                if package.is_corepack():
-                    for lang in package.children:
-                        lang.is_marked_for_install = False
-                # 4) if unmarking the last LO package of
-                #    the recommended version
-                #    make the removal option for installed Office
-                #    accessible again
-                if package.version == self.recommended_LO_version:
-                    family_members = package.get_your_family()
-                    is_any_member_marked_for_install = any(
-                        [m for m in family_members if m.is_marked_for_install]
-                    )
-                    if not is_any_member_marked_for_install:
-                        for office in java.children:
-                            if office.version != self.recommended_LO_version:
-                                office.is_remove_opt_enabled = True
-                                for lang in office.children:
-                                    lang.is_remove_opt_enabled = True
-                is_apply_install_successful = True
-
-            # requesting install
-            if mark is True:
-                # 1) mark yourself for install
-                package.is_marked_for_install = True
-                # 2) Java not installed - install it
-                if not java.is_installed:
-                    java.is_marked_for_install = True
-                # 3) if installing recommended LO mark older versions for removal
-                if package.version == self.recommended_LO_version:
-                    for office in java.children:
-                        if office.version != self.recommended_LO_version:
-                            office.mark_for_removal()
-                            office.is_remove_opt_enabled = False
-                            for lang in office.children:
-                                lang.mark_for_removal()
-                                lang.is_remove_opt_enabled = False
-                # 4) If this is a lang pack
-                if package.is_langpack():
-                    if package.parent is not None:
-                        if package.parent.is_installed:
-                            # prevent installed parent getting removed
-                            package.parent.is_remove_opt_enabled = False
-                        else:
-                            # parent not installed - install it as well
-                            package.parent.is_marked_for_install = True
-                is_apply_install_successful = True
-
-        # Clipart dependency tree
-        if package.family == "Clipart":
-            # mark yourself
-            package.is_marked_for_install = mark
-            #
-            if package.version == self.recommended_clipart_version:
-                for child in self.root.children:
-                    if (
-                        child.family == "Clipart"
-                        and child.version != self.recommended_clipart_version
-                    ):
-                        if mark is True:
-                            # if installing recommended version mark
-                            # other versions for removal
-                            child.mark_for_removal()
-                            child.is_remove_opt_enabled = False
-                        else:
-                            # if unmarking the recommended version
-                            # make the removal option for installed
-                            # one accessible again
-                            child.is_remove_opt_enabled = True
-            is_apply_install_successful = True
-
-        self._decide_what_to_download()
-        self._update_changes_info()
-        return is_apply_install_successful
-
-    def apply_removal_logic(self, package: VirtualPackage, mark: bool) -> bool:
-        """Marks package for removal changing flags of other packages accordingly
-
-        This procedure will mark requested package for removal and make
-        sure this causes other packages to be also removed or prevented
-        from removal respecting dependencies.
-
-        Parameters
-        ----------
-        package : VirtualPackage
-
-        mark : bool
-          True - mark for removal, False - unmark (give up removing)
-
-        Returns
-        -------
-        bool
-          True if packages removal logic was applied successfully,
-          False otherwise
-        """
-        log.debug(">>> Removal logic triggered <<<")
-
-        is_apply_removal_successful = False
-
-        # OpenOffice dependency tree
-        # OpenOffice cannot be installed, it can only be uninstalled
-        # and is always marked for removal if detected.
-
-        # LibreOffice dependency tree
-        if package.family == "LibreOffice":
-            # unmarking the request for removal
-            if mark is False:
-                # unmark yourself from removal
-                package.is_marked_for_removal = False
-                # unmark the removal of an LibreOffice
-                # - Do not orphan lang packs
-                # - install option for new lang packs should re-enabled
-                if package.is_corepack():
-                    for lang in package.children:
-                        lang.is_marked_for_removal = False
-                        if not lang.is_installed:
-                            lang.is_install_opt_enabled = True
-                is_apply_removal_successful = True
-
-            # requesting removal
-            if mark is True:
-                # mark yourself for removal
-                package.is_marked_for_removal = True
-                if package.is_corepack():
-                    #  mark all your lang packages for removal too
-                    for lang in package.children:
-                        if lang.is_installed:
-                            lang.is_marked_for_removal = True
-                        # prevent installation of any new lang packs
-                        else:
-                            lang.is_install_opt_enabled = False
-                            lang.is_marked_for_install = False
-                is_apply_removal_successful = True
-
-        # Clipart dependency tree
-        if package.family == "Clipart":
-            # mark the package as requested.
-            package.is_marked_for_removal = mark
-            is_apply_removal_successful = True
-
-        self._decide_what_to_download()
-        self._update_changes_info()
-        return is_apply_removal_successful
-
-    # -- end Public interface for ManualSelectionLogic
-
-    # -- Private methods of ManualSelectionLogic
-    def _decide_what_to_download(self):
-        # Never keep the reference to package list
-        packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        for package in packages:
-            # if package.is_marked_for_install and package.is_installed is False:
-            if package.is_marked_for_install and package.is_installed is False:
-                package.is_marked_for_download = True
-            else:
-                package.is_marked_for_download = False
-
-    def _update_changes_info(self):
-        def pretty_name(package):
-            if package.is_langpack():
-                return (
-                    package.family
-                    + " "
-                    + package.version
-                    + " language: "
-                    + package.kind
-                )
-            else:
-                return package.family + " " + package.version + " core"
-
-        # Never keep the reference to package list
-        packages = []
-        self.root.get_subtree(packages)
-        packages.remove(self.root)
-        self.info_to_install = [
-            pretty_name(p) for p in packages if p.is_marked_for_install
-        ]
-        self.info_to_remove = [
-            pretty_name(p) for p in packages if p.is_marked_for_removal
-        ]
-
-    # -- end Private methods of ManualSelectionLogic

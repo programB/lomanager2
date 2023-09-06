@@ -3,20 +3,17 @@ This module gathers functions to return some information about current
 operating system state or change that state.
 """
 
-
-import time
-import os
-import shutil
-import pathlib
 import logging
-from typing import Callable
-import configuration
-import urllib.request, urllib.error
-import hashlib
-import subprocess
-import re
-import tarfile
+import os
+import pathlib
 import pwd
+import re
+import shutil
+import subprocess
+import tarfile
+from typing import Callable
+
+import configuration
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -317,7 +314,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 f"rpm -q {ure_package_str} --qf %{{version}}"
             )
             full_version = reply.strip()
-            base_version = make_base_ver(full_version)
+            base_version = configuration.make_base_ver(full_version)
             log.debug(f"LibreOffice version read from ure package: {full_version}")
 
             log.debug("Checking for language packs installed for that version")
@@ -404,74 +401,6 @@ def detect_installed_clipart() -> tuple[bool, str]:
         found = False
         clipart_version = ""
     return (found, clipart_version)
-
-
-def download_file(
-    src_url: str,
-    dest_path: pathlib.Path,
-    progress_reporter: Callable,
-    max_retries: int = 3,
-    retry_delay_sec: int = 5,
-) -> tuple[bool, str]:
-    info = ""
-
-    def progress_reporthook(n_blocks_transferred, block_size, file_tot_size):
-        already_got_bytes = n_blocks_transferred * block_size
-        if file_tot_size == -1:
-            pass
-        else:
-            percent_p = int(100 * (already_got_bytes / file_tot_size))
-            progress_reporter.progress(percent_p)
-
-    filename = src_url.split("/")[-1]
-    progress_reporter.progress_msg(f"Now downloading: {filename}")
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            urllib.request.urlretrieve(
-                src_url,
-                filename=dest_path,
-                reporthook=progress_reporthook,
-            )
-            progress_reporter.progress_msg(f"Downloaded:      {filename}")
-            return (True, "")
-        except Exception as error:
-            log.error(f"Attempt {attempt} of {max_retries} failed")
-            log.error(error)
-            info = str(error)
-            time.sleep(retry_delay_sec)
-    info = "Failed to download file. " + info
-    return (False, info)
-
-
-def verify_checksum(
-    file: pathlib.Path,
-    checksum_file: pathlib.Path,
-    progress_reporter: Callable,
-) -> bool:
-    progress_reporter.progress_msg(f"Verifying:       {file.name}")
-
-    with open(file, "rb") as f:
-        file_tot_size = file.stat().st_size
-        chunk_size = 8192
-        steps = int(file_tot_size / chunk_size) + 2
-        i = 0
-        file_hash = hashlib.md5()
-        while chunk := f.read(chunk_size):
-            file_hash.update(chunk)
-            progress_p = int((i / (steps)) * 100)
-            progress_reporter.progress(progress_p)
-            i += 1
-
-    calculated_hash = file_hash.hexdigest()
-
-    with open(checksum_file, "r") as fmd:
-        lines = fmd.readlines()
-    checksum = lines[0].split()[0]  # first word in the first line
-
-    if is_correct := calculated_hash == checksum:
-        progress_reporter.progress_msg(f"hash OK:         {file.name}")
-    return is_correct
 
 
 def remove_file(path: pathlib.Path) -> bool:
@@ -984,15 +913,3 @@ def update_menus():
 def make_dir_tree(target_dir: pathlib.Path):
     """Recursivly create directories needed to contain the leaf directory"""
     os.makedirs(target_dir, exist_ok=True)
-
-
-def make_base_ver(full_version: str) -> str:
-    # base version comprises of the first 2 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5
-    return ".".join(full_version.split(".")[:2])
-
-
-def make_minor_ver(full_version: str) -> str:
-    # minor version comprises of the first 3 numbers of the full version
-    # eg. 7.5.4.2 -> 7.5.4
-    return ".".join(full_version.split(".")[:3])

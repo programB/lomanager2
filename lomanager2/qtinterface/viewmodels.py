@@ -1,10 +1,11 @@
-from typing import Any
-from functools import cmp_to_key
-
-from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
-from lolangs import supported_langs
-from applogic.datatypes import compare_versions
 import logging
+from functools import cmp_to_key
+from typing import Any
+
+from applogic.datatypes import compare_versions
+from configuration import supported_langs
+
+from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -114,8 +115,9 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         elif column == column_idx.get("kind"):
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
         elif column == column_idx.get("language_name"):
+            lang_code = package.kind
             pf_base, pf_vis, pf_enabled = (
-                supported_langs.get(package.kind),
+                supported_langs.get(lang_code),
                 True,
                 False,
             )

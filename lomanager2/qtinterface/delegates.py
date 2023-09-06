@@ -1,5 +1,6 @@
-from pysidecompat import QtGui, QtWidgets, QtCore  # pyright: ignore
 import logging
+
+from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
 log = logging.getLogger("lomanager2_logger")
 

@@ -1,8 +1,7 @@
-import os
-from datetime import datetime
 import argparse
 import logging
-
+import os
+from datetime import datetime
 
 parser = argparse.ArgumentParser(description="Run lomanager2")
 parser.add_argument("--gui", action="store_true", help="run with GUI")

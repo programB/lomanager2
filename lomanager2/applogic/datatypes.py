@@ -194,7 +194,7 @@ class VirtualPackage(Node):
                 self.__dict__[prop] = False
 
 
-def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
+def compare_versions(p1: VirtualPackage | str, p2: VirtualPackage | str) -> int:
     """Compares versions of virtual packages
 
     Meant for sorting. Returns -1,0,1 depending on which
@@ -206,7 +206,8 @@ def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
 
     Parameters
     ----------
-    p1,p2 : VirtualPackage
+    p1,p2 : VirtualPackage or str
+    if VirtualPackage is passed its .version attribute is used
 
     Returns
     -------
@@ -215,8 +216,19 @@ def compare_versions(p1: VirtualPackage, p2: VirtualPackage):
      0: if p1 version == p2 version
     """
 
-    v1 = p1.version
-    v2 = p2.version
+    if isinstance(p1, VirtualPackage):
+        v1 = p1.version
+    elif isinstance(p1, str):
+        v1 = p1
+    else:
+        raise TypeError(f"can't use {type(p1)} for version comparison")
+    if isinstance(p2, VirtualPackage):
+        v2 = p2.version
+    elif isinstance(p2, str):
+        v2 = p2
+    else:
+        raise TypeError(f"can't use {type(p2)} for version comparison")
+
     if v1 != v2:
         if v1 == "":
             return 1
