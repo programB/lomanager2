@@ -137,7 +137,10 @@ class Adapter(QtCore.QObject):
 
     def _install_from_local_copy(self):
         text = _(
-            "Following procedure will inspect the chosen directory to find out if LibreOffice can be installed using packages therein.\nPlease note that if check is successful any already installed Office will be removed with all its language packages."
+            "Following procedure will inspect the chosen directory to find "
+            "out if LibreOffice can be installed using packages therein.\n"
+            "Please note that if check is successful any already installed "
+            "Office will be removed with all its language packages."
         )
         self._local_copy_view.info_box.setText(text)
         # Set some dir before user makes proper choice

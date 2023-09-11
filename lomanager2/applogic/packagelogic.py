@@ -180,7 +180,8 @@ class MainLogic(object):
             )
             if is_enough is False:
                 msg = _(
-                    "Insufficient disk space to download selected packages. Needed: {}. Available {}"
+                    "Insufficient disk space to download selected "
+                    "packages. Needed: {}. Available {}"
                 ).format(needed, available)
                 self.inform_user(msg, isOK=False)
                 return
@@ -317,7 +318,8 @@ class MainLogic(object):
             # can be installed from local_copy_directory
             if not java.is_installed and not Java_local_copy["isPresent"]:
                 msg = _(
-                    "Java is not installed in the system and was not found in the directory provided"
+                    "Java is not installed in the system and was "
+                    "not found in the directory provided"
                 )
                 self.inform_user(msg, isOK=False)
                 return
@@ -331,7 +333,8 @@ class MainLogic(object):
             else:
                 log.debug(
                     _(
-                        "Java was found in the local copy directory but Java is already installed so it won't be reinstalled."
+                        "Java was found in the local copy directory but "
+                        "Java is already installed so it won't be reinstalled."
                     )
                 )
 
@@ -368,7 +371,10 @@ class MainLogic(object):
         else:
             log.info(
                 _(
-                    "LibreOffice core package wasn't found in the local copy directory and so LibreOffice will not be installed. (LibreOffice langpacks or Java won't be installed either even if present in the local copy directory)."
+                    "LibreOffice core package wasn't found in the local copy "
+                    "directory and so LibreOffice will not be installed. "
+                    "(LibreOffice langpacks or Java won't be installed either "
+                    "even if present in the local copy directory)."
                 )
             )
             is_modification_needed = is_modification_needed or False
@@ -389,7 +395,8 @@ class MainLogic(object):
         else:
             log.info(
                 _(
-                    "Openclipart packages were not found in the local copy directory so Openclipart will not be installed."
+                    "Openclipart packages were not found in the local copy "
+                    "directory so Openclipart will not be installed."
                 )
             )
             is_modification_needed = is_modification_needed or False
@@ -440,7 +447,10 @@ class MainLogic(object):
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = _(
-                "Some package managers are still running and as a result you won't be able to install or uninstall any packages. Close the managers listed and restart this program.\nmanager: PID\n"
+                "Some package managers are still running and as a result "
+                "you won't be able to install or uninstall any packages. "
+                "Close the managers listed and restart this "
+                "program.\nmanager: PID\n"
             )
             for manager, pids in running_managers.items():
                 msg += manager + ": " + str(pids) + "  "
@@ -462,7 +472,9 @@ class MainLogic(object):
             self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             msg = _(
-                "Office is running and as a result you won't be able to install or uninstall any packages. Save your work, close Office and restart this program.\nOffice: PID\n"
+                "Office is running and as a result you won't be able to "
+                "install or uninstall any packages. Save your work, "
+                "close Office and restart this program.\nOffice: PID\n"
             )
             for office, pids in running_office_suits.items():
                 msg += office + ": " + str(pids) + "  "
@@ -476,7 +488,9 @@ class MainLogic(object):
             progress_reporter.step_start(_("Checking for system updates"))
             if self.skip_update_check:
                 msg = _(
-                    "Checking for OS updates was bypassed. Installing packages in this mode can potentially mess up your system! Use at your own risk."
+                    "Checking for OS updates was bypassed. Installing "
+                    "packages in this mode can potentially mess up "
+                    "your system! Use at your own risk."
                 )
                 (
                     check_successful,
@@ -494,7 +508,9 @@ class MainLogic(object):
                 if not is_updated:
                     self.global_flags.block_normal_install = True
                     msg = _(
-                        "The OS is not fully updated and as a result installations are blocked. Update your system and restart this program."
+                        "The OS is not fully updated and as a result "
+                        "installations are blocked. Update your system "
+                        "and restart this program."
                     )
                     self.inform_user(msg, isOK=False)
                 else:
@@ -502,7 +518,9 @@ class MainLogic(object):
             else:
                 self.global_flags.block_normal_install = True
                 msg = _(
-                    "Failed to check update status \nand as a result you won't be able to install LibreOffice packages. Check you internet connection and restart this program."
+                    "Failed to check update status \nand as a result you "
+                    "won't be able to install LibreOffice packages. "
+                    "Check you internet connection and restart this program."
                 )
                 if explanation:
                     msg += "\n" + explanation
@@ -514,7 +532,11 @@ class MainLogic(object):
         progress_reporter.step_start(_("Checking if live session is active"))
         if PCLOS.is_live_session_active():
             msg = _(
-                "OS is running in live session mode.\nAll modifications made will be lost on reboot unless you install the system on a permanent drive. Also note that in live session mode LibreOffice may fail to install due to insufficient virtual disk space."
+                "OS is running in live session mode.\nAll modifications "
+                "made will be lost on reboot unless you install the "
+                "system on a permanent drive. Also note that in live "
+                "session mode LibreOffice may fail to install due "
+                "to insufficient virtual disk space."
             )
             self.inform_user(msg, isOK=False)
         else:
@@ -738,7 +760,8 @@ class MainLogic(object):
             else:
                 log.debug(
                     _(
-                        "Recommended LibreOffice version ({}) is different than the installed one ({})"
+                        "Recommended LibreOffice version ({}) is different "
+                        "than the installed one ({})"
                     ).format(recommended_LO_version, newest_installed_LO_version)
                 )
                 # newest LibreOffice installed can be removed
@@ -774,7 +797,8 @@ class MainLogic(object):
             else:
                 log.debug(
                     _(
-                        "Recommended Clipart version ({}) is different than the installed one ({})"
+                        "Recommended Clipart version ({}) is different "
+                        "than the installed one ({})"
                     ).format(
                         recommended_Clipart_version, newest_installed_Clipart_version
                     )
@@ -1131,7 +1155,9 @@ class MainLogic(object):
                 return
             else:
                 msg = _(
-                    "All changes successful\nPackages saved to {}.\nThis directory is getting wiped out on reboot, please move it to some other location."
+                    "All changes successful\nPackages saved to {}.\n"
+                    "This directory is getting wiped out on reboot, "
+                    "please move it to some other location."
                 ).format(configuration.offline_copy_dir)
                 self.inform_user(msg, isOK=True)
             progress_reporter.step_end()
@@ -1278,7 +1304,8 @@ class MainLogic(object):
                 else:
                     log.warning(
                         _(
-                            "quickstarter PID ({}) is suspiciously low - refusing to kill process"
+                            "quickstarter PID ({}) is suspiciously low "
+                            "- refusing to kill process"
                         ).format(pid)
                     )
         if OO_PIDs:
@@ -1291,7 +1318,8 @@ class MainLogic(object):
                 else:
                     log.warning(
                         _(
-                            "quickstarter PID ({}) is suspiciously low - refusing to kill process"
+                            "quickstarter PID ({}) is suspiciously low "
+                            "- refusing to kill process"
                         ).format(pid)
                     )
         if (not LO_PIDs) and (not OO_PIDs):
@@ -1929,21 +1957,29 @@ class MainLogic(object):
                         else:
                             log.warning(
                                 _(
-                                    "LibreOffice langpack(s) found in the local copy directory but their version(s) do not match LibreOffice core package version. Langpack(s) will not be installed. Found: "
+                                    "LibreOffice langpack(s) found in the "
+                                    "local copy directory but their "
+                                    "version(s) do not match LibreOffice "
+                                    "core package version. Langpack(s) "
+                                    "will not be installed. Found: "
                                 )
                                 + msg
                             )
                     else:
                         log.warning(
                             _(
-                                "LibreOffice lang and helppacks found but LibreOffice core was not found. Installation of just the lang/helppacks is not supported. Lang and helppacks found: "
+                                "LibreOffice lang and helppacks found but "
+                                "LibreOffice core was not found. Installation "
+                                "of just the lang/helppacks is not supported. "
+                                "Lang and helppacks found: "
                             )
                             + msg
                         )
                 else:
                     log.warning(
                         _(
-                            "Found lang and helppacks have inconsistent versions and will not be used."
+                            "Found lang and helppacks have inconsistent "
+                            "versions and will not be used."
                         )
                     )
             else:

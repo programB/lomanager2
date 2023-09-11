@@ -15,7 +15,9 @@ parser.add_argument(
     "--skip-update-check",
     action="store_true",
     help=_(
-        "skips checking OS update status. Only works with --debug flag. Installing packages in this mode can potentially mess up your system! Use at your own risk."
+        "skips checking OS update status. Only works with --debug flag. "
+        "Installing packages in this mode can potentially mess up your "
+        "system! Use at your own risk."
     ),
 )
 args = parser.parse_args()

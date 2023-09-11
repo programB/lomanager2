@@ -433,7 +433,8 @@ def remove_file(path: pathlib.Path) -> bool:
     if not any(map(path.is_relative_to, allowed_dirs)):
         log.error(
             _(
-                "This program should not be trying to remove files from this location! Refusing to remove: {}"
+                "This program should not be trying to remove files "
+                "from this location! Refusing to remove: {}"
             ).format(path)
         )
         is_removed = False
@@ -610,7 +611,8 @@ def install_using_apt_get(
     )
     if "needs" in output:
         msg = _(
-            "Installation of rpm packages failed - insufficient disk space. Packages where not installed "
+            "Installation of rpm packages failed - insufficient disk space. "
+            "Packages where not installed "
         )
         log.error(msg + output)
         return (False, msg)
@@ -886,7 +888,8 @@ def uninstall_using_apt_get(
                     return (False, msg)
                 else:
                     msg = _(
-                        "Dry-run removal successful. Proceeding with actual uninstall..."
+                        "Dry-run removal successful. "
+                        "Proceeding with actual uninstall..."
                     )
                     log.debug(msg)
                     break
