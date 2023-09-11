@@ -2,7 +2,7 @@
 This module gathers functions to return some information about current
 operating system state or change that state.
 """
-
+import gettext
 import logging
 import os
 import pathlib
@@ -15,6 +15,8 @@ from typing import Callable
 
 import configuration
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 

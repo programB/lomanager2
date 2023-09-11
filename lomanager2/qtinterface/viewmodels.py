@@ -1,3 +1,4 @@
+import gettext
 import logging
 from functools import cmp_to_key
 from typing import Any
@@ -7,6 +8,8 @@ from configuration import supported_langs
 
 from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 column_idx = {

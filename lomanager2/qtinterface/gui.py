@@ -1,7 +1,10 @@
+import gettext
 import logging
 
 from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 

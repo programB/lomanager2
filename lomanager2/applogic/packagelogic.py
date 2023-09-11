@@ -1,4 +1,5 @@
 import copy
+import gettext
 import logging
 import pathlib
 import re
@@ -13,6 +14,8 @@ from .callbacks import UnifiedProgressReporter
 from .datatypes import SignalFlags, VirtualPackage, compare_versions
 from .manualselection import ManualSelectionLogic
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 

@@ -1,3 +1,4 @@
+import gettext
 import logging
 import sys
 
@@ -11,6 +12,8 @@ from qtinterface.threads import ProcedureWorker
 from qtinterface.viewmodels import (LanguageMenuRenderModel, SoftwareMenuModel,
                                     SoftwareMenuRenderModel)
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 

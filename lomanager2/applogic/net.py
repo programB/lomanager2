@@ -1,3 +1,4 @@
+import gettext
 import hashlib
 import logging
 import pathlib
@@ -7,6 +8,9 @@ import urllib.error
 import urllib.request
 from typing import Callable
 
+
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 connections_timeout = 15
 # Needed for urlretrieve
