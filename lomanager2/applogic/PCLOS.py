@@ -19,6 +19,10 @@ t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
+# Force English for all executed shell commands
+english_env = os.environ.copy()
+english_env["LANGUAGE"] = "en_US.UTF-8:en_US:en"
+
 
 def run_shell_command(
     cmd: str, shell="bash", timeout=20, err_check=True
@@ -35,6 +39,7 @@ def run_shell_command(
                 capture_output=True,  # capture both stdout and stderr
                 text=True,  # give the output as a string not bytes
                 encoding="utf-8",
+                env=english_env,
             )
             answer = (shellcommand.stdout + shellcommand.stderr).strip()
             log.debug(_("Received answer: {}").format(answer))
@@ -495,6 +500,7 @@ def run_shell_command_with_progress(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         shell=False,
+        env=english_env,
         universal_newlines=not byte_output,
     ) as proc:
         concat_normal_chars = b""
