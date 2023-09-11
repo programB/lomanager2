@@ -26,7 +26,11 @@ class ProcedureWorker(QtCore.QThread):
     def run(self):
         """Run code inside in a separate thread"""
 
-        log.debug(f"{self.function_to_run.__name__} function started in a new thread.")
+        log.debug(
+            _("{} function started in a new thread.").format(
+                self.function_to_run.__name__
+            )
+        )
         self.is_running = True
 
         # TODO: Remove the while loop?

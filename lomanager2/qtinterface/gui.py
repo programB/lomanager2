@@ -44,11 +44,11 @@ class AppMainWindow(QtWidgets.QMainWindow):
 
         # -- define other GUI elements
         self.button_install_from_local_copy = QtWidgets.QPushButton(
-            "Install from local copy"
+            _("Install from local copy")
         )
-        self.button_add_langs = QtWidgets.QPushButton("Add langs...")
-        self.button_apply_changes = QtWidgets.QPushButton("Apply changes")
-        self.button_quit = QtWidgets.QPushButton("Quit")
+        self.button_add_langs = QtWidgets.QPushButton(_("Add langs..."))
+        self.button_apply_changes = QtWidgets.QPushButton(_("Appy changes"))
+        self.button_quit = QtWidgets.QPushButton(_("Quit"))
         self.info_dialog = QtWidgets.QMessageBox()
 
         main_layout.addWidget(self.button_install_from_local_copy)
@@ -66,7 +66,7 @@ class LangsModalWindow(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle("language selection window")
+        self.setWindowTitle(_("language selection window"))
         modal_layout = QtWidgets.QVBoxLayout()
 
         # -- define Langs View
@@ -97,7 +97,7 @@ class ProgressDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle("installation progress")
+        self.setWindowTitle(_("installation progress"))
         main_layout = QtWidgets.QVBoxLayout()
 
         self.progress_description = QtWidgets.QLabel()
@@ -105,7 +105,9 @@ class ProgressDialog(QtWidgets.QDialog):
         self.overall_progress_description = QtWidgets.QLabel()
         self.overall_progress_bar = QtWidgets.QProgressBar()
         self.overall_progress_bar.setFormat("%v / %m")
-        self.button_terminate = QtWidgets.QPushButton("Terminate install (dangerous)!")
+        self.button_terminate = QtWidgets.QPushButton(
+            _("Terminate install (dangerous)!")
+        )
 
         main_layout.addWidget(self.progress_description)
         main_layout.addWidget(self.progress_bar)
@@ -120,12 +122,12 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle("Apply changes")
+        self.setWindowTitle(_("Confirm changes"))
         main_layout = QtWidgets.QVBoxLayout()
 
         self.info_box = QtWidgets.QLabel()
-        self.checkbox_keep_packages = QtWidgets.QCheckBox("Keep downloaded packages")
-        self.checkbox_force_java_download = QtWidgets.QCheckBox("Download Java")
+        self.checkbox_keep_packages = QtWidgets.QCheckBox(_("Keep downloaded packages"))
+        self.checkbox_force_java_download = QtWidgets.QCheckBox(_("Download Java"))
         # Initially disabled !
         self.checkbox_force_java_download.setEnabled(False)
 
@@ -165,7 +167,7 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle("Install from local copy")
+        self.setWindowTitle(_("Install from local copy"))
         main_layout = QtWidgets.QVBoxLayout()
 
         self.info_box = QtWidgets.QLabel()
@@ -174,7 +176,7 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         file_input_layout = QtWidgets.QHBoxLayout()
         self.directory_choice_box = QtWidgets.QLineEdit()
         self.directory_choice_box.setReadOnly(True)
-        self.button_choose_directory = QtWidgets.QPushButton("Choose directory...")
+        self.button_choose_directory = QtWidgets.QPushButton(_("Choose directory..."))
         file_input_layout.addWidget(self.directory_choice_box)
         file_input_layout.addWidget(self.button_choose_directory)
 
@@ -221,9 +223,11 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
 
         is_selection_made = selection_dialog.exec()
         log.debug(
-            f"Dialog_returned: {is_selection_made }, selectedFiles: "
-            f"{selection_dialog.selectedFiles()} selectedNameFilter: "
-            f"{selection_dialog.selectedNameFilter()}"
+            _("Dialog_returned: {}, selectedFiles: {} selectedNameFilter: {}").format(
+                is_selection_made,
+                selection_dialog.selectedFiles(),
+                selection_dialog.selectedNameFilter(),
+            )
         )
         if is_selection_made == 1:
             self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])

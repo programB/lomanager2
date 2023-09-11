@@ -80,13 +80,15 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 markstate = index.model().data(
                     index, QtCore.Qt.ItemDataRole.DisplayRole
                 )
-                log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
-                log.debug(f"switching markstate: {markstate} -> {not markstate}")
+                log.debug(_("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈"))
+                log.debug(
+                    _("switching markstate: {} -> {}").format(markstate, not markstate)
+                )
                 model.setData(index, not markstate, QtCore.Qt.ItemDataRole.EditRole)
             else:
-                log.debug("button disabled")
+                log.debug(_("button disabled"))
         else:
-            log.debug("button not visible")
+            log.debug(_("button not visible"))
 
     def editorEvent(self, event, model, option, index):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
@@ -101,7 +103,7 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
             ):
                 self.update_model_signal.emit(model, index)
             elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
-                log.debug("2-clicked MOUSE")
+                log.debug(_("mouse double click event"))
                 # Capture DoubleClick here
                 # (accept event to prevent cell editor getting opened)
                 event.accept()
@@ -144,7 +146,9 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                     button_color = self.disabled_button_color
                     button_border_color = self.disabled_button_border_color
                     button_text_color = self.disabled_text_color
-                button_text = "remove" if is_remove_col else "install"
+                remove_btn_i18n_t = _("remove")
+                install_btn_i18n_t = _("install")
+                button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
 
                 #
                 painter.save()

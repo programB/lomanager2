@@ -118,7 +118,7 @@ class Adapter(QtCore.QObject):
                 self._langs_view.hideColumn(n)
 
     def _rebuild_tree(self):
-        log.debug("Starting package tree rebuild!")
+        log.debug(_("Starting package tree rebuild!"))
         self._app_logic.rebuild_package_tree()
         # Inform model that underlying data source has finished changing
         # (corresponding beginResetModel is in the _thread_start)
@@ -136,12 +136,8 @@ class Adapter(QtCore.QObject):
         self._app_main_view.extra_langs_window.exec()
 
     def _install_from_local_copy(self):
-        text = (
-            "Following procedure will inspect the chosen directory to find "
-            + "out if LibreOffice can be installed using packages therein.\n"
-            + "Please note that if check is successful any "
-            + "already installed Office will be removed with all its "
-            + "language packages."
+        text = _(
+            "Following procedure will inspect the chosen directory to find out if LibreOffice can be installed using packages therein.\nPlease note that if check is successful any already installed Office will be removed with all its language packages."
         )
         self._local_copy_view.info_box.setText(text)
         # Set some dir before user makes proper choice
@@ -149,7 +145,7 @@ class Adapter(QtCore.QObject):
 
         # Open confirmation dialog before proceeding with installation
         if self._local_copy_view.exec():
-            log.debug("Ok clicked: Installing from local copy...")
+            log.debug(_("Ok clicked: Installing from local copy..."))
 
             # Get the directory path provided by the user
             selected_dir = self._local_copy_view.selected_dir
@@ -171,7 +167,7 @@ class Adapter(QtCore.QObject):
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
-            log.debug("Cancel clicked: User gave up installing from local copy")
+            log.debug(_("Cancel clicked: User gave up installing from local copy"))
 
     def _apply_changes(self):
         # Set keep_packages and force_java_download to NOT Checked
@@ -188,16 +184,16 @@ class Adapter(QtCore.QObject):
 
         summary = ""
         if install_list:
-            summary += "Following components will be downloaded & installed:\n"
+            summary += _("Following components will be downloaded & installed:\n")
             for p in install_list:
                 summary += "- " + p + "\n"
         summary += "\n"
         if removal_list:
-            summary += "Following components will be removed:\n"
+            summary += _("Following components will be removed:\n")
             for p in removal_list:
                 summary += "- " + p + "\n"
         if not install_list and not removal_list:
-            summary = "No changes to apply"
+            summary = _("No changes to apply")
         self._apply_changes_view.info_box.setText(summary)
 
         is_ok_to_apply_changes = True if install_list or removal_list else False
@@ -212,7 +208,7 @@ class Adapter(QtCore.QObject):
         # - whether to delete downloaded packages after installation
         # - if the java should be downloaded (despite it being installed)
         if self._apply_changes_view.exec():
-            log.debug("Ok clicked. Applying changes...")
+            log.debug(_("Ok clicked. Applying changes..."))
 
             is_keep_packages_checked = (
                 self._apply_changes_view.checkbox_keep_packages.isChecked()
@@ -222,14 +218,14 @@ class Adapter(QtCore.QObject):
             )
             summary = summary.replace("\n", " ")
             summary += (
-                "Following components will be downloaded: - Java  "
+                _("Following components will be downloaded: - Java  ")
                 if is_force_java_download_checked
                 else " "
             )
             summary += (
-                "Packages will be kept for later use"
+                _("Packages will be kept for later use")
                 if is_keep_packages_checked
-                else "Packages will not be kept for later use"
+                else _("Packages will not be kept for later use")
             )
             log.info(summary)
 
@@ -251,7 +247,7 @@ class Adapter(QtCore.QObject):
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
-            log.debug("Cancel clicked: User decided not to apply changes.")
+            log.debug(_("Cancel clicked: User decided not to apply changes."))
 
     def _thread_start(self):
         """Make changes to the GUI and start a prepared worker in a new thread
@@ -310,16 +306,16 @@ class Adapter(QtCore.QObject):
         self._progress_view.overall_progress_bar.setValue(percentage)
 
     def _thread_stopped_or_terminated(self):
-        log.debug("Thread finished signal received.")
+        log.debug(_("Thread finished signal received."))
 
         self._progress_view.hide()
         self._app_main_view.unsetCursor()
         self._progress_view.progress_bar.setVisible(True)
 
-        log.debug("Emitting rebuild_tree_signal")
+        log.debug(_("Emitting rebuild_tree_signal"))
         self.rebuild_tree_signal.emit()
 
-        log.debug("Emitting GUI locks signal to unlock GUI elements")
+        log.debug(_("Emitting GUI locks signal to unlock GUI elements"))
         self._is_packages_selecting_allowed = True
         self._is_starting_procedures_allowed = True
         self.lock_unlock_GUI_signal.emit()
@@ -332,13 +328,13 @@ class Adapter(QtCore.QObject):
         if len(warnings) == 1:
             isOK, msg = warnings[0]
             icon = good_icon if isOK else error_icon
-            title = "Success" if isOK else "Problem"
+            title = _("Success") if isOK else _("Problem")
         else:
             msg = ""
             for i, warning in enumerate(warnings):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
             icon = warnings_icon
-            title = "Warning"
+            title = _("Warning")
         self._info_view.setWindowTitle(title)
         self._info_view.setText(msg)
         self._info_view.setIcon(icon)
@@ -361,7 +357,7 @@ class Adapter(QtCore.QObject):
         self._langs_view.setEnabled(is_langs_view_enabled)
 
     def _check_system_state(self):
-        log.debug("check system state signal emitted")
+        log.debug(_("check system state signal emitted"))
         self.procedure_thread = ProcedureWorker(
             function_to_run=self._app_logic.check_system_state,
             progress_description=self.progress_description_signal.emit,

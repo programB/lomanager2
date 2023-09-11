@@ -85,7 +85,9 @@ class UnifiedProgressReporter:
                 self._steps_counter += 1
                 self._overall_progress_prc_callback(self._steps_counter)
                 msg = (
-                    txt if txt else "... done " + self._current_step_description.lower()
+                    txt
+                    if txt
+                    else _("... done ") + self._current_step_description.lower()
                 )
                 if show_msg:
                     log.info(msg)

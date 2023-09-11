@@ -8,15 +8,15 @@ t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
 
 
-parser = argparse.ArgumentParser(description="Run lomanager2")
-parser.add_argument("--gui", action="store_true", help="run with GUI")
-parser.add_argument("--debug", action="store_true", help="run in debug mode")
+parser = argparse.ArgumentParser(description=_("Run lomanager2"))
+parser.add_argument("--gui", action="store_true", help=_("run with GUI"))
+parser.add_argument("--debug", action="store_true", help=_("run in debug mode"))
 parser.add_argument(
     "--skip-update-check",
     action="store_true",
-    help="skips checking OS update status. Only works with --debug flag. "
-    "Installing packages in this mode can potentially mess up your system! "
-    "Use at your own risk.",
+    help=_(
+        "skips checking OS update status. Only works with --debug flag. Installing packages in this mode can potentially mess up your system! Use at your own risk."
+    ),
 )
 args = parser.parse_args()
 
@@ -55,7 +55,7 @@ if os.geteuid() == 0:
     logger.addHandler(logfile_handler)
 
     # Run the app with chosen interface
-    logger.info("Log started")
+    logger.info(_("Log started"))
     if args.gui is True:
         from adapters import qt_adapter
 
@@ -65,4 +65,4 @@ if os.geteuid() == 0:
 
         cli_adapter.main(skip_update_check=args.debug and args.skip_update_check)
 else:
-    print("This program requires root privileges to run.")
+    print(_("This program requires root privileges to run."))
