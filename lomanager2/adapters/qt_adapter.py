@@ -38,7 +38,7 @@ class Adapter(QtCore.QObject):
         # Model (transforms data from app logic to a form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
-            column_names=[column for column in columns],
+            column_names=[columns.get(col).get("i18n_name") for col in columns],
         )
 
         # Views

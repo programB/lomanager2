@@ -10,41 +10,49 @@ log = logging.getLogger("lomanager2_logger")
 columns = {
     "Program name": {
         "id": 0,
+        "i18n_name": _("Program name"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "language code": {
         "id": 1,
+        "i18n_name": _("language code"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
     "language name": {
         "id": 2,
+        "i18n_name": _("language name"),
         "show_in_software_view": False,
         "show_in_langs_view": True,
     },
     "version": {
         "id": 3,
+        "i18n_name": _("version"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for removal?": {
         "id": 4,
+        "i18n_name": _("marked for removal?"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
+        "i18n_name": _("marked for install?"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
     "installed?": {
         "id": 6,
+        "i18n_name": _("installed?"),
         "show_in_software_view": False,
         "show_in_langs_view": False,
     },
     "marked for download?": {
         "id": 7,
+        "i18n_name": _("marked for download?"),
         "show_in_software_view": False,
         "show_in_langs_view": False,
     },
