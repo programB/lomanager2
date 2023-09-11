@@ -25,7 +25,7 @@ english_env["LANGUAGE"] = "en_US.UTF-8:en_US:en"
 
 
 def run_shell_command(
-    cmd: str, shell="bash", timeout=20, err_check=True
+    cmd: str, shell="bash", timeout=20, fail_on_error=False
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
@@ -34,7 +34,7 @@ def run_shell_command(
         try:
             shellcommand = subprocess.run(
                 full_command,
-                check=err_check,  # some commands return non-zero exit code if successful
+                check=fail_on_error,  # some commands return non-zero exit code if successful
                 timeout=timeout,  # fail on command taking to long to exec.
                 capture_output=True,  # capture both stdout and stderr
                 text=True,  # give the output as a string not bytes
@@ -67,7 +67,7 @@ def get_PIDs_by_name(names: list[str]) -> dict:
 
     running_processes = {}
     for name in names:
-        status, pids = run_shell_command("pidof " + name, err_check=False)
+        status, pids = run_shell_command("pidof " + name)
         if status:
             running_processes[name] = pids.split()
         else:
@@ -150,7 +150,7 @@ def is_live_session_active() -> bool:
 def check_system_update_status() -> tuple[bool, bool, str]:
     # Since the apt-get update command fetches data from
     # repo server it make take a while hence setting timeout to 45 sek.
-    status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
+    status, output = run_shell_command("apt-get update", timeout=45)
     if status:
         if any(
             map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])
@@ -158,7 +158,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             return (False, False, _("Failed to check updates"))
 
         status, output = run_shell_command(
-            "apt-get dist-upgrade --fix-broken --simulate", err_check=True
+            "apt-get dist-upgrade --fix-broken --simulate", fail_on_error=True
         )
         if status:
             check_successful = True
@@ -169,8 +169,10 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             )
             # If OS is fully updated the summary line in the output should be:
             # "0 upgraded, 0 newly installed, 0 removed and 0 not upgraded."
+            is_summary_present = False
             for line in output.split("\n"):
                 if match := regex_update.search(line):
+                    is_summary_present = True
                     n_upgraded = match.group("n_upgraded")
                     n_installed = match.group("n_installed")
                     n_removed = match.group("n_removed")
@@ -185,6 +187,14 @@ def check_system_update_status() -> tuple[bool, bool, str]:
                         system_updated = True
                         explanation = _("System updated")
                         break
+            if not is_summary_present:
+                msg = _(
+                    "Can't determine update status. Unexpected command output {}"
+                ).format(output)
+                check_successful = False
+                system_updated = False
+                explanation = msg
+                log.error(msg)
         else:
             check_successful = False
             system_updated = False
@@ -324,7 +334,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 
             log.debug(_("Checking for language packs installed for that version"))
             success, reply = run_shell_command(
-                f"rpm -qa | grep libreoffice{base_version}", err_check=False
+                f"rpm -qa | grep libreoffice{base_version}"
             )
             if success and reply:
                 regex_lang = re.compile(
@@ -389,7 +399,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 def detect_installed_clipart() -> tuple[bool, str]:
     """Checks if libreoffice-openclipart rpm package is installed"""
     success, reply = run_shell_command(
-        "rpm -qa | grep libreoffice-openclipart", err_check=False
+        "rpm -qa | grep libreoffice-openclipart",
     )
     if success and reply:
         lca_regeX = re.compile(
@@ -561,15 +571,16 @@ def install_using_apt_get(
 
     progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
-        f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
-        err_check=False,
+        f"apt-get install --reinstall --simulate  {package_nameS_string} -y"
     )
     if status:
         regex_install = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_reinstalled>[0-9]+) reinstalled, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
+        is_summary_present = False
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                is_summary_present = True
                 n_upgraded = match.group("n_upgraded")
                 n_installed = match.group("n_installed")
                 n_reinstalled = match.group("n_reinstalled")
@@ -580,17 +591,24 @@ def install_using_apt_get(
                     and n_installed != "0"
                 ):
                     msg = _(
-                        _("Dry-run install failed. Packages where not installed: ")
-                        + output
+                        _(
+                            "Dry-run install failed. Packages where not installed: {}"
+                        ).format(output)
                     )
-                    log.debug(msg)
+                    log.error(msg)
                     return (False, msg)
                 else:
                     msg = _(
                         "Dry-run install successful. Proceeding with actual install..."
                     )
-                    log.debug(msg)
+                    log.info(msg)
                     break
+        if not is_summary_present:
+            msg = _("Dry-run install failed. Unexpected command output {}").format(
+                output
+            )
+            log.error(msg)
+            return (False, msg)
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
@@ -737,8 +755,7 @@ def install_using_rpm(
 
     progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
-        "rpm -Uvh --replacepkgs --test " + files_to_install,
-        err_check=False,
+        "rpm -Uvh --replacepkgs --test " + files_to_install
     )
     if status:
         if "needs" in output:
@@ -753,7 +770,7 @@ def install_using_rpm(
             return (False, msg)
         else:
             msg = _("Dry-run install successful. Proceeding with actual install...")
-            log.debug(msg)
+            log.info(msg)
 
             # It seems rpm is manipulating TTY directly :(
             # Although TTY can be captured the method below relies
@@ -829,7 +846,7 @@ def install_using_rpm(
                 return (True, _("All packages successfully installed"))
     else:
         msg = _("Failed to execute command: ") + output
-        log.debug(msg)
+        log.error(msg)
         return (False, msg)
 
 
@@ -863,15 +880,16 @@ def uninstall_using_apt_get(
 
     progress_reporter.progress_msg(_("Checking if packages can be uninstalled..."))
     status, output = run_shell_command(
-        f"apt-get remove --simulate  {package_nameS_string} -y",
-        err_check=False,
+        f"apt-get remove --simulate  {package_nameS_string} -y"
     )
     if status:
         regex_install = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
+        is_summary_present = False
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                is_summary_present = True
                 # Out should contain a line:
                 # "0 upgraded, 0 newly installed, X removed and Y not upgraded."
                 # where X must be != 0, Y doesn't matter, can be anything
@@ -880,19 +898,25 @@ def uninstall_using_apt_get(
                 n_removed = match.group("n_removed")
                 n_not_upgraded = match.group("n_not_upgraded")
                 if not ((n_upgraded == n_installed == "0") and n_removed != "0"):
-                    msg = (
-                        _("Dry-run removal failed. Packages where not removed: ")
-                        + output
-                    )
-                    log.debug(msg)
+                    msg = _(
+                        "Dry-run removal failed. Packages where not removed: {}"
+                    ).format(output)
+                    log.error(msg)
                     return (False, msg)
                 else:
                     msg = _(
                         "Dry-run removal successful. "
                         "Proceeding with actual uninstall..."
                     )
-                    log.debug(msg)
+                    log.info(msg)
                     break
+        if not is_summary_present:
+            msg = _(
+                "Dry-run removal failed. Unexpected command output {}. "
+                "Packages were not removed."
+            ).format(output)
+            log.error(msg)
+            return (False, msg)
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
@@ -923,14 +947,17 @@ def force_rm_directory(path: pathlib.Path):
             shutil.rmtree(path)
     except Exception as error:
         log.error(_("Failed to remove directory") + str(error))
+        return False
+    else:
+        return True
 
 
 def update_menus():
     """Updates KDE/GNOME/LXDE etc. menus"""
     log.info(_("updating menus"))
-    run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
-    run_shell_command("update-menus -n", err_check=False)
-    run_shell_command("update-menus -v", err_check=False)
+    run_shell_command("xdg-desktop-menu forceupdate --mode system")
+    run_shell_command("update-menus -n")
+    run_shell_command("update-menus -v")
 
 
 def make_dir_tree(target_dir: pathlib.Path):

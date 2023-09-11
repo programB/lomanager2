@@ -88,11 +88,7 @@ class Adapter(QtCore.QObject):
         )
 
         # Option available to the user: Quit the app
-        # TODO: Some cleanup procedures should be called here first
-        #       like eg. closing the log file.
-        #       ...and these should not be done here directly
-        #       but through _app_logic
-        self._app_main_view.button_quit.clicked.connect(self._app_main_view.close)
+        self._app_main_view.button_quit.clicked.connect(self._cleanup_and_exit)
 
         # Internal signal: Ask applogic to redo package tree from scratch
         self.rebuild_tree_signal.connect(self._rebuild_tree)
@@ -167,6 +163,8 @@ class Adapter(QtCore.QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.local_copy_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Show progress bar (check_system_state is not showing it)
+            self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -247,6 +245,8 @@ class Adapter(QtCore.QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.normal_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Show progress bar (check_system_state is not showing it)
+            self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -313,7 +313,6 @@ class Adapter(QtCore.QObject):
 
         self._progress_view.hide()
         self._app_main_view.unsetCursor()
-        self._progress_view.progress_bar.setVisible(True)
 
         log.debug(_("Emitting rebuild_tree_signal"))
         self.rebuild_tree_signal.emit()
@@ -375,6 +374,14 @@ class Adapter(QtCore.QObject):
         self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
+
+    def _cleanup_and_exit(self):
+        removed = self._app_logic.remove_temporary_dirs()
+        if removed:
+            log.debug("Bye")
+        else:
+            self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
+        self._app_main_view.close()
 
 
 def main(skip_update_check: bool = False):
