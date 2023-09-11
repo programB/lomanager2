@@ -1,7 +1,10 @@
+import gettext
 import logging
 
 from .datatypes import VirtualPackage
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -47,7 +50,7 @@ class ManualSelectionLogic(object):
           False otherwise
         """
 
-        log.debug(">>> Install logic triggered <<<")
+        log.debug(_(">>> Install logic triggered  package: {} <<<").format(package))
 
         is_apply_install_successful = False
 
@@ -175,7 +178,8 @@ class ManualSelectionLogic(object):
           True if packages removal logic was applied successfully,
           False otherwise
         """
-        log.debug(">>> Removal logic triggered <<<")
+
+        log.debug(_(">>> Removal logic triggered  package: {} <<<").format(package))
 
         is_apply_removal_successful = False
 
@@ -246,7 +250,7 @@ class ManualSelectionLogic(object):
                     package.family
                     + " "
                     + package.version
-                    + " language: "
+                    + _(" language: ")
                     + package.kind
                 )
             else:

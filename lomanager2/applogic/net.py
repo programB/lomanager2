@@ -1,3 +1,4 @@
+import gettext
 import hashlib
 import logging
 import pathlib
@@ -7,7 +8,11 @@ import urllib.error
 import urllib.request
 from typing import Callable
 
+
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
+
 connections_timeout = 15
 # Needed for urlretrieve
 socket.setdefaulttimeout(connections_timeout)
@@ -16,14 +21,14 @@ socket.setdefaulttimeout(connections_timeout)
 def check_url_available(url: str) -> tuple[bool, str]:
     try:
         resp = urllib.request.urlopen(url, timeout=connections_timeout)
-        log.debug(f"Resource available: {url}")
+        log.debug(_("Resource available: {}").format(url))
         return (True, resp)
     except urllib.error.HTTPError as error:
-        msg = f"While trying to open {url} an error occurred: "
-        msg = msg + f"HTTP error {error.code}: {error.reason}"
+        msg = _("While trying to open {} an error occurred: ").format(url)
+        msg = msg + _("HTTP error {}: {}").format(error.code, error.reason)
         return (False, msg)
     except urllib.error.URLError as error:
-        msg = f"While trying to open {url} an error occurred: "
+        msg = _("While trying to open {} an error occurred: ").format(url)
         msg = msg + f"{error.reason}"
         return (False, msg)
 
@@ -46,7 +51,7 @@ def download_file(
             progress_reporter.progress(percent_p)
 
     filename = src_url.split("/")[-1]
-    progress_reporter.progress_msg(f"Now downloading: {filename}")
+    progress_reporter.progress_msg(_("Downloading: {}").format(filename))
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -55,14 +60,14 @@ def download_file(
                 filename=dest_path,
                 reporthook=progress_reporthook,
             )
-            progress_reporter.progress_msg(f"Downloaded:      {filename}")
+            progress_reporter.progress_msg(_("Downloaded:      {}").format(filename))
             return (True, "")
         except Exception as error:
-            log.error(f"Attempt {attempt} of {max_retries} failed")
+            log.error(_("Attempt {} of {} failed").format(attempt, max_retries))
             log.error(error)
             info = str(error)
             time.sleep(retry_delay_sec)
-    info = "Failed to download file. " + info
+    info = _("Failed to download file. ") + info
     return (False, info)
 
 
@@ -71,7 +76,7 @@ def verify_checksum(
     checksum_file: pathlib.Path,
     progress_reporter: Callable,
 ) -> bool:
-    progress_reporter.progress_msg(f"Verifying:       {file.name}")
+    progress_reporter.progress_msg(_("Verifying:       {}").format(file.name))
 
     with open(file, "rb") as f:
         file_tot_size = file.stat().st_size
@@ -92,5 +97,5 @@ def verify_checksum(
     checksum = lines[0].split()[0]  # first word in the first line
 
     if is_correct := calculated_hash == checksum:
-        progress_reporter.progress_msg(f"hash OK:         {file.name}")
+        progress_reporter.progress_msg(_("hash OK:         {}").format(file.name))
     return is_correct

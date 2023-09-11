@@ -1,47 +1,58 @@
+import gettext
 import logging
 
 from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 columns = {
     "Program name": {
         "id": 0,
+        "i18n_name": _("Program name"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "language code": {
         "id": 1,
+        "i18n_name": _("language code"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
     "language name": {
         "id": 2,
+        "i18n_name": _("language name"),
         "show_in_software_view": False,
         "show_in_langs_view": True,
     },
     "version": {
         "id": 3,
+        "i18n_name": _("version"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for removal?": {
         "id": 4,
+        "i18n_name": _("marked for removal?"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
+        "i18n_name": _("marked for install?"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
     "installed?": {
         "id": 6,
+        "i18n_name": _("installed?"),
         "show_in_software_view": False,
         "show_in_langs_view": False,
     },
     "marked for download?": {
         "id": 7,
+        "i18n_name": _("marked for download?"),
         "show_in_software_view": False,
         "show_in_langs_view": False,
     },
@@ -77,13 +88,15 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 markstate = index.model().data(
                     index, QtCore.Qt.ItemDataRole.DisplayRole
                 )
-                log.debug("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈")
-                log.debug(f"switching markstate: {markstate} -> {not markstate}")
+                log.debug(_("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈"))
+                log.debug(
+                    _("switching markstate: {} -> {}").format(markstate, not markstate)
+                )
                 model.setData(index, not markstate, QtCore.Qt.ItemDataRole.EditRole)
             else:
-                log.debug("button disabled")
+                log.debug(_("button disabled"))
         else:
-            log.debug("button not visible")
+            log.debug(_("button not visible"))
 
     def editorEvent(self, event, model, option, index):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
@@ -98,7 +111,7 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
             ):
                 self.update_model_signal.emit(model, index)
             elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
-                log.debug("2-clicked MOUSE")
+                log.debug(_("mouse double click event"))
                 # Capture DoubleClick here
                 # (accept event to prevent cell editor getting opened)
                 event.accept()
@@ -141,7 +154,9 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                     button_color = self.disabled_button_color
                     button_border_color = self.disabled_button_border_color
                     button_text_color = self.disabled_text_color
-                button_text = "remove" if is_remove_col else "install"
+                remove_btn_i18n_t = _("remove")
+                install_btn_i18n_t = _("install")
+                button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
 
                 #
                 painter.save()

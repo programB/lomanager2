@@ -1,5 +1,8 @@
+import gettext
 import logging
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -82,7 +85,9 @@ class UnifiedProgressReporter:
                 self._steps_counter += 1
                 self._overall_progress_prc_callback(self._steps_counter)
                 msg = (
-                    txt if txt else "... done " + self._current_step_description.lower()
+                    txt
+                    if txt
+                    else _("... done ") + self._current_step_description.lower()
                 )
                 if show_msg:
                     log.info(msg)

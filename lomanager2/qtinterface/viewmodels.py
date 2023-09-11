@@ -1,13 +1,17 @@
+import gettext
 import logging
 from functools import cmp_to_key
 from typing import Any
 
+import configuration
 from applogic.datatypes import compare_versions
-from configuration import supported_langs
 
 from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
+
 
 column_idx = {
     "family": 0,
@@ -117,7 +121,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         elif column == column_idx.get("language_name"):
             lang_code = package.kind
             pf_base, pf_vis, pf_enabled = (
-                supported_langs.get(lang_code),
+                configuration.supported_langs.get(lang_code),
                 True,
                 False,
             )
@@ -289,7 +293,9 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         # because the flags() method already
         # prevents the user from modifying other columns.
         if not isinstance(value, bool):
-            log.error(f"expected boolean to set mark state, received {type(value)}")
+            log.error(
+                _("expected boolean to set mark state, received {}").format(type(value))
+            )
 
         if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
             if column == column_idx.get("marked_for_removal"):

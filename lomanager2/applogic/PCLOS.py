@@ -2,7 +2,7 @@
 This module gathers functions to return some information about current
 operating system state or change that state.
 """
-
+import gettext
 import logging
 import os
 import pathlib
@@ -15,7 +15,13 @@ from typing import Callable
 
 import configuration
 
+t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
+_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
+
+# Force English for all executed shell commands
+english_env = os.environ.copy()
+english_env["LANGUAGE"] = "en_US.UTF-8:en_US:en"
 
 
 def run_shell_command(
@@ -23,7 +29,7 @@ def run_shell_command(
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
-        log.debug(f"Attempting to execute command: {full_command}")
+        log.debug(_("Attempting to execute command: {}").format(full_command))
 
         try:
             shellcommand = subprocess.run(
@@ -33,16 +39,17 @@ def run_shell_command(
                 capture_output=True,  # capture both stdout and stderr
                 text=True,  # give the output as a string not bytes
                 encoding="utf-8",
+                env=english_env,
             )
             answer = (shellcommand.stdout + shellcommand.stderr).strip()
-            log.debug(f"Received answer: {answer}")
+            log.debug(_("Received answer: {}").format(answer))
             return (True, answer)
         except FileNotFoundError as exc:
-            msg = "Executable not be found. " + str(exc)
+            msg = _("Executable not be found. ") + str(exc)
             log.error(msg)
             return (False, msg)
         except subprocess.CalledProcessError as exc:
-            msg = "Error: " + str(exc)
+            msg = _("Error: ") + str(exc)
             log.error(msg)
             return (False, msg)
         except subprocess.TimeoutExpired as exc:
@@ -50,7 +57,7 @@ def run_shell_command(
             log.error(msg)
             return (False, msg)
     else:
-        msg = "An empty string passed as a command to be executed!"
+        msg = _("An empty string passed as a command to be executed!")
         log.error(msg)
         return (False, msg)
 
@@ -85,7 +92,7 @@ def get_running_package_managers() -> tuple[bool, dict]:
         for key, item in returned_pids.items():
             if item:
                 running_managers[key] = ", ".join(item)
-    log.debug(f"running managers: {running_managers}")
+    log.debug(_("running managers: {}").format(running_managers))
     return (is_successful, running_managers)
 
 
@@ -98,7 +105,7 @@ def get_running_Office_processes() -> tuple[bool, dict]:
     if is_successful:
         for key, item in returned_pids.items():
             if item:
-                log.debug(f"ITEM: {item}, {type(item)}")
+                log.debug(_("ITEM: {}, {}").format(item, type(item)))
                 running_office_suits[key] = ", ".join(item)
     return (is_successful, running_office_suits)
 
@@ -130,7 +137,7 @@ def get_system_users() -> list[HumanUser]:
     try:
         root_user = pwd.getpwuid(0)  # assuming root has uid 0
     except Exception as error:
-        log.error("No root user found " + str(error))
+        log.error(_("No root user found ") + str(error))
     else:
         human_users.append(HumanUser(root_user.pw_name, root_user.pw_dir))
     return human_users
@@ -148,7 +155,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
         if any(
             map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])
         ):
-            return (False, False, "Failed to check updates")
+            return (False, False, _("Failed to check updates"))
 
         status, output = run_shell_command(
             "apt-get dist-upgrade --fix-broken --simulate", err_check=True
@@ -156,7 +163,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
         if status:
             check_successful = True
             system_updated = False
-            explanation = "Unexpected output of apt-get command: " + output
+            explanation = _("Unexpected output of apt-get command: ") + output
             regex_update = re.compile(
                 r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
             )
@@ -172,11 +179,11 @@ def check_system_update_status() -> tuple[bool, bool, str]:
                         n_upgraded == n_installed == n_removed == n_not_upgraded == "0"
                     ):
                         system_updated = False
-                        explanation = "System not fully updated"
+                        explanation = _("System not fully updated")
                         break
                     else:
                         system_updated = True
-                        explanation = "System updated"
+                        explanation = _("System updated")
                         break
         else:
             check_successful = False
@@ -202,7 +209,7 @@ def free_space_in_dir(dir: pathlib.Path) -> int:
     """
 
     free_space = int(shutil.disk_usage(dir).free)
-    log.debug(f"free space in {dir}: {free_space} bytes")
+    log.debug(_("free space in {}: {} bytes").format(dir, free_space))
     return free_space
 
 
@@ -211,7 +218,7 @@ def detect_installed_java() -> tuple[bool, str]:
     # Since this program is not meant to update Java,
     # Java version is not being detected.
     java_version = ""
-    log.debug(f"Is Java installed?: {found}")
+    log.debug(_("Is Java installed?: {}").format(found))
     return (found, java_version)
 
 
@@ -243,15 +250,13 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
             # - the way original lomanager does it
             # - take the first file in the list if more then one detected
             version = (str(config_files[0]))[17 : 17 + 3]
-        dbg_message = ("Detected OpenOffice series 2 ver.: {}").format(version)
-        log.debug(dbg_message)
+        log.debug(_("Detected OpenOffice series 2 ver.: {}").format(version))
         # No attempt will be made to detect language packs -> ()
         list_of_detected_suits.append(("OpenOffice", version, ()))
 
     # Look for OpenOffice 3.0.0 (was on 2009.1 CD)
     if pathlib.Path("/usr/bin/ooffice3.0").exists():
-        dbg_message = ("Detected OpenOffice ver.: {}").format("3.0.0")
-        log.debug(dbg_message)
+        log.debug(_("Detected OpenOffice ver.: {}").format("3.0.0"))
         # No attempt will be made to detect language packs -> ()
         list_of_detected_suits.append(("OpenOffice", "3.0.0", ()))
 
@@ -274,8 +279,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 if "OOOBaseVersion=" in line:
                     version = line.strip().split("=")[-1]
                     break
-        dbg_message = ("Detected OpenOffice series 3 ver.: {}").format(version)
-        log.debug(dbg_message)
+        log.debug(_("Detected OpenOffice series 3 ver.: {}").format(version))
         # No attempt will be made to detect language packs -> ()
         list_of_detected_suits.append(("OpenOffice", version, ()))
 
@@ -296,18 +300,17 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 if "OOOBaseVersion=" in line:
                     version = line.strip().split("=")[-1]
                     break
-        dbg_message = ("Detected LibreOffice series 3.3 ver.: {}").format(version)
-        log.debug(dbg_message)
+        log.debug(_("Detected LibreOffice series 3.3 ver.: {}").format(version))
         # No attempt will be made to detect language packs -> ()
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
     if pathlib.Path("/usr/bin").glob("libreoffice*"):
-        log.debug("Detected LibreOffice binary")
+        log.debug(_("Detected LibreOffice binary"))
         # Check if the ure rpm package is installed
         success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
         if success and reply:
-            log.debug("LibreOffice's ure package is installed")
+            log.debug(_("LibreOffice's ure package is installed"))
             # Get LibreOffice's full version string by quering this rpm package
             ure_package_str = reply.split("\n")[0]
             success, reply = run_shell_command(
@@ -315,9 +318,11 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
             )
             full_version = reply.strip()
             base_version = configuration.make_base_ver(full_version)
-            log.debug(f"LibreOffice version read from ure package: {full_version}")
+            log.debug(
+                _("LibreOffice version read from ure package: {}").format(full_version)
+            )
 
-            log.debug("Checking for language packs installed for that version")
+            log.debug(_("Checking for language packs installed for that version"))
             success, reply = run_shell_command(
                 f"rpm -qa | grep libreoffice{base_version}", err_check=False
             )
@@ -359,7 +364,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                             # together with core package and should
                             # not be treated as a standalone addition
                             if det_lang != "en-US":
-                                log.debug(f"Found language {det_lang}")
+                                log.debug(_("Found language {}").format(det_lang))
                                 langs_found.append(det_lang)
                 list_of_detected_suits.append(
                     (
@@ -372,9 +377,9 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 # No langs detected just add the core package to the list
                 list_of_detected_suits.append(("LibreOffice", full_version, ()))
         else:
-            log.warning("LibreOffice binary detected but no installed rpm found.")
+            log.warning(_("LibreOffice binary detected but no installed rpm found."))
 
-    inf_message = ("All detected office suits (and langs): {}").format(
+    inf_message = _("All detected office suits (and langs): {}").format(
         list_of_detected_suits
     )
     log.debug(inf_message)
@@ -393,7 +398,9 @@ def detect_installed_clipart() -> tuple[bool, str]:
         if match := lca_regeX.search(reply.split("\n")[0]):
             found = True
             clipart_version = match.group("ver_lca")
-            log.debug(f"Openclipart library version {clipart_version} is installed")
+            log.debug(
+                _("Openclipart library version {} is installed").format(clipart_version)
+            )
         else:
             found = False
             clipart_version = ""
@@ -425,8 +432,10 @@ def remove_file(path: pathlib.Path) -> bool:
 
     if not any(map(path.is_relative_to, allowed_dirs)):
         log.error(
-            f"This program should not be trying to remove files from this "
-            f"location! Refusing to remove: {path}"
+            _(
+                "This program should not be trying to remove files "
+                "from this location! Refusing to remove: {}"
+            ).format(path)
         )
         is_removed = False
     else:
@@ -434,7 +443,7 @@ def remove_file(path: pathlib.Path) -> bool:
             os.remove(path)
             is_removed = True
         except Exception as error:
-            msg = f"Error when removing {path}: "
+            msg = _("Error when removing {}: ").format(path)
             log.error(msg + str(error))
             is_removed = False
     return is_removed
@@ -445,7 +454,7 @@ def move_file(from_path: pathlib.Path, to_path: pathlib.Path) -> bool:
         shutil.move(src=from_path, dst=to_path)
         is_moved = True
     except Exception as error:
-        msg = f"Error when moving {from_path} to {to_path}: "
+        msg = _("Error when moving {} to {}: ").format(from_path, to_path)
         log.error(msg + str(error))
         is_moved = False
     return is_moved
@@ -464,7 +473,7 @@ def move_dir(from_path: pathlib.Path, to_path: pathlib.Path) -> tuple[bool, str]
         is_moved = True
         msg = ""
     except Exception as error:
-        msg = f"Error when moving {from_path} to {to_path}: "
+        msg = _("Error when moving {} to {}: ").format(from_path, to_path)
         log.error(msg + str(error))
         is_moved = False
     return (is_moved, msg)
@@ -492,14 +501,15 @@ def run_shell_command_with_progress(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         shell=False,
+        env=english_env,
         universal_newlines=not byte_output,
     ) as proc:
         concat_normal_chars = b""
         while proc.poll() is None:
             if byte_output:
                 output = proc.stdout.read(1)
-                fulloutput.append(output.decode("utf-8"))
-                if parser and output.decode("utf-8") not in ctrl_chars:
+                fulloutput.append(output.decode("utf-8", "ignore"))
+                if parser and output.decode("utf-8", "ignore") not in ctrl_chars:
                     # Don't bother calling parser when receiving control chars
                     concat_normal_chars += output
                     label, percentage = parser(concat_normal_chars)
@@ -549,7 +559,7 @@ def install_using_apt_get(
     """
     package_nameS_string = " ".join(package_nameS)
 
-    progress_reporter.progress_msg("Checking if packages can be installed...")
+    progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
         f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
         err_check=False,
@@ -569,15 +579,18 @@ def install_using_apt_get(
                     (n_upgraded == n_removed == n_not_upgraded == "0")
                     and n_installed != "0"
                 ):
-                    msg = (
-                        "Dry-run install failed. Packages where not installed: "
+                    msg = _(
+                        _("Dry-run install failed. Packages where not installed: ")
                         + output
                     )
                     log.debug(msg)
                     return (False, msg)
-
-    msg = "Dry-run install successful. Proceeding with actual install..."
-    log.debug(msg)
+                else:
+                    msg = _(
+                        "Dry-run install successful. Proceeding with actual install..."
+                    )
+                    log.debug(msg)
+                    break
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
@@ -591,21 +604,24 @@ def install_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("no match", 0)
 
-    _, output = run_shell_command_with_progress(
+    status, output = run_shell_command_with_progress(
         f"apt-get install --reinstall {package_nameS_string} -y",
         progress_reporter=progress_reporter,
         parser=progress_parser,
     )
     if "needs" in output:
-        msg = "Installation of rpm packages failed - insufficient disk space. Packages where not installed "
+        msg = _(
+            "Installation of rpm packages failed - insufficient disk space. "
+            "Packages where not installed "
+        )
         log.error(msg + output)
         return (False, msg)
     elif "error" in output or "Error" in output:
-        msg = "Installation of rpm packages failed. Check logs. "
+        msg = _("Installation of rpm packages failed. Check logs. ")
         log.error(msg + output)
         return (False, msg)
     else:
-        msg = "Rpm packages successfully installed. "
+        msg = _("Rpm packages successfully installed. ")
         log.debug(msg + output)
         return (True, msg)
 
@@ -616,9 +632,9 @@ def clean_dir(dir_path: pathlib.Path) -> tuple[bool, str]:
         if dir_path.exists():
             shutil.rmtree(dir_path)
         create_dir(dir_path)
-        return (True, f"Recreated {dir_path}")
+        return (True, _("Recreated {}").format(dir_path))
     except Exception as error:
-        msg = "Could not recreate directory "
+        msg = _("Could not recreate directory ")
         log.error(msg + str(error))
         return (False, msg)
 
@@ -647,17 +663,17 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
             # directory name to which the rest of the files will be extracted
             resulting_dir_name = targz.getnames()[0]
     except Exception as error:
-        log.error(f"Could not inspect archive: {error}")
+        log.error(_("Could not inspect archive: {}").format(error))
         return []
-    log.debug(f"Top level dir name in the archive: {resulting_dir_name}")
+    log.debug(_("Top level dir name in the archive: {}").format(resulting_dir_name))
     unpacked_dir = pathlib.Path(target_dir).joinpath(resulting_dir_name)
 
     # Unpack the archive
     try:
         shutil.unpack_archive(archive_path, target_dir, format="gztar")
-        log.debug(f"Was archive extracted?: {unpacked_dir.exists()}")
+        log.debug(_("Was archive extracted?: {}").format(unpacked_dir.exists()))
     except Exception as error:
-        log.error(f"Could not extract archive: {error}")
+        log.error(_("Could not extract archive: {}").format(error))
         return []
 
     # Gather rpm filenames (strings)
@@ -668,7 +684,7 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
         for item in output.split():
             rpm_files_names.append(item)
     else:
-        log.error(f"Could not list directory contetnt")
+        log.error(_("Could not list directory contetnt"))
         return []
 
     # Move all files from the unpackaged /target_dir/resulting_dir_name/RPMS
@@ -680,7 +696,7 @@ def extract_tgz(archive_path: pathlib.Path) -> list[pathlib.Path]:
     try:
         shutil.rmtree(unpacked_dir)
     except Exception as error:
-        log.error(f"Could not delete directory: {error}")
+        log.error(_("Could not delete directory: {}").format(error))
         return []
 
     # Build final list of absolute path to rpm files sitting in target_dir
@@ -719,22 +735,24 @@ def install_using_rpm(
 
     files_to_install = " ".join([str(rpm_path) for rpm_path in rpm_fileS])
 
-    progress_reporter.progress_msg("Checking if packages can be installed...")
+    progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
         "rpm -Uvh --replacepkgs --test " + files_to_install,
         err_check=False,
     )
     if status:
         if "needs" in output:
-            msg = "Dry-run install failed - insufficient disk space. Packages where not installed "
+            msg = _(
+                "Dry-run install failed - insufficient disk space. Packages where not installed "
+            )
             log.error(msg + output)
             return (False, msg)
         if any(map(lambda e: e in output, ["error", "Error"])):
-            msg = "Dry-run install failed. Packages where not installed "
+            msg = _("Dry-run install failed. Packages where not installed ")
             log.error(msg + output)
             return (False, msg)
         else:
-            msg = "Dry-run install successful. Proceeding with actual install..."
+            msg = _("Dry-run install successful. Proceeding with actual install...")
             log.debug(msg)
 
             # It seems rpm is manipulating TTY directly :(
@@ -749,7 +767,7 @@ def install_using_rpm(
                 regex_name_and_progress = re.compile(
                     r"^[\s0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
                 )
-                last_string = input.decode("utf-8").split("\n")[-1]
+                last_string = input.decode("utf-8", "ignore").split("\n")[-1]
                 # Unfortunately rpm outputs backspace control chars
                 # to do its progress reporting which
                 # means some long rpm names can get trimmed.
@@ -804,13 +822,13 @@ def install_using_rpm(
                 parser=progress_parser,
                 byte_output=True,
             )
-            log.debug(f"final msg is: {msg}")
+            log.debug(_("final msg is: {}").format(msg))
             if "error" in msg:
-                return (False, "Failed to install packages")
+                return (False, _("Failed to install packages"))
             else:
-                return (True, "All packages successfully installed")
+                return (True, _("All packages successfully installed"))
     else:
-        msg = "Failed to execute command: " + output
+        msg = _("Failed to execute command: ") + output
         log.debug(msg)
         return (False, msg)
 
@@ -843,7 +861,7 @@ def uninstall_using_apt_get(
     """
     package_nameS_string = " ".join(package_nameS)
 
-    progress_reporter.progress_msg("Checking if packages can be uninstalled...")
+    progress_reporter.progress_msg(_("Checking if packages can be uninstalled..."))
     status, output = run_shell_command(
         f"apt-get remove --simulate  {package_nameS_string} -y",
         err_check=False,
@@ -863,13 +881,18 @@ def uninstall_using_apt_get(
                 n_not_upgraded = match.group("n_not_upgraded")
                 if not ((n_upgraded == n_installed == "0") and n_removed != "0"):
                     msg = (
-                        "Dry-run removal failed. Packages where not removed: " + output
+                        _("Dry-run removal failed. Packages where not removed: ")
+                        + output
                     )
                     log.debug(msg)
                     return (False, msg)
-
-    msg = "Dry-run removal successful. Proceeding with actual uninstall..."
-    log.debug(msg)
+                else:
+                    msg = _(
+                        "Dry-run removal successful. "
+                        "Proceeding with actual uninstall..."
+                    )
+                    log.debug(msg)
+                    break
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
@@ -883,15 +906,15 @@ def uninstall_using_apt_get(
             return (match.group("p_name"), int(match.group("progress")))
         return ("no match", 0)
 
-    _, msg = run_shell_command_with_progress(
+    status, msg = run_shell_command_with_progress(
         f"apt-get remove {package_nameS_string} -y",
         progress_reporter=progress_reporter,
         parser=progress_parser,
     )
     if "error" in msg or "Error" in msg:
-        return (False, "Removal of rpm packages failed. Check logs.")
+        return (False, _("Removal of rpm packages failed. Check logs."))
     else:
-        return (True, "Rpm packages successfully removed.")
+        return (True, _("Rpm packages successfully removed."))
 
 
 def force_rm_directory(path: pathlib.Path):
@@ -899,12 +922,12 @@ def force_rm_directory(path: pathlib.Path):
         if path.exists():
             shutil.rmtree(path)
     except Exception as error:
-        log.error("Failed to remove directory" + str(error))
+        log.error(_("Failed to remove directory") + str(error))
 
 
 def update_menus():
     """Updates KDE/GNOME/LXDE etc. menus"""
-    log.info("updating menus")
+    log.info(_("updating menus"))
     run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
     run_shell_command("update-menus -n", err_check=False)
     run_shell_command("update-menus -v", err_check=False)
