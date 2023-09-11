@@ -13,19 +13,11 @@ parser.add_argument(
     "Installing packages in this mode can potentially mess up your system! "
     "Use at your own risk.",
 )
-parser.add_argument(
-    "--force_english_logs",
-    action="store_true",
-    help="ignores locale setting for logging purposes and uses hard coded "
-    "strings instead. Note that the interface will still be localized.",
-)
 args = parser.parse_args()
 
 
 # Check if programs runs with root privileges
 if os.geteuid() == 0:
-    keep_logging_messages_in_english = args.force_english_logs
-
     # Setup logging
     log_level = logging.DEBUG if args.debug else logging.INFO
 
