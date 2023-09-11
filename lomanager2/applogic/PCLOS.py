@@ -582,13 +582,13 @@ def install_using_apt_get(
                         _("Dry-run install failed. Packages where not installed: ")
                         + output
                     )
-                    log.debug(msg)
+                    log.error(msg)
                     return (False, msg)
                 else:
                     msg = _(
                         "Dry-run install successful. Proceeding with actual install..."
                     )
-                    log.debug(msg)
+                    log.info(msg)
                     break
 
     def progress_parser(input: str) -> tuple[str, int]:
@@ -751,7 +751,7 @@ def install_using_rpm(
             return (False, msg)
         else:
             msg = _("Dry-run install successful. Proceeding with actual install...")
-            log.debug(msg)
+            log.info(msg)
 
             # It seems rpm is manipulating TTY directly :(
             # Although TTY can be captured the method below relies
@@ -827,7 +827,7 @@ def install_using_rpm(
                 return (True, _("All packages successfully installed"))
     else:
         msg = _("Failed to execute command: ") + output
-        log.debug(msg)
+        log.error(msg)
         return (False, msg)
 
 
@@ -881,14 +881,14 @@ def uninstall_using_apt_get(
                         _("Dry-run removal failed. Packages where not removed: ")
                         + output
                     )
-                    log.debug(msg)
+                    log.error(msg)
                     return (False, msg)
                 else:
                     msg = _(
                         "Dry-run removal successful. "
                         "Proceeding with actual uninstall..."
                     )
-                    log.debug(msg)
+                    log.info(msg)
                     break
 
     def progress_parser(input: str) -> tuple[str, int]:
