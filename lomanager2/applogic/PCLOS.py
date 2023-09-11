@@ -25,7 +25,7 @@ english_env["LANGUAGE"] = "en_US.UTF-8:en_US:en"
 
 
 def run_shell_command(
-    cmd: str, shell="bash", timeout=20, err_check=True
+    cmd: str, shell="bash", timeout=20, fail_on_error=False
 ) -> tuple[bool, str]:
     if cmd:
         full_command = [shell] + ["-c"] + [cmd]
@@ -34,7 +34,7 @@ def run_shell_command(
         try:
             shellcommand = subprocess.run(
                 full_command,
-                check=err_check,  # some commands return non-zero exit code if successful
+                check=fail_on_error,  # some commands return non-zero exit code if successful
                 timeout=timeout,  # fail on command taking to long to exec.
                 capture_output=True,  # capture both stdout and stderr
                 text=True,  # give the output as a string not bytes
@@ -67,7 +67,7 @@ def get_PIDs_by_name(names: list[str]) -> dict:
 
     running_processes = {}
     for name in names:
-        status, pids = run_shell_command("pidof " + name, err_check=False)
+        status, pids = run_shell_command("pidof " + name)
         if status:
             running_processes[name] = pids.split()
         else:
@@ -150,7 +150,7 @@ def is_live_session_active() -> bool:
 def check_system_update_status() -> tuple[bool, bool, str]:
     # Since the apt-get update command fetches data from
     # repo server it make take a while hence setting timeout to 45 sek.
-    status, output = run_shell_command("apt-get update", timeout=45, err_check=False)
+    status, output = run_shell_command("apt-get update", timeout=45)
     if status:
         if any(
             map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])
@@ -158,7 +158,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             return (False, False, _("Failed to check updates"))
 
         status, output = run_shell_command(
-            "apt-get dist-upgrade --fix-broken --simulate", err_check=True
+            "apt-get dist-upgrade --fix-broken --simulate", fail_on_error=True
         )
         if status:
             check_successful = True
@@ -324,7 +324,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 
             log.debug(_("Checking for language packs installed for that version"))
             success, reply = run_shell_command(
-                f"rpm -qa | grep libreoffice{base_version}", err_check=False
+                f"rpm -qa | grep libreoffice{base_version}"
             )
             if success and reply:
                 regex_lang = re.compile(
@@ -389,7 +389,7 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
 def detect_installed_clipart() -> tuple[bool, str]:
     """Checks if libreoffice-openclipart rpm package is installed"""
     success, reply = run_shell_command(
-        "rpm -qa | grep libreoffice-openclipart", err_check=False
+        "rpm -qa | grep libreoffice-openclipart",
     )
     if success and reply:
         lca_regeX = re.compile(
@@ -561,8 +561,7 @@ def install_using_apt_get(
 
     progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
-        f"apt-get install --reinstall --simulate  {package_nameS_string} -y",
-        err_check=False,
+        f"apt-get install --reinstall --simulate  {package_nameS_string} -y"
     )
     if status:
         regex_install = re.compile(
@@ -737,8 +736,7 @@ def install_using_rpm(
 
     progress_reporter.progress_msg(_("Checking if packages can be installed..."))
     status, output = run_shell_command(
-        "rpm -Uvh --replacepkgs --test " + files_to_install,
-        err_check=False,
+        "rpm -Uvh --replacepkgs --test " + files_to_install
     )
     if status:
         if "needs" in output:
@@ -863,8 +861,7 @@ def uninstall_using_apt_get(
 
     progress_reporter.progress_msg(_("Checking if packages can be uninstalled..."))
     status, output = run_shell_command(
-        f"apt-get remove --simulate  {package_nameS_string} -y",
-        err_check=False,
+        f"apt-get remove --simulate  {package_nameS_string} -y"
     )
     if status:
         regex_install = re.compile(
@@ -928,9 +925,9 @@ def force_rm_directory(path: pathlib.Path):
 def update_menus():
     """Updates KDE/GNOME/LXDE etc. menus"""
     log.info(_("updating menus"))
-    run_shell_command("xdg-desktop-menu forceupdate --mode system", err_check=False)
-    run_shell_command("update-menus -n", err_check=False)
-    run_shell_command("update-menus -v", err_check=False)
+    run_shell_command("xdg-desktop-menu forceupdate --mode system")
+    run_shell_command("update-menus -n")
+    run_shell_command("update-menus -v")
 
 
 def make_dir_tree(target_dir: pathlib.Path):

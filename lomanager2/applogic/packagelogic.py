@@ -1300,7 +1300,7 @@ class MainLogic(object):
                     log.info(
                         _("Terminating LibreOffice quickstarter (PID: {})").format(pid)
                     )
-                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+                    PCLOS.run_shell_command("kill -9 {pid}")
                 else:
                     log.warning(
                         _(
@@ -1314,7 +1314,7 @@ class MainLogic(object):
                     log.info(
                         _("Terminating OpenOffice quickstarter (PID: {})").format(pid)
                     )
-                    PCLOS.run_shell_command("kill -9 {pid}", err_check=False)
+                    PCLOS.run_shell_command("kill -9 {pid}")
                 else:
                     log.warning(
                         _(
@@ -1483,9 +1483,7 @@ class MainLogic(object):
                 )
 
             for candidate in expected_rpm_names:
-                success, reply = PCLOS.run_shell_command(
-                    f"rpm -qa | grep {candidate}", err_check=False
-                )
+                success, reply = PCLOS.run_shell_command(f"rpm -qa | grep {candidate}")
                 if not success:
                     return (False, _("Failed to run shell command"))
                 else:
@@ -1763,9 +1761,9 @@ class MainLogic(object):
             "libreoffice7*"
         )
         for icon in iconS:
-            PCLOS.run_shell_command(f"ln -fs {icon} /usr/share/icons/", err_check=False)
+            PCLOS.run_shell_command(f"ln -fs {icon} /usr/share/icons/")
         if pathlib.Path("/usr/bin/lxpanelctl").exists():
-            PCLOS.run_shell_command(f"/usr/bin/lxpanelctl restart", err_check=False)
+            PCLOS.run_shell_command(f"/usr/bin/lxpanelctl restart")
         PCLOS.update_menus()
 
     def _uninstall_clipart(
@@ -1779,9 +1777,7 @@ class MainLogic(object):
         rpms_to_rm = []
         expected_rpm_names = ["libreoffice-openclipart", "clipart-openclipart"]
         for candidate in expected_rpm_names:
-            success, reply = PCLOS.run_shell_command(
-                f"rpm -qa | grep {candidate}", err_check=False
-            )
+            success, reply = PCLOS.run_shell_command(f"rpm -qa | grep {candidate}")
             if not success:
                 return (False, _("Failed to run shell command"))
             else:
