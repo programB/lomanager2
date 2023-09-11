@@ -167,6 +167,8 @@ class Adapter(QtCore.QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.local_copy_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Show progress bar (check_system_state is not showing it)
+            self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -247,6 +249,8 @@ class Adapter(QtCore.QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.normal_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Show progress bar (check_system_state is not showing it)
+            self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
             self.thread_worker_ready_signal.emit()
         else:
@@ -313,7 +317,6 @@ class Adapter(QtCore.QObject):
 
         self._progress_view.hide()
         self._app_main_view.unsetCursor()
-        self._progress_view.progress_bar.setVisible(True)
 
         log.debug(_("Emitting rebuild_tree_signal"))
         self.rebuild_tree_signal.emit()
