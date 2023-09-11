@@ -169,8 +169,10 @@ def check_system_update_status() -> tuple[bool, bool, str]:
             )
             # If OS is fully updated the summary line in the output should be:
             # "0 upgraded, 0 newly installed, 0 removed and 0 not upgraded."
+            is_summary_present = False
             for line in output.split("\n"):
                 if match := regex_update.search(line):
+                    is_summary_present = True
                     n_upgraded = match.group("n_upgraded")
                     n_installed = match.group("n_installed")
                     n_removed = match.group("n_removed")
@@ -185,6 +187,14 @@ def check_system_update_status() -> tuple[bool, bool, str]:
                         system_updated = True
                         explanation = _("System updated")
                         break
+            if not is_summary_present:
+                msg = _(
+                    "Can't determine update status. Unexpected command output {}"
+                ).format(output)
+                check_successful = False
+                system_updated = False
+                explanation = msg
+                log.error(msg)
         else:
             check_successful = False
             system_updated = False
@@ -567,8 +577,10 @@ def install_using_apt_get(
         regex_install = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_reinstalled>[0-9]+) reinstalled, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
+        is_summary_present = False
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                is_summary_present = True
                 n_upgraded = match.group("n_upgraded")
                 n_installed = match.group("n_installed")
                 n_reinstalled = match.group("n_reinstalled")
@@ -579,8 +591,9 @@ def install_using_apt_get(
                     and n_installed != "0"
                 ):
                     msg = _(
-                        _("Dry-run install failed. Packages where not installed: ")
-                        + output
+                        _(
+                            "Dry-run install failed. Packages where not installed: {}"
+                        ).format(output)
                     )
                     log.error(msg)
                     return (False, msg)
@@ -590,6 +603,12 @@ def install_using_apt_get(
                     )
                     log.info(msg)
                     break
+        if not is_summary_present:
+            msg = _("Dry-run install failed. Unexpected command output {}").format(
+                output
+            )
+            log.error(msg)
+            return (False, msg)
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
@@ -867,8 +886,10 @@ def uninstall_using_apt_get(
         regex_install = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
+        is_summary_present = False
         for line in output.split("\n"):
             if match := regex_install.search(line):
+                is_summary_present = True
                 # Out should contain a line:
                 # "0 upgraded, 0 newly installed, X removed and Y not upgraded."
                 # where X must be != 0, Y doesn't matter, can be anything
@@ -877,10 +898,9 @@ def uninstall_using_apt_get(
                 n_removed = match.group("n_removed")
                 n_not_upgraded = match.group("n_not_upgraded")
                 if not ((n_upgraded == n_installed == "0") and n_removed != "0"):
-                    msg = (
-                        _("Dry-run removal failed. Packages where not removed: ")
-                        + output
-                    )
+                    msg = _(
+                        "Dry-run removal failed. Packages where not removed: {}"
+                    ).format(output)
                     log.error(msg)
                     return (False, msg)
                 else:
@@ -890,6 +910,13 @@ def uninstall_using_apt_get(
                     )
                     log.info(msg)
                     break
+        if not is_summary_present:
+            msg = _(
+                "Dry-run removal failed. Unexpected command output {}. "
+                "Packages were not removed."
+            ).format(output)
+            log.error(msg)
+            return (False, msg)
 
     def progress_parser(input: str) -> tuple[str, int]:
         # apt-get reports progress to stdout like this:
