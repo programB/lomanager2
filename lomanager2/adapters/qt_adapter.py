@@ -88,11 +88,7 @@ class Adapter(QtCore.QObject):
         )
 
         # Option available to the user: Quit the app
-        # TODO: Some cleanup procedures should be called here first
-        #       like eg. closing the log file.
-        #       ...and these should not be done here directly
-        #       but through _app_logic
-        self._app_main_view.button_quit.clicked.connect(self._app_main_view.close)
+        self._app_main_view.button_quit.clicked.connect(self._cleanup_and_exit)
 
         # Internal signal: Ask applogic to redo package tree from scratch
         self.rebuild_tree_signal.connect(self._rebuild_tree)
@@ -378,6 +374,14 @@ class Adapter(QtCore.QObject):
         self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
+
+    def _cleanup_and_exit(self):
+        removed = self._app_logic.remove_temporary_dirs()
+        if removed:
+            log.debug("Bye")
+        else:
+            self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
+        self._app_main_view.close()
 
 
 def main(skip_update_check: bool = False):

@@ -608,6 +608,18 @@ class MainLogic(object):
         if msg:
             self.inform_user(msg, isOK=False)
 
+    def remove_temporary_dirs(self):
+        log.debug(_("Removing temporary directory"))
+        if PCLOS.force_rm_directory(configuration.temporary_dir):
+            log.info(_("Temporary directories successfully removed"))
+            return True
+        else:
+            msg = _("Error: Temporary directory {} couldn't be removed").format(
+                configuration.temporary_dir
+            )
+            self.inform_user(msg, False)
+            return False
+
     # -- end Public interface for MainLogic
 
     # -- Private methods of MainLogic

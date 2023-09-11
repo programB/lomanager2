@@ -947,6 +947,9 @@ def force_rm_directory(path: pathlib.Path):
             shutil.rmtree(path)
     except Exception as error:
         log.error(_("Failed to remove directory") + str(error))
+        return False
+    else:
+        return True
 
 
 def update_menus():

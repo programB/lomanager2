@@ -34,8 +34,9 @@ latest_available_clipart_version = (
 
 
 # Global read-only definitions
-working_dir = pathlib.Path("/tmp/lomanager2-tmp/working_directory")
-verified_dir = pathlib.Path("/tmp/lomanager2-tmp/verified_storage")
+temporary_dir = pathlib.Path("/tmp/lomanager2-tmp")
+working_dir = temporary_dir.joinpath("working_directory")
+verified_dir = temporary_dir.joinpath("verified_storage")
 offline_copy_dir = pathlib.Path("/tmp/lomanager2-saved_packages")
 
 # URLs
