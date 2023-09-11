@@ -507,8 +507,8 @@ def run_shell_command_with_progress(
         while proc.poll() is None:
             if byte_output:
                 output = proc.stdout.read(1)
-                fulloutput.append(output.decode("utf-8"))
-                if parser and output.decode("utf-8") not in ctrl_chars:
+                fulloutput.append(output.decode("utf-8", "ignore"))
+                if parser and output.decode("utf-8", "ignore") not in ctrl_chars:
                     # Don't bother calling parser when receiving control chars
                     concat_normal_chars += output
                     label, percentage = parser(concat_normal_chars)
@@ -765,7 +765,7 @@ def install_using_rpm(
                 regex_name_and_progress = re.compile(
                     r"^[\s0-9]+\:[\s]+(?P<p_name>[\w\.\-]+)\s*(?P<p_progress>[\#]+)"
                 )
-                last_string = input.decode("utf-8").split("\n")[-1]
+                last_string = input.decode("utf-8", "ignore").split("\n")[-1]
                 # Unfortunately rpm outputs backspace control chars
                 # to do its progress reporting which
                 # means some long rpm names can get trimmed.
