@@ -8,12 +8,51 @@ _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
+def createAction(name, icon_theme_name, parent) -> QtWidgets.QAction:
+    action = QtWidgets.QAction(parent)
+    action.setObjectName(f"action{name}")
+    icon = QtGui.QIcon()
+    if QtGui.QIcon.hasThemeIcon(icon_theme_name):
+        icon = QtGui.QIcon.fromTheme(icon_theme_name)
+    else:
+        icon.addFile(
+            ".", QtCore.QSize(), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off
+        )
+    action.setIcon(icon)
+    action.setText(name)
+    return action
+
+
 class AppMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
         central_widget = QtWidgets.QWidget()
         main_layout = QtWidgets.QVBoxLayout()
+
+        # -- define actions
+        self.actionQuit = createAction("Quit", "application-exit", parent=self)
+        self.actionInstallFromLocalCopy = createAction(
+            "InstallFromLocalCopy", "", parent=self
+        )
+        self.actionHelp = createAction("Help", "system-help", parent=self)
+        self.actionAbout = createAction("About", "", parent=self)
+        self.actionApplyChanges = createAction("ApplyChanges", "gtk-apply", parent=self)
+        self.actionAddLanguages = createAction(
+            "AddLanguages", "set-language", parent=self
+        )
+
+        # -- define menu bar
+        menubar = self.menuBar()
+        menuFile = menubar.addMenu("&File")
+        menuFile.addAction(self.actionQuit)
+
+        menuTools = menubar.addMenu("&Tools")
+        menuTools.addAction(self.actionInstallFromLocalCopy)
+
+        menuHelp = menubar.addMenu("&Help")
+        menuHelp.addAction(self.actionHelp)
+        menuHelp.addAction(self.actionAbout)
 
         # -- define Software View
         self.software_view = QtWidgets.QTableView()
