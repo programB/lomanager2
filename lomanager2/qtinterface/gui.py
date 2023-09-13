@@ -41,9 +41,6 @@ class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        central_widget = QWidget()
-        main_layout = QVBoxLayout()
-
         # -- define actions
         self.actionQuit = createAction("Quit", "application-exit", parent=self)
         self.actionInstallFromLocalCopy = createAction(
@@ -71,6 +68,39 @@ class AppMainWindow(QMainWindow):
         # -- define Software View
         self.software_view = CustomTableView(self)
 
+        # -- define other GUI elements
+        self.button_install_from_local_copy = QPushButton(_("Install from local copy"))
+        self.button_add_langs = QPushButton(_("Add langs..."))
+        self.button_apply_changes = QPushButton(_("Appy changes"))
+        self.button_quit = QPushButton(_("Quit"))
+        self.info_dialog = QMessageBox()
+
+        left_spacer = QSpacerItem(
+            20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
+
+        right_spacer = QSpacerItem(
+            20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
+        bottom_spacer = QSpacerItem(
+            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
+        )
+
+        # Arrange widgets
+        views_layout = QVBoxLayout()
+        views_layout.addWidget(self.software_view)
+        views_layout.addItem(bottom_spacer)
+
+        main_layout = QHBoxLayout()
+        main_layout.addItem(left_spacer)
+        main_layout.addItem(views_layout)
+        main_layout.addItem(right_spacer)
+
+        central_widget = QWidget()
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+        # self.setMinimumSize(700, 550)
+
         # -- define Languages window
         self.extra_langs_window = LangsModalWindow(parent=self)
 
@@ -82,23 +112,6 @@ class AppMainWindow(QMainWindow):
 
         # -- define Local copy install confirmation dialog
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
-
-        # -- define other GUI elements
-        self.button_install_from_local_copy = QPushButton(_("Install from local copy"))
-        self.button_add_langs = QPushButton(_("Add langs..."))
-        self.button_apply_changes = QPushButton(_("Appy changes"))
-        self.button_quit = QPushButton(_("Quit"))
-        self.info_dialog = QMessageBox()
-
-        main_layout.addWidget(self.button_install_from_local_copy)
-        main_layout.addWidget(self.software_view)
-        main_layout.addWidget(self.button_add_langs)
-        main_layout.addWidget(self.button_apply_changes)
-        main_layout.addWidget(self.button_quit)
-
-        central_widget.setLayout(main_layout)
-        self.setCentralWidget(central_widget)
-        self.setMinimumSize(700, 550)
 
 
 class LangsModalWindow(QDialog):
