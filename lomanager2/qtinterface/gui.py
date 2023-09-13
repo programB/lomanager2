@@ -50,6 +50,8 @@ class AppMainWindow(QMainWindow):
         menuFile.addAction(self.actionQuit)
 
         menuTools = menubar.addMenu(_("&Tools"))
+        menuTools.addAction(self.actionAddLanguages)
+        menuTools.addAction(self.actionApplyChanges)
         menuTools.addAction(self.actionInstallFromLocalCopy)
 
         menuHelp = menubar.addMenu(_("&Help"))
