@@ -10,7 +10,6 @@ log = logging.getLogger("lomanager2_logger")
 
 def createAction(name, icon_theme_name, parent, shortcut=None) -> QAction:
     action = QAction(parent)
-    action.setObjectName(f"action{name}")
     icon = QIcon()
     if QIcon.hasThemeIcon(icon_theme_name):
         icon = QIcon.fromTheme(icon_theme_name)
@@ -29,29 +28,31 @@ class AppMainWindow(QMainWindow):
 
         # -- define actions
         self.actionQuit = createAction(
-            "Quit", "application-exit", parent=self, shortcut="Ctrl+Q"
+            _("Quit"), "application-exit", parent=self, shortcut="Ctrl+Q"
         )
         self.actionInstallFromLocalCopy = createAction(
-            "InstallFromLocalCopy", "", parent=self
+            _("Install from local copy"), "", parent=self
         )
         self.actionHelp = createAction(
-            "Help", "system-help", parent=self, shortcut="F1"
+            _("Help"), "system-help", parent=self, shortcut="F1"
         )
-        self.actionAbout = createAction("About", "", parent=self)
-        self.actionApplyChanges = createAction("ApplyChanges", "gtk-apply", parent=self)
+        self.actionAbout = createAction(_("About"), "", parent=self)
+        self.actionApplyChanges = createAction(
+            _("Apply changes"), "gtk-apply", parent=self
+        )
         self.actionAddLanguages = createAction(
-            "AddLanguages", "set-language", parent=self
+            _("Add languages"), "set-language", parent=self
         )
 
         # -- define menu bar
         menubar = self.menuBar()
-        menuFile = menubar.addMenu("&File")
+        menuFile = menubar.addMenu(_("&File"))
         menuFile.addAction(self.actionQuit)
 
-        menuTools = menubar.addMenu("&Tools")
+        menuTools = menubar.addMenu(_("&Tools"))
         menuTools.addAction(self.actionInstallFromLocalCopy)
 
-        menuHelp = menubar.addMenu("&Help")
+        menuHelp = menubar.addMenu(_("&Help"))
         menuHelp.addAction(self.actionHelp)
         menuHelp.addAction(self.actionAbout)
 
