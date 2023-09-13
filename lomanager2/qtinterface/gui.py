@@ -8,7 +8,7 @@ _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-def createAction(name, icon_theme_name, parent, shortcut=None) -> QAction:
+def ActionsFactory(name, icon_theme_name, parent, shortcut=None) -> QAction:
     action = QAction(parent)
     icon = QIcon()
     if QIcon.hasThemeIcon(icon_theme_name):
@@ -27,20 +27,20 @@ class AppMainWindow(QMainWindow):
         super().__init__()
 
         # -- define actions
-        self.actionQuit = createAction(
+        self.actionQuit = ActionsFactory(
             _("Quit"), "application-exit", parent=self, shortcut="Ctrl+Q"
         )
-        self.actionInstallFromLocalCopy = createAction(
+        self.actionInstallFromLocalCopy = ActionsFactory(
             _("Install from local copy"), "", parent=self
         )
-        self.actionHelp = createAction(
+        self.actionHelp = ActionsFactory(
             _("Help"), "system-help", parent=self, shortcut="F1"
         )
-        self.actionAbout = createAction(_("About"), "", parent=self)
-        self.actionApplyChanges = createAction(
+        self.actionAbout = ActionsFactory(_("About"), "", parent=self)
+        self.actionApplyChanges = ActionsFactory(
             _("Apply changes"), "gtk-apply", parent=self
         )
-        self.actionAddLanguages = createAction(
+        self.actionAddLanguages = ActionsFactory(
             _("Add languages"), "set-language", parent=self
         )
 
