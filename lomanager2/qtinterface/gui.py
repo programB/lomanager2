@@ -56,6 +56,14 @@ class AppMainWindow(QMainWindow):
         menuHelp.addAction(self.actionHelp)
         menuHelp.addAction(self.actionAbout)
 
+        # -- define tool bar
+        toolBar = QToolBar()
+        toolBar.setMovable(False)
+        toolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        toolBar.addAction(self.actionAddLanguages)
+        toolBar.addAction(self.actionApplyChanges)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolBar)
+
         # -- define Software View
         self.software_view = CustomTableView(self)
 
