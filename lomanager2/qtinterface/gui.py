@@ -1,34 +1,32 @@
 import gettext
 import logging
 
-from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
+from .pysidecompat import *
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-def createAction(name, icon_theme_name, parent) -> QtWidgets.QAction:
-    action = QtWidgets.QAction(parent)
+def createAction(name, icon_theme_name, parent) -> QAction:
+    action = QAction(parent)
     action.setObjectName(f"action{name}")
-    icon = QtGui.QIcon()
-    if QtGui.QIcon.hasThemeIcon(icon_theme_name):
-        icon = QtGui.QIcon.fromTheme(icon_theme_name)
+    icon = QIcon()
+    if QIcon.hasThemeIcon(icon_theme_name):
+        icon = QIcon.fromTheme(icon_theme_name)
     else:
-        icon.addFile(
-            ".", QtCore.QSize(), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off
-        )
+        icon.addFile(".", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
     action.setIcon(icon)
     action.setText(name)
     return action
 
 
-class AppMainWindow(QtWidgets.QMainWindow):
+class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        central_widget = QtWidgets.QWidget()
-        main_layout = QtWidgets.QVBoxLayout()
+        central_widget = QWidget()
+        main_layout = QVBoxLayout()
 
         # -- define actions
         self.actionQuit = createAction("Quit", "application-exit", parent=self)
@@ -55,17 +53,15 @@ class AppMainWindow(QtWidgets.QMainWindow):
         menuHelp.addAction(self.actionAbout)
 
         # -- define Software View
-        self.software_view = QtWidgets.QTableView()
+        self.software_view = QTableView()
         header = self.software_view.horizontalHeader()
-        header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # Header is defined but for proper UX should be hidden in this view
         self.software_view.verticalHeader().hide()
         self.software_view.horizontalHeader().hide()
         # Selection and focus should be turned off in this view for UX reasons
-        self.software_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
-        )
-        self.software_view.setFocusPolicy(QtGui.Qt.NoFocus)
+        self.software_view.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.software_view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # Hide grid for better UX
         self.software_view.setShowGrid(False)
 
@@ -82,13 +78,11 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
 
         # -- define other GUI elements
-        self.button_install_from_local_copy = QtWidgets.QPushButton(
-            _("Install from local copy")
-        )
-        self.button_add_langs = QtWidgets.QPushButton(_("Add langs..."))
-        self.button_apply_changes = QtWidgets.QPushButton(_("Appy changes"))
-        self.button_quit = QtWidgets.QPushButton(_("Quit"))
-        self.info_dialog = QtWidgets.QMessageBox()
+        self.button_install_from_local_copy = QPushButton(_("Install from local copy"))
+        self.button_add_langs = QPushButton(_("Add langs..."))
+        self.button_apply_changes = QPushButton(_("Appy changes"))
+        self.button_quit = QPushButton(_("Quit"))
+        self.info_dialog = QMessageBox()
 
         main_layout.addWidget(self.button_install_from_local_copy)
         main_layout.addWidget(self.software_view)
@@ -101,26 +95,26 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.setMinimumSize(700, 550)
 
 
-class LangsModalWindow(QtWidgets.QDialog):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+class LangsModalWindow(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle(_("language selection window"))
-        modal_layout = QtWidgets.QVBoxLayout()
+        modal_layout = QVBoxLayout()
 
         # -- define Langs View
-        self.langs_view = QtWidgets.QTableView()
+        self.langs_view = QTableView()
         header = self.langs_view.horizontalHeader()
-        header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # Allow columns to be user sortable
         # (model to which this view will get attached decides which
         #  column(s) are keyed for sorting)
         self.langs_view.setSortingEnabled(True)
 
         # -- define other GUI elements
-        flag_OK = QtWidgets.QDialogButtonBox.StandardButton.Close
+        flag_OK = QDialogButtonBox.StandardButton.Close
         buttons = flag_OK
-        self.buttonBox = QtWidgets.QDialogButtonBox(buttons)
+        self.buttonBox = QDialogButtonBox(buttons)
 
         modal_layout.addWidget(self.langs_view)
         modal_layout.addWidget(self.buttonBox)
@@ -132,21 +126,19 @@ class LangsModalWindow(QtWidgets.QDialog):
         self.buttonBox.rejected.connect(self.reject)
 
 
-class ProgressDialog(QtWidgets.QDialog):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+class ProgressDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle(_("installation progress"))
-        main_layout = QtWidgets.QVBoxLayout()
+        main_layout = QVBoxLayout()
 
-        self.progress_description = QtWidgets.QLabel()
-        self.progress_bar = QtWidgets.QProgressBar()
-        self.overall_progress_description = QtWidgets.QLabel()
-        self.overall_progress_bar = QtWidgets.QProgressBar()
+        self.progress_description = QLabel()
+        self.progress_bar = QProgressBar()
+        self.overall_progress_description = QLabel()
+        self.overall_progress_bar = QProgressBar()
         self.overall_progress_bar.setFormat("%v / %m")
-        self.button_terminate = QtWidgets.QPushButton(
-            _("Terminate install (dangerous)!")
-        )
+        self.button_terminate = QPushButton(_("Terminate install (dangerous)!"))
 
         main_layout.addWidget(self.progress_description)
         main_layout.addWidget(self.progress_bar)
@@ -157,25 +149,25 @@ class ProgressDialog(QtWidgets.QDialog):
         self.setLayout(main_layout)
 
 
-class ConfirmApplyDialog(QtWidgets.QDialog):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+class ConfirmApplyDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle(_("Confirm changes"))
-        main_layout = QtWidgets.QVBoxLayout()
+        main_layout = QVBoxLayout()
 
-        self.info_box = QtWidgets.QLabel()
-        self.checkbox_keep_packages = QtWidgets.QCheckBox(_("Keep downloaded packages"))
-        self.checkbox_force_java_download = QtWidgets.QCheckBox(_("Download Java"))
+        self.info_box = QLabel()
+        self.checkbox_keep_packages = QCheckBox(_("Keep downloaded packages"))
+        self.checkbox_force_java_download = QCheckBox(_("Download Java"))
         # Initially disabled !
         self.checkbox_force_java_download.setEnabled(False)
 
-        self.buttonBox = QtWidgets.QDialogButtonBox()
+        self.buttonBox = QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
-            QtWidgets.QDialogButtonBox.StandardButton.Apply
+            QDialogButtonBox.StandardButton.Apply
         )
         self.cancel_button = self.buttonBox.addButton(
-            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+            QDialogButtonBox.StandardButton.Cancel
         )
 
         main_layout.addWidget(self.info_box)
@@ -202,29 +194,29 @@ class ConfirmApplyDialog(QtWidgets.QDialog):
         self.checkbox_force_java_download.setEnabled(is_keep_packages_marked)
 
 
-class LocalCopyInstallDialog(QtWidgets.QDialog):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+class LocalCopyInstallDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle(_("Install from local copy"))
-        main_layout = QtWidgets.QVBoxLayout()
+        main_layout = QVBoxLayout()
 
-        self.info_box = QtWidgets.QLabel()
+        self.info_box = QLabel()
         self.info_box.setWordWrap(True)
 
-        file_input_layout = QtWidgets.QHBoxLayout()
-        self.directory_choice_box = QtWidgets.QLineEdit()
+        file_input_layout = QHBoxLayout()
+        self.directory_choice_box = QLineEdit()
         self.directory_choice_box.setReadOnly(True)
-        self.button_choose_directory = QtWidgets.QPushButton(_("Choose directory..."))
+        self.button_choose_directory = QPushButton(_("Choose directory..."))
         file_input_layout.addWidget(self.directory_choice_box)
         file_input_layout.addWidget(self.button_choose_directory)
 
-        self.buttonBox = QtWidgets.QDialogButtonBox()
+        self.buttonBox = QDialogButtonBox()
         self.apply_button = self.buttonBox.addButton(
-            QtWidgets.QDialogButtonBox.StandardButton.Apply
+            QDialogButtonBox.StandardButton.Apply
         )
         self.cancel_button = self.buttonBox.addButton(
-            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+            QDialogButtonBox.StandardButton.Cancel
         )
 
         main_layout.addWidget(self.info_box)
@@ -254,11 +246,11 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
         self.directory_choice_box.setPlaceholderText(self.selected_dir)
 
     def _chose_directory(self):
-        selection_dialog = QtWidgets.QFileDialog()
+        selection_dialog = QFileDialog()
         caption = "Select directory"
         selection_dialog.setWindowTitle(caption)
         selection_dialog.setDirectory(self.selected_dir)
-        selection_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
+        selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         is_selection_made = selection_dialog.exec()
         log.debug(
@@ -274,7 +266,7 @@ class LocalCopyInstallDialog(QtWidgets.QDialog):
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication()
+    app = QApplication()
     window = AppMainWindow()
     window.show()
     app.exec()

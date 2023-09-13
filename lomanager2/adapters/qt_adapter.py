@@ -5,9 +5,7 @@ import sys
 from applogic.packagelogic import MainLogic
 from qtinterface.delegates import CheckButtonDelegate, columns
 from qtinterface.gui import AppMainWindow
-from qtinterface.pysidecompat import QtCore  # pyright: ignore
-from qtinterface.pysidecompat import QtGui  # pyright: ignore
-from qtinterface.pysidecompat import QtWidgets  # pyright: ignore
+from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
 from qtinterface.viewmodels import (LanguageMenuRenderModel, SoftwareMenuModel,
                                     SoftwareMenuRenderModel)
@@ -17,17 +15,17 @@ _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-class Adapter(QtCore.QObject):
+class Adapter(QObject):
     # Register custom signals
-    progress_description_signal = QtCore.Signal(str)
-    progress_signal = QtCore.Signal(int)
-    overall_progress_description_signal = QtCore.Signal(str)
-    overall_progress_signal = QtCore.Signal(int)
-    rebuild_tree_signal = QtCore.Signal()
-    thread_worker_ready_signal = QtCore.Signal()
-    warnings_awaiting_signal = QtCore.Signal(list)
-    check_system_state_signal = QtCore.Signal()
-    lock_unlock_GUI_signal = QtCore.Signal()
+    progress_description_signal = Signal(str)
+    progress_signal = Signal(int)
+    overall_progress_description_signal = Signal(str)
+    overall_progress_signal = Signal(int)
+    rebuild_tree_signal = Signal()
+    thread_worker_ready_signal = Signal()
+    warnings_awaiting_signal = Signal(list)
+    check_system_state_signal = Signal()
+    lock_unlock_GUI_signal = Signal()
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -175,10 +173,10 @@ class Adapter(QtCore.QObject):
         # No assumptions should be made here, user has to explicitly demand
         # both package retention and download
         self._apply_changes_view.checkbox_keep_packages.setCheckState(
-            QtCore.Qt.CheckState.Unchecked
+            Qt.CheckState.Unchecked
         )
         self._apply_changes_view.checkbox_force_java_download.setCheckState(
-            QtCore.Qt.CheckState.Unchecked
+            Qt.CheckState.Unchecked
         )
 
         install_list, removal_list = self._app_logic.get_planned_changes()
@@ -287,7 +285,7 @@ class Adapter(QtCore.QObject):
         self._progress_view.show()
 
         # Change cursor to indicate program is busy
-        self._app_main_view.setCursor(QtCore.Qt.WaitCursor)
+        self._app_main_view.setCursor(Qt.CursorShape.WaitCursor)
 
         # Inform model that underlying data source will invalidate current data
         # (corresponding endResetModel is in the _rebuild_tree)
@@ -323,9 +321,9 @@ class Adapter(QtCore.QObject):
         self.lock_unlock_GUI_signal.emit()
 
     def _warnings_show(self, warnings):
-        error_icon = QtWidgets.QMessageBox.Icon.Critical
-        good_icon = QtWidgets.QMessageBox.Icon.Information
-        warnings_icon = QtWidgets.QMessageBox.Icon.Warning
+        error_icon = QMessageBox.Icon.Critical
+        good_icon = QMessageBox.Icon.Information
+        warnings_icon = QMessageBox.Icon.Warning
 
         if len(warnings) == 1:
             isOK, msg = warnings[0]
@@ -385,7 +383,7 @@ class Adapter(QtCore.QObject):
 
 
 def main(skip_update_check: bool = False):
-    lomanager2App = QtWidgets.QApplication([])
+    lomanager2App = QApplication([])
 
     # Business logic
     app_logic = MainLogic(skip_update_check)

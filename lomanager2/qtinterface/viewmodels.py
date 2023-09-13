@@ -6,7 +6,7 @@ from typing import Any
 import configuration
 from applogic.datatypes import compare_versions
 
-from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
+from .pysidecompat import *
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
@@ -26,7 +26,7 @@ column_idx = {
 }
 
 
-class SoftwareMenuModel(QtCore.QAbstractTableModel):
+class SoftwareMenuModel(QAbstractTableModel):
     """Main model translating app logic data into table representation"""
 
     def __init__(self, app_logic, column_names):
@@ -154,31 +154,27 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         else:
             pf_base, pf_vis, pf_enabled = (None, None, None)
 
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return pf_base
 
-        if role == QtCore.Qt.ItemDataRole.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             # Display checked/uncheck box for cells holding boolen
             if isinstance(pf_base, bool):
-                return (
-                    QtCore.Qt.CheckState.Checked
-                    if pf_base
-                    else QtCore.Qt.CheckState.Unchecked
-                )
+                return Qt.CheckState.Checked if pf_base else Qt.CheckState.Unchecked
 
-        if role == QtCore.Qt.ItemDataRole.BackgroundRole:
+        if role == Qt.ItemDataRole.BackgroundRole:
             # Set background of the cell to darker
             # shade of grey if the operation disabled
             # but black if visibility is set to false
             if isinstance(pf_base, bool):
                 if pf_enabled is False and pf_vis is True:
-                    return QtGui.QColor("#484544")  # dark grey
+                    return QColor("#484544")  # dark grey
                 if pf_enabled is True and pf_vis is True:
-                    return QtGui.QColor("#6d6967")  # light grey
+                    return QColor("#6d6967")  # light grey
                 if pf_vis is False:
-                    return QtGui.QColor("black")
+                    return QColor("black")
 
-        if role == QtCore.Qt.ItemDataRole.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             # Set text color in the cell
             # green - if the option is marked
             # red   - if the option is not marked
@@ -186,36 +182,36 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
             # grey - if the operation is disabled
             if isinstance(pf_base, bool):
                 if pf_enabled is False:
-                    return QtGui.QColor("#635f5e")  # "middle" grey
+                    return QColor("#635f5e")  # "middle" grey
                 if pf_enabled is True:
                     if pf_base is True:
-                        return QtGui.QColor("light green")
+                        return QColor("light green")
                     if pf_base is False:
-                        return QtGui.QColor("dark red")
+                        return QColor("dark red")
 
-        if role == QtCore.Qt.ItemDataRole.FontRole:
+        if role == Qt.ItemDataRole.FontRole:
             # Make text in the cell bold
             # if package enabled condition is True
             # (it will be default non-bold for when condition is False)
             if isinstance(pf_base, bool):
-                font = QtGui.QFont()
+                font = QFont()
                 if pf_enabled is True:
                     font.setBold(True)
                     return font
 
-        if role == QtCore.Qt.ItemDataRole.UserRole + 1:
+        if role == Qt.ItemDataRole.UserRole + 1:
             if isinstance(pf_base, str) or isinstance(pf_base, bool):
                 return pf_base
             else:
                 return ""
 
-        if role == QtCore.Qt.ItemDataRole.UserRole + 2:
+        if role == Qt.ItemDataRole.UserRole + 2:
             return pf_vis
 
-        if role == QtCore.Qt.ItemDataRole.UserRole + 3:
+        if role == Qt.ItemDataRole.UserRole + 3:
             return pf_enabled
 
-        if role == QtCore.Qt.ItemDataRole.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             # The type of delegate that is created by Qt automatically
             # if no custom one is provided is decided based on the type
             # of data returned in this EditRole
@@ -231,7 +227,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         """Returns number of rows the table has"""
         return len(self.get_package_list())
 
-    def columnCount(self, index=QtCore.QModelIndex()) -> int:
+    def columnCount(self, index=QModelIndex()) -> int:
         """Returns the number of columns the table has"""
         return len(self._column_names)
 
@@ -239,8 +235,8 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
         """Returns name of each column in the table."""
 
         if (
-            role == QtCore.Qt.ItemDataRole.DisplayRole
-            and orientation == QtCore.Qt.Orientation.Horizontal
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
         ):
             if section < self.columnCount():
                 return self._column_names[section]
@@ -260,7 +256,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
 
         Parameters
         ----------
-        index : QtCore.QModelIndex | QPeristentModelIndex
+        index : QModelIndex | QPeristentModelIndex
             Points to a specific data item in data model
 
         value : bool
@@ -297,7 +293,7 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
                 _("expected boolean to set mark state, received {}").format(type(value))
             )
 
-        if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
+        if index.isValid() and role == Qt.ItemDataRole.EditRole:
             if column == column_idx.get("marked_for_removal"):
                 # Critically important! Warn views/viewmodels that underlying
                 # data will change
@@ -334,20 +330,20 @@ class SoftwareMenuModel(QtCore.QAbstractTableModel):
     def flags(self, index):
         """Tells which column/rows can be changed"""
         if index.isValid() is False:
-            return QtCore.Qt.ItemFlag.ItemIsEnabled
+            return Qt.ItemFlag.ItemIsEnabled
         # Only allow marked_for_removal|install fields to be editable
         if index.column() == column_idx.get(
             "marked_for_removal"
         ) or index.column() == column_idx.get("marked_for_install"):
-            existing_flags = QtCore.QAbstractItemModel.flags(self, index)
-            return existing_flags | QtCore.Qt.ItemFlag.ItemIsEditable
-        return QtCore.QAbstractItemModel.flags(self, index)
+            existing_flags = QAbstractItemModel.flags(self, index)
+            return existing_flags | Qt.ItemFlag.ItemIsEditable
+        return QAbstractItemModel.flags(self, index)
 
     # -- end "Setters" --
 
 
 # Custom Proxy Models
-class SoftwareMenuRenderModel(QtCore.QSortFilterProxyModel):
+class SoftwareMenuRenderModel(QSortFilterProxyModel):
     def __init__(self, model, parent=None):
         super(SoftwareMenuRenderModel, self).__init__(parent)
         self.setSourceModel(model)
@@ -367,11 +363,11 @@ class SoftwareMenuRenderModel(QtCore.QSortFilterProxyModel):
             return False
 
 
-class LanguageMenuRenderModel(QtCore.QSortFilterProxyModel):
+class LanguageMenuRenderModel(QSortFilterProxyModel):
     def __init__(self, model, parent=None):
         super(LanguageMenuRenderModel, self).__init__(parent)
         self.setSourceModel(model)
-        self.setSortRole(QtCore.Qt.ItemDataRole.UserRole + 1)
+        self.setSortRole(Qt.ItemDataRole.UserRole + 1)
         self.setFilterKeyColumn(-1)
 
     def filterAcceptsRow(self, row, parent):

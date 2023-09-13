@@ -2,17 +2,17 @@ import gettext
 import logging
 import time
 
-from .pysidecompat import QtCore  # pyright: ignore
+from .pysidecompat import *
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-class ProcedureWorker(QtCore.QThread):
+class ProcedureWorker(QThread):
     """Worker thread intended to run install procedure"""
 
-    result = QtCore.Signal(str)
+    result = Signal(str)
 
     def __init__(self, function_to_run, *args, **kwargs):
         super().__init__()
@@ -21,7 +21,7 @@ class ProcedureWorker(QtCore.QThread):
         self.args = args
         self.kwargs = kwargs
 
-    @QtCore.Slot()
+    @Slot()
     def run(self):
         """Run code inside in a separate thread"""
 
