@@ -21,6 +21,22 @@ def createAction(name, icon_theme_name, parent) -> QAction:
     return action
 
 
+class CustomTableView(QTableView):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+
+        header = self.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # Header is defined but for proper UX should be hidden in this view
+        self.verticalHeader().hide()
+        self.horizontalHeader().hide()
+        # Selection and focus should be turned off in this view for UX reasons
+        self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # Hide grid for better UX
+        self.setShowGrid(False)
+
+
 class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -53,17 +69,7 @@ class AppMainWindow(QMainWindow):
         menuHelp.addAction(self.actionAbout)
 
         # -- define Software View
-        self.software_view = QTableView()
-        header = self.software_view.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # Header is defined but for proper UX should be hidden in this view
-        self.software_view.verticalHeader().hide()
-        self.software_view.horizontalHeader().hide()
-        # Selection and focus should be turned off in this view for UX reasons
-        self.software_view.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.software_view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        # Hide grid for better UX
-        self.software_view.setShowGrid(False)
+        self.software_view = CustomTableView(self)
 
         # -- define Languages window
         self.extra_langs_window = LangsModalWindow(parent=self)
