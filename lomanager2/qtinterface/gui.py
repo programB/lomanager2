@@ -8,7 +8,7 @@ _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-def createAction(name, icon_theme_name, parent) -> QAction:
+def createAction(name, icon_theme_name, parent, shortcut=None) -> QAction:
     action = QAction(parent)
     action.setObjectName(f"action{name}")
     icon = QIcon()
@@ -18,6 +18,8 @@ def createAction(name, icon_theme_name, parent) -> QAction:
         icon.addFile(".", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
     action.setIcon(icon)
     action.setText(name)
+    if shortcut is not None:
+        action.setShortcut(QKeySequence(shortcut))
     return action
 
 
@@ -26,11 +28,15 @@ class AppMainWindow(QMainWindow):
         super().__init__()
 
         # -- define actions
-        self.actionQuit = createAction("Quit", "application-exit", parent=self)
+        self.actionQuit = createAction(
+            "Quit", "application-exit", parent=self, shortcut="Ctrl+Q"
+        )
         self.actionInstallFromLocalCopy = createAction(
             "InstallFromLocalCopy", "", parent=self
         )
-        self.actionHelp = createAction("Help", "system-help", parent=self)
+        self.actionHelp = createAction(
+            "Help", "system-help", parent=self, shortcut="F1"
+        )
         self.actionAbout = createAction("About", "", parent=self)
         self.actionApplyChanges = createAction("ApplyChanges", "gtk-apply", parent=self)
         self.actionAddLanguages = createAction(
