@@ -21,22 +21,6 @@ def createAction(name, icon_theme_name, parent) -> QAction:
     return action
 
 
-class CustomTableView(QTableView):
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-
-        header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # Header is defined but for proper UX should be hidden in this view
-        self.verticalHeader().hide()
-        self.horizontalHeader().hide()
-        # Selection and focus should be turned off in this view for UX reasons
-        self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        # Hide grid for better UX
-        self.setShowGrid(False)
-
-
 class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -112,6 +96,61 @@ class AppMainWindow(QMainWindow):
 
         # -- define Local copy install confirmation dialog
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
+
+
+class CustomTableView(QTableView):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+
+        # horizontal header is defined but for proper UX should be hidden,
+        # table should resize to its size automatically
+        # (vertical header should not exist at all)
+        self.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.verticalHeader().hide()
+        self.horizontalHeader().hide()
+
+        # Selection and focus should be turned off
+        self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        self.setShowGrid(False)
+
+        # Table should not change its size when containing window is resized
+        views_size_policy = QSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        views_size_policy.setRetainSizeWhenHidden(True)
+        self.setSizePolicy(views_size_policy)
+
+        # Never show horizontal scrollbar
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+    def sizeHint(self):
+        # current_size = super().sizeHint()
+        col_width_sum = 0
+        for i in range(self.model().columnCount()):
+            if not self.isColumnHidden(i):
+                col_width_sum += self.columnWidth(i)
+        scroll_bar_width = self.style().pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarExtent
+        )
+        # row_height_sum = 0
+        # for j in range(self.model().rowCount()):
+        #     if not self.isRowHidden(j):
+        #         row_height_sum += self.rowHeight(j)
+        table_size = QSize()
+        # Add 2x scroll_bar_width for nicer look
+        table_size.setWidth(col_width_sum + 2 * scroll_bar_width)
+        # Number of rows to be displayed before scrollbar appears
+        number_of_rows = 4
+        table_size.setHeight(number_of_rows * self.rowHeight(0))
+        return table_size
+
+    def paintEvent(self, event):
+        self.updateGeometry()  # checks sizeHint
+        super().paintEvent(event)
 
 
 class LangsModalWindow(QDialog):
