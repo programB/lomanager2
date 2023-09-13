@@ -53,12 +53,6 @@ class AppMainWindow(QMainWindow):
         self.software_view = CustomTableView(self)
 
         # -- define other GUI elements
-        self.button_install_from_local_copy = QPushButton(_("Install from local copy"))
-        self.button_add_langs = QPushButton(_("Add langs..."))
-        self.button_apply_changes = QPushButton(_("Appy changes"))
-        self.button_quit = QPushButton(_("Quit"))
-        self.info_dialog = QMessageBox()
-
         left_spacer = QSpacerItem(
             20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
@@ -96,6 +90,9 @@ class AppMainWindow(QMainWindow):
 
         # -- define Local copy install confirmation dialog
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
+
+        # -- define info dialog
+        self.info_dialog = QMessageBox()
 
 
 class CustomTableView(QTableView):

@@ -75,18 +75,18 @@ class Adapter(QObject):
 
     def _connect_signals_and_slots(self):
         # Option available to the user: Select additional language packs
-        self._app_main_view.button_add_langs.clicked.connect(self._add_langs)
+        self._app_main_view.actionAddLanguages.triggered.connect(self._add_langs)
 
         # Option available to the user: Apply selected changes
-        self._app_main_view.button_apply_changes.clicked.connect(self._apply_changes)
+        self._app_main_view.actionApplyChanges.triggered.connect(self._apply_changes)
 
         # Option available to the user: Install from local copy
-        self._app_main_view.button_install_from_local_copy.clicked.connect(
+        self._app_main_view.actionInstallFromLocalCopy.triggered.connect(
             self._install_from_local_copy
         )
 
         # Option available to the user: Quit the app
-        self._app_main_view.button_quit.clicked.connect(self._cleanup_and_exit)
+        self._app_main_view.actionQuit.triggered.connect(self._cleanup_and_exit)
 
         # Internal signal: Ask applogic to redo package tree from scratch
         self.rebuild_tree_signal.connect(self._rebuild_tree)
@@ -349,8 +349,8 @@ class Adapter(QObject):
         is_software_view_enabled = self._is_packages_selecting_allowed
         is_langs_view_enabled = is_software_view_enabled
 
-        self._app_main_view.button_apply_changes.setEnabled(is_apply_changes_enabled)
-        self._app_main_view.button_install_from_local_copy.setEnabled(
+        self._app_main_view.actionApplyChanges.setEnabled(is_apply_changes_enabled)
+        self._app_main_view.actionInstallFromLocalCopy.setEnabled(
             is_local_install_enabled
         )
         self._software_view.setEnabled(is_software_view_enabled)
