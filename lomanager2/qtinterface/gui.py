@@ -151,6 +151,17 @@ class CustomTableView(QTableView):
         # Never show horizontal scrollbar
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
+        # Set table background to be the same as current window color
+        window_color = self.palette().color(QPalette.ColorRole.Window)
+        palette = self.palette()
+        # changes color of a specific role that QTableView uses for background
+        palette.setColor(QPalette.ColorRole.Base, window_color)
+        self.setPalette(palette)
+        # The same but using a stylesheet
+        # self.setStyleSheet(f"QTableView {{background-color: {window_color.name()}}}")
+        # Remove frame
+        self.setFrameShape(QFrame.Shape.NoFrame)
+
     def sizeHint(self):
         # current_size = super().sizeHint()
         col_width_sum = 0
