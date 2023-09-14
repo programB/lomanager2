@@ -7,8 +7,10 @@ from qtinterface.delegates import CheckButtonDelegate, columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
-from qtinterface.viewmodels import (LanguageMenuRenderModel, SoftwareMenuModel,
-                                    SoftwareMenuRenderModel)
+from qtinterface.viewmodels import (ClipartMenuRenderModel,
+                                    LanguageMenuRenderModel,
+                                    OfficeMenuRenderModel,
+                                    SoftwareMenuModel)
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
@@ -41,7 +43,10 @@ class Adapter(QObject):
 
         # Views
         self._app_main_view = main_view
-        self._software_view = self._app_main_view.software_view
+
+        self._office_view = self._app_main_view.office_view
+        self._clipart_view = self._app_main_view.clipart_view
+
         self._langs_view = self._app_main_view.extra_langs_window.langs_view
         self._progress_view = self._app_main_view.progress_dialog
         self._info_view = self._app_main_view.info_dialog
@@ -49,8 +54,11 @@ class Adapter(QObject):
         self._local_copy_view = self._app_main_view.confirm_local_copy_dialog
 
         # Render models (further filter/condition data before sending to views)
-        self._software_menu_rendermodel = SoftwareMenuRenderModel(
-            model=self._software_menu_model, parent=self._software_view
+        self._office_menu_rendermodel = OfficeMenuRenderModel(
+            model=self._software_menu_model, parent=self._office_view
+        )
+        self._clipart_menu_rendermodel = ClipartMenuRenderModel(
+            model=self._software_menu_model, parent=self._clipart_view
         )
         self._language_menu_rendermodel = LanguageMenuRenderModel(
             model=self._software_menu_model, parent=self._langs_view
@@ -58,7 +66,8 @@ class Adapter(QObject):
 
         # Delegates (custom pseudo button inside views)
         self.check_button = CheckButtonDelegate(parent=self._app_main_view)
-        self._software_view.setItemDelegate(self.check_button)
+        self._office_view.setItemDelegate(self.check_button)
+        self._clipart_view.setItemDelegate(self.check_button)
         self._langs_view.setItemDelegate(self.check_button)
 
         self._bind_views_to_models()
@@ -70,7 +79,8 @@ class Adapter(QObject):
         self._is_starting_procedures_allowed = True
 
     def _bind_views_to_models(self):
-        self._software_view.setModel(self._software_menu_rendermodel)
+        self._office_view.setModel(self._office_menu_rendermodel)
+        self._clipart_view.setModel(self._clipart_menu_rendermodel)
         self._langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
@@ -107,7 +117,8 @@ class Adapter(QObject):
         """Any extra changes to appearance of views not done by render models"""
         for n, column_flags in enumerate(columns.values()):
             if column_flags.get("show_in_software_view") is False:
-                self._software_view.hideColumn(n)
+                self._office_view.hideColumn(n)
+                self._clipart_view.hideColumn(n)
             if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
 
@@ -120,8 +131,9 @@ class Adapter(QObject):
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
         # Increase spacing between rows in software_view
-        for row in range(self._software_view.model().rowCount()):
-            self._software_view.setRowHeight(row, 50)
+        for row in range(self._office_view.model().rowCount()):
+            self._office_view.setRowHeight(row, 50)
+            self._clipart_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
@@ -353,7 +365,8 @@ class Adapter(QObject):
         self._app_main_view.actionInstallFromLocalCopy.setEnabled(
             is_local_install_enabled
         )
-        self._software_view.setEnabled(is_software_view_enabled)
+        self._office_view.setEnabled(is_software_view_enabled)
+        self._clipart_view.setEnabled(is_software_view_enabled)
         self._langs_view.setEnabled(is_langs_view_enabled)
 
     def _check_system_state(self):

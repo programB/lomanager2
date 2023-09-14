@@ -343,24 +343,46 @@ class SoftwareMenuModel(QAbstractTableModel):
 
 
 # Custom Proxy Models
-class SoftwareMenuRenderModel(QSortFilterProxyModel):
+class OfficeMenuRenderModel(QSortFilterProxyModel):
     def __init__(self, model, parent=None):
-        super(SoftwareMenuRenderModel, self).__init__(parent)
+        super(OfficeMenuRenderModel, self).__init__(parent)
         self.setSourceModel(model)
 
     def filterAcceptsRow(self, row, parent):
         sm = self.sourceModel
-        if "Java" in sm().index(row, column_idx.get("family"), parent).data():
-            # don't show Java
-            return False
-        elif (
-            sm().index(row, column_idx.get("kind"), parent).data() == "core-packages"
-            or sm().index(row, column_idx.get("installed"), parent).data() is True
-        ):
-            # show any core package and any installed lang package
+        if "OpenOffice" in sm().index(row, column_idx.get("family"), parent).data():
+            # Show any OpenOffice package
             return True
-        else:
+        if "LibreOffice" in sm().index(row, column_idx.get("family"), parent).data():
+            if (
+                sm().index(row, column_idx.get("kind"), parent).data()
+                == "core-packages"
+                or sm().index(row, column_idx.get("installed"), parent).data() is True
+            ):
+                # show any LibreOffice core package
+                # and any INSTALLED LibreOffice lang package
+                return True
+        if "Java" in sm().index(row, column_idx.get("family"), parent).data():
+            # Don't show Java
+            # (Switch this to True if needed for debuging.
+            #  Non of the other render models is showing Java either)
             return False
+        # or anything else
+        return False
+
+
+class ClipartMenuRenderModel(QSortFilterProxyModel):
+    def __init__(self, model, parent=None):
+        super(ClipartMenuRenderModel, self).__init__(parent)
+        self.setSourceModel(model)
+
+    def filterAcceptsRow(self, row, parent):
+        sm = self.sourceModel
+        if "Clipart" in sm().index(row, column_idx.get("family"), parent).data():
+            # Show any Clipart package
+            return True
+        # and nothing else
+        return False
 
 
 class LanguageMenuRenderModel(QSortFilterProxyModel):
@@ -373,9 +395,11 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, row, parent):
         sm = self.sourceModel
         if (
-            sm().index(row, column_idx.get("kind"), parent).data() != "core-packages"
+            "LibreOffice" in sm().index(row, column_idx.get("family"), parent).data()
+            and sm().index(row, column_idx.get("kind"), parent).data()
+            != "core-packages"
             and sm().index(row, column_idx.get("installed"), parent).data() is False
         ):
-            # show any NOT installed lang package
+            # show any NOT installed LibreOffice lang package
             return True
         return False

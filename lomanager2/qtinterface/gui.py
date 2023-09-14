@@ -67,7 +67,8 @@ class AppMainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolBar)
 
         # -- define Software View
-        self.software_view = CustomTableView(self)
+        self.office_view = CustomTableView(self)
+        self.clipart_view = CustomTableView(self)
 
         # -- define other GUI elements
         left_spacer = QSpacerItem(
@@ -80,10 +81,19 @@ class AppMainWindow(QMainWindow):
         bottom_spacer = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
         )
+        mid_spacer1 = QSpacerItem(
+            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
+        mid_spacer2 = QSpacerItem(
+            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
 
         # Arrange widgets
         views_layout = QVBoxLayout()
-        views_layout.addWidget(self.software_view)
+        views_layout.addItem(mid_spacer1)
+        views_layout.addWidget(self.office_view)
+        views_layout.addItem(mid_spacer2)
+        views_layout.addWidget(self.clipart_view)
         views_layout.addItem(bottom_spacer)
 
         main_layout = QHBoxLayout()
