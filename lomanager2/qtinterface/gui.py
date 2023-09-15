@@ -127,6 +127,17 @@ class AppMainWindow(QMainWindow):
         # -- define info dialog
         self.info_dialog = QMessageBox()
 
+        # Get the colors from the current style
+        separator_clr = self.palette().color(QPalette.ColorRole.Mid).name()
+        window_clr = self.palette().color(QPalette.ColorRole.Window).name()
+        # Apply styling to all some children widgets of this window
+        stylesheets = [
+            f"QLabel#heading {{color: {separator_clr}; text-decoration: underline; qproperty-alignment: AlignLeft}}",
+            f"QMainWindow > QToolBar {{border-bottom: 1px solid {separator_clr};}}",
+            f"QTableView {{background-color: {window_clr}}}",
+        ]
+        self.setStyleSheet("".join(stylesheets))
+
 
 class CustomTableView(QTableView):
     def __init__(
@@ -173,14 +184,6 @@ class CustomTableView(QTableView):
         # Never show horizontal scrollbar
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # Set table background to be the same as current window color
-        window_color = self.palette().color(QPalette.ColorRole.Window)
-        palette = self.palette()
-        # changes color of a specific role that QTableView uses for background
-        palette.setColor(QPalette.ColorRole.Base, window_color)
-        self.setPalette(palette)
-        # The same but using a stylesheet
-        # self.setStyleSheet(f"QTableView {{background-color: {window_color.name()}}}")
         # Remove frame
         self.setFrameShape(QFrame.Shape.NoFrame)
 
