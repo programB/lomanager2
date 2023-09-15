@@ -87,12 +87,18 @@ class AppMainWindow(QMainWindow):
         mid_spacer2 = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
+        office_heading = QLabel("     ")
+        office_heading.setObjectName("heading")
+        clipart_heading = QLabel("     ")
+        clipart_heading.setObjectName("heading")
 
         # Arrange widgets
         views_layout = QVBoxLayout()
         views_layout.addItem(mid_spacer1)
+        views_layout.addWidget(office_heading)
         views_layout.addWidget(self.office_view)
         views_layout.addItem(mid_spacer2)
+        views_layout.addWidget(clipart_heading)
         views_layout.addWidget(self.clipart_view)
         views_layout.addItem(bottom_spacer)
 
