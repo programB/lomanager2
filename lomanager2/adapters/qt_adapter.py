@@ -134,6 +134,8 @@ class Adapter(QObject):
         for row in range(self._office_view.model().rowCount()):
             self._office_view.setRowHeight(row, 50)
             self._clipart_view.setRowHeight(row, 50)
+        for row in range(self._langs_view.model().rowCount()):
+            self._langs_view.setRowHeight(row,50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
