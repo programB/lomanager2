@@ -62,19 +62,21 @@ columns = {
 class CheckButtonDelegate(QItemDelegate):
     update_model_signal = Signal(QAbstractItemModel, QModelIndex)
 
-    checked_button_color = QColor("#005b00")  # dark green
-    checked_button_border_color = QColor("#005b00")  # dark green
-    unchecked_button_color = QColor("#008000")  # green
-    unchecked_button_border_color = QColor("#008000")  # green
-    disabled_button_color = QColor("#635f5e")  # mid grey
-    disabled_button_border_color = QColor("#484544")  # dark grey
-    normal_text_color = QColor("white")
-    disabled_text_color = QColor("#b4adaa")  # light grey
-
     def __init__(self, max_height=40, parent=None):
         super(CheckButtonDelegate, self).__init__(parent)
         self.update_model_signal.connect(self.update_model)
         self.max_button_height = max_height
+
+        # Take colors from current style
+        highlight_clr = QWidget().palette().color(QPalette.ColorRole.Highlight)
+        text_clr = QWidget().palette().color(QPalette.ColorRole.Text)
+        mid_clr = QWidget().palette().color(QPalette.ColorRole.Mid)
+        dark_clr = QWidget().palette().color(QPalette.ColorRole.Dark)
+
+        # Color combos (button fill, button border, text)
+        self.unchecked_colors = (highlight_clr, text_clr, text_clr)
+        self.checked_colors = (text_clr, highlight_clr, highlight_clr)
+        self.disabled_colors = (mid_clr, dark_clr, dark_clr)
 
     def update_model(self, model, index):
         is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
@@ -135,17 +137,11 @@ class CheckButtonDelegate(QItemDelegate):
                     index.model().data(index, Qt.ItemDataRole.UserRole + 3)
                 )
                 if is_enabled and is_marked:
-                    button_color = self.checked_button_color
-                    button_border_color = self.checked_button_border_color
-                    button_text_color = self.normal_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.checked_colors
                 elif is_enabled and is_marked is False:
-                    button_color = self.unchecked_button_color
-                    button_border_color = self.unchecked_button_border_color
-                    button_text_color = self.normal_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.unchecked_colors
                 else:
-                    button_color = self.disabled_button_color
-                    button_border_color = self.disabled_button_border_color
-                    button_text_color = self.disabled_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.disabled_colors
                 remove_btn_i18n_t = _("remove")
                 install_btn_i18n_t = _("install")
                 button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
@@ -160,11 +156,11 @@ class CheckButtonDelegate(QItemDelegate):
 
                 # set border color (also controls text color)
                 pen = painter.pen()
-                pen.setColor(button_border_color)
+                pen.setColor(btn_border_clr)
                 painter.setPen(pen)
 
                 # set button fill color
-                painter.setBrush(button_color)
+                painter.setBrush(btn_clr)
 
                 # Draw the "button"
                 # limit button height
@@ -183,7 +179,7 @@ class CheckButtonDelegate(QItemDelegate):
                 painter.drawRoundedRect(x, y, w, h, 10, 10)
 
                 # (re)set pen color to draw text
-                pen.setColor(button_text_color)
+                pen.setColor(btn_text_clr)
                 painter.setPen(pen)
 
                 # Draw button text
