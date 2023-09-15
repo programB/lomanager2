@@ -170,13 +170,13 @@ class CheckButtonDelegate(QItemDelegate):
                 option.rect.setRect(x, new_y, w, new_h)
 
                 # shrink is slightly
-                delta = 2
+                delta = 1
                 option.rect.adjust(delta, delta, -delta, -delta)
                 x, y, w, h = option.rect.getRect()
 
                 # paint with smooth edges
                 painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-                painter.drawRoundedRect(x, y, w, h, 10, 10)
+                painter.drawRoundedRect(x, y, w, h, h / 2, h / 2)
 
                 # (re)set pen color to draw text
                 pen.setColor(btn_text_clr)
