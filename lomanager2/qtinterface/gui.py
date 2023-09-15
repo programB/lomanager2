@@ -67,8 +67,8 @@ class AppMainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolBar)
 
         # -- define Software View
-        self.office_view = CustomTableView(self)
-        self.clipart_view = CustomTableView(self)
+        self.office_view = CustomTableView(no_of_rows=5, parent=self)
+        self.clipart_view = CustomTableView(no_of_rows=3, parent=self)
 
         # -- define other GUI elements
         left_spacer = QSpacerItem(
@@ -123,8 +123,11 @@ class AppMainWindow(QMainWindow):
 
 
 class CustomTableView(QTableView):
-    def __init__(self, parent=None) -> None:
+    def __init__(self, no_of_rows: int, parent=None) -> None:
         super().__init__(parent)
+
+        # Number of rows to be displayed before scrollbar appears
+        self.no_of_rows = no_of_rows
 
         # horizontal header is defined but for proper UX should be hidden,
         # table should resize to its size automatically
@@ -178,9 +181,7 @@ class CustomTableView(QTableView):
         table_size = QSize()
         # Add 2x scroll_bar_width for nicer look
         table_size.setWidth(col_width_sum + 2 * scroll_bar_width)
-        # Number of rows to be displayed before scrollbar appears
-        number_of_rows = 4
-        table_size.setHeight(number_of_rows * self.rowHeight(0))
+        table_size.setHeight(self.no_of_rows * self.rowHeight(0))
         return table_size
 
     def paintEvent(self, event):
