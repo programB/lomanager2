@@ -123,20 +123,27 @@ class AppMainWindow(QMainWindow):
 
 
 class CustomTableView(QTableView):
-    def __init__(self, no_of_rows: int, parent=None) -> None:
+    def __init__(
+        self, hide_header: bool = True, no_of_rows: int | None = None, parent=None
+    ) -> None:
         super().__init__(parent)
 
         # Number of rows to be displayed before scrollbar appears
         self.no_of_rows = no_of_rows
 
         # horizontal header is defined but for proper UX should be hidden,
-        # table should resize to its size automatically
-        # (vertical header should not exist at all)
+        # (with the exception of langs_view which can pass
+        #  hide_header=False for that purpose)
+        #  table should resize to its size automatically
         self.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
+        #
+        if hide_header:
+            self.horizontalHeader().hide()
+
+        # Vertical header should not exist at all
         self.verticalHeader().hide()
-        self.horizontalHeader().hide()
 
         # Selection and focus should be turned off
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
@@ -145,11 +152,17 @@ class CustomTableView(QTableView):
         self.setShowGrid(False)
 
         # Table should not change its size when containing window is resized
-        views_size_policy = QSizePolicy(
+        main_views_size_policy = QSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
-        views_size_policy.setRetainSizeWhenHidden(True)
-        self.setSizePolicy(views_size_policy)
+        main_views_size_policy.setRetainSizeWhenHidden(True)
+        lang_view_size_policy = QSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.MinimumExpanding
+        )
+        lang_view_size_policy.setRetainSizeWhenHidden(True)
+        self.setSizePolicy(
+            lang_view_size_policy if no_of_rows is None else main_views_size_policy
+        )
 
         # Never show horizontal scrollbar
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -166,7 +179,6 @@ class CustomTableView(QTableView):
         self.setFrameShape(QFrame.Shape.NoFrame)
 
     def sizeHint(self):
-        # current_size = super().sizeHint()
         col_width_sum = 0
         for i in range(self.model().columnCount()):
             if not self.isColumnHidden(i):
@@ -174,14 +186,21 @@ class CustomTableView(QTableView):
         scroll_bar_width = self.style().pixelMetric(
             QStyle.PixelMetric.PM_ScrollBarExtent
         )
-        # row_height_sum = 0
-        # for j in range(self.model().rowCount()):
-        #     if not self.isRowHidden(j):
-        #         row_height_sum += self.rowHeight(j)
-        table_size = QSize()
-        # Add 2x scroll_bar_width for nicer look
+
+        table_size = super().sizeHint()  # get current size
+        # Override width (added 2x scroll_bar_width for nicer look)
         table_size.setWidth(col_width_sum + 2 * scroll_bar_width)
-        table_size.setHeight(self.no_of_rows * self.rowHeight(0))
+        if self.no_of_rows is not None:
+            # Set table height hint to requested muliple of rowHeight
+            table_size.setHeight(self.no_of_rows * self.rowHeight(0))
+        else:
+            # Unrestricted number of rows. That means it's a langs_view
+            # and since the width was already set by setWidth above
+            # the containing window (parent of langs_view)
+            # should be fixed in its horizontal size.
+            # (The user can expand that window verticaly though and also
+            #  the scrollbar will be shown if needed)
+            self.parent().setFixedWidth(table_size.width())
         return table_size
 
     def paintEvent(self, event):
@@ -197,9 +216,7 @@ class LangsModalWindow(QDialog):
         modal_layout = QVBoxLayout()
 
         # -- define Langs View
-        self.langs_view = QTableView()
-        header = self.langs_view.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.langs_view = CustomTableView(hide_header=False, parent=self)
         # Allow columns to be user sortable
         # (model to which this view will get attached decides which
         #  column(s) are keyed for sorting)
