@@ -148,56 +148,62 @@ class CheckButtonDelegate(QItemDelegate):
 
                 #
                 painter.save()
+                pen = painter.pen()
+
+                full_rect = option.rect.getRect()
+                full_x, full_y, full_w, full_h = full_rect
 
                 # Ignore selection: if option.state & QStyle.State_Selected
                 # and remove highlight around the button irrespective its
                 # selection/focus state
                 painter.eraseRect(option.rect)
 
-                # set border color (also controls text color)
-                pen = painter.pen()
-                pen.setColor(btn_border_clr)
-                painter.setPen(pen)
-
-                # set button fill color
-                painter.setBrush(btn_clr)
+                # shrink rect slightly
+                # delta = 1
+                # option.rect.adjust(delta, delta, -delta, -delta)
 
                 # Draw the "button"
-                # limit button height
-                x, y, w, h = option.rect.getRect()
-                new_h = self.max_button_height if h > self.max_button_height else h
-                new_y = y + (h / 2) - (new_h / 2)
-                option.rect.setRect(x, new_y, w, new_h)
-
-                # shrink is slightly
-                delta = 1
-                option.rect.adjust(delta, delta, -delta, -delta)
-                x, y, w, h = option.rect.getRect()
-
-                # paint with smooth edges
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-                painter.drawRoundedRect(x, y, w, h, h / 2, h / 2)
-
-                # (re)set pen color to draw text
-                pen.setColor(btn_text_clr)
+                btn_x = full_x
+                btn_h = 0.8 * full_h
+                btn_y = full_y + (full_h / 2) - (btn_h / 2)
+                btn_w = full_w
+                # set border color (also controls text color)
+                pen.setColor(btn_border_clr)
                 painter.setPen(pen)
-
-                # Draw button text
-                painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, button_text)
+                # set button fill color
+                painter.setBrush(btn_clr)
+                #  paint the "button" with smooth edges
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                painter.drawRoundedRect(
+                    btn_x, btn_y, btn_w, btn_h, btn_h / 2, btn_h / 2
+                )
 
                 # Draw a checkbox
-                x, y, w, h = option.rect.getRect()
-                new_h = 0.6 * h
-                new_w = new_h
-                new_y = y + h / 2 - new_h / 2
-                new_x = x + new_w
-                option.rect.setRect(new_x, new_y, new_w, new_h)
+                checkbox_h = 0.6 * btn_h
+                checkbox_w = checkbox_h
+                margin = checkbox_w
+                checkbox_y = btn_y + (btn_h / 2) - (checkbox_h / 2)
+                checkbox_x = margin + btn_x
+                option.rect.setRect(checkbox_x, checkbox_y, checkbox_w, checkbox_h)
                 self.drawCheck(
                     painter,
                     option,
                     option.rect,
                     Qt.CheckState.Checked if is_marked else Qt.CheckState.Unchecked,
                 )
+
+                # Draw text
+                text_x = checkbox_x + checkbox_w
+                text_y = full_y
+                text_w = btn_w - (margin + 1.5 * checkbox_w + margin)
+                text_h = full_h
+                option.rect.setRect(text_x, text_y, text_w, text_h)
+                # (re)set pen color to draw text
+                pen.setColor(btn_text_clr)
+                # pen.setColor("green")
+                painter.setPen(pen)
+                # Draw button text
+                painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, button_text)
 
                 #
                 painter.restore()
