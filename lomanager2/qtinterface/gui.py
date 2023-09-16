@@ -1,6 +1,7 @@
 import gettext
 import logging
 
+from .delegates import CheckButtonDelegate
 from .pysidecompat import *
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
@@ -144,6 +145,9 @@ class CustomTableView(QTableView):
         self, hide_header: bool = True, no_of_rows: int | None = None, parent=None
     ) -> None:
         super().__init__(parent)
+
+        check_button = CheckButtonDelegate(parent=self)
+        self.setItemDelegate(check_button)
 
         # Number of rows to be displayed before scrollbar appears
         self.no_of_rows = no_of_rows

@@ -34,13 +34,15 @@ columns = {
     },
     "marked for removal?": {
         "id": 4,
-        "i18n_name": _("marked for removal?"),
+        # "i18n_name": _("marked for removal?"),
+        "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
-        "i18n_name": _("marked for install?"),
+        # "i18n_name": _("marked for install?"),
+        "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
@@ -214,3 +216,19 @@ class CheckButtonDelegate(QItemDelegate):
         else:
             # Use default delegates to paint other cells
             QItemDelegate.paint(self, painter, option, index)
+
+    def sizeHint(self, option, index):
+        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
+        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        if is_remove_col or is_install_col:
+            #  Works by returning the (runtime evaluated) size of a string
+            #  that is not made translatable
+            #  (and is an expression of shameless bragging)
+            font_metrics = self.parent().fontMetrics()
+            button_size = font_metrics.size(
+                Qt.TextFlag.TextSingleLine, "awesome lomanager2"
+            )
+            return button_size
+        else:
+            # Use default delegates' sizeHint for other cells
+            return super().sizeHint(option, index)

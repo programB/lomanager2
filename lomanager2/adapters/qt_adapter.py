@@ -64,12 +64,6 @@ class Adapter(QObject):
             model=self._software_menu_model, parent=self._langs_view
         )
 
-        # Delegates (custom pseudo button inside views)
-        self.check_button = CheckButtonDelegate(parent=self._app_main_view)
-        self._office_view.setItemDelegate(self.check_button)
-        self._clipart_view.setItemDelegate(self.check_button)
-        self._langs_view.setItemDelegate(self.check_button)
-
         self._bind_views_to_models()
         self._connect_signals_and_slots()
         self._preset_views()
