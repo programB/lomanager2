@@ -269,7 +269,8 @@ class ProgressDialog(QDialog):
         main_layout.addWidget(self.progress_bar)
         main_layout.addWidget(self.overall_progress_description)
         main_layout.addWidget(self.overall_progress_bar)
-        main_layout.addWidget(self.button_terminate)
+        # WARNING: Just for tests. This MUST NOT be available to the user
+        # main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
         self.setFixedSize(450,200)

@@ -281,10 +281,10 @@ class Adapter(QObject):
             self._update_overall_progress_description
         )
         self.overall_progress_signal.connect(self._update_overall_progress)
-        # TODO: Just for tests. This MUST NOT be available to the user
-        self._progress_view.button_terminate.clicked.connect(
-            self.procedure_thread.terminate
-        )
+        # WARNING: Just for tests. This MUST NOT be available to the user
+        # self._progress_view.button_terminate.clicked.connect(
+        #     self.procedure_thread.terminate
+        # )
         self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
 
         # Open progress view
