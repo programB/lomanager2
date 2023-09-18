@@ -136,6 +136,7 @@ class AppMainWindow(QMainWindow):
             f"QLabel#heading {{color: {separator_clr}; text-decoration: underline; qproperty-alignment: AlignLeft}}",
             f"QMainWindow > QToolBar {{border-bottom: 1px solid {separator_clr};}}",
             f"QTableView {{background-color: {window_clr}}}",
+            f"QTextEdit {{border: 0 solid black; background-color: {window_clr}}}",
         ]
         self.setStyleSheet("".join(stylesheets))
 
@@ -280,7 +281,21 @@ class ConfirmApplyDialog(QDialog):
         self.setWindowTitle(_("Confirm changes"))
         main_layout = QVBoxLayout()
 
-        self.info_box = QLabel()
+        # Small maximum size here because the _scale_info_box method
+        # will rescale this window to actual contents size every time
+        # the text gets set.
+        self.setMaximumHeight(10)
+        self.setMaximumWidth(10)
+
+        self.info_box = QTextEdit()
+        self.info_box.setReadOnly(True)
+        self.info_box.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        # Allow info_box to expand to its sizeHint minimum
+        self.info_box.setSizePolicy(
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
+        )
+        self.info_box.textChanged.connect(self._scale_info_box)
+
         self.checkbox_keep_packages = QCheckBox(_("Keep downloaded packages"))
         self.checkbox_force_java_download = QCheckBox(_("Download Java"))
         # Initially disabled !
@@ -316,6 +331,20 @@ class ConfirmApplyDialog(QDialog):
 
     def _offer_java(self, is_keep_packages_marked):
         self.checkbox_force_java_download.setEnabled(is_keep_packages_marked)
+
+    def _scale_info_box(self):
+        # scale info_box width based on current content.
+        # The containing window will not grow vertically with increasing
+        # text length but a scrollbar will appear in the info_box.
+        self.info_box.setFixedWidth(
+            int(
+                self.info_box.document().idealWidth()
+                + 1.5 * self.info_box.verticalScrollBar().width()
+            )
+        )
+        # readjust the size of the window based on current sizes of
+        # child widgets (that is just updated info_box size)
+        self.adjustSize()
 
 
 class LocalCopyInstallDialog(QDialog):
