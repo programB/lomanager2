@@ -126,7 +126,7 @@ class AppMainWindow(QMainWindow):
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
 
         # -- define info dialog
-        self.info_dialog = QMessageBox()
+        self.info_dialog = QMessageBox(parent=self)
 
         # Get the colors from the current style
         separator_clr = self.palette().color(QPalette.ColorRole.Mid).name()
