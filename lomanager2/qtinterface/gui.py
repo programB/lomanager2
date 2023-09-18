@@ -272,6 +272,7 @@ class ProgressDialog(QDialog):
         main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
+        self.setFixedSize(450,200)
 
 
 class ConfirmApplyDialog(QDialog):
