@@ -336,17 +336,20 @@ class Adapter(QObject):
         warnings_icon = QMessageBox.Icon.Warning
 
         if len(warnings) == 1:
-            isOK, msg = warnings[0]
+            isOK, msg, expl = warnings[0]
             icon = good_icon if isOK else error_icon
             title = _("Success") if isOK else _("Problem")
         else:
             msg = ""
+            expl = ""
             for i, warning in enumerate(warnings):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
+                expl += str(i + 1) + ") " + warning[2] + "\n\n"
             icon = warnings_icon
             title = _("Warning")
         self._info_view.setWindowTitle(title)
         self._info_view.setText(msg)
+        self._info_view.setDetailedText(expl)
         self._info_view.setIcon(icon)
         self._info_view.show()
 
