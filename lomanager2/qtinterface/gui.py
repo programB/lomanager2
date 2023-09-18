@@ -354,8 +354,16 @@ class LocalCopyInstallDialog(QDialog):
         self.setWindowTitle(_("Install from local copy"))
         main_layout = QVBoxLayout()
 
-        self.info_box = QLabel()
-        self.info_box.setWordWrap(True)
+        self.setMaximumHeight(10)
+        self.setMaximumWidth(10)
+        self.info_box = QTextEdit()
+        self.info_box.setReadOnly(True)
+        self.info_box.setLineWrapColumnOrWidth(30)
+        self.info_box.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.info_box.setSizePolicy(
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
+        )
+        self.info_box.textChanged.connect(self._scale_info_box)
 
         file_input_layout = QHBoxLayout()
         self.directory_choice_box = QLineEdit()
@@ -416,6 +424,17 @@ class LocalCopyInstallDialog(QDialog):
         if is_selection_made == 1:
             self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])
             self.selected_dir = selection_dialog.selectedFiles()[0]
+
+    def _scale_info_box(self):
+        # scale info_box width based on current content.
+        # The containing this window will not grow vertically with increasing
+        # text length but a scrollbar will appear in the info_box.
+        w = int(self.info_box.document().idealWidth())
+        # w = self.info_box.width()
+        self.info_box.setFixedWidth(w)
+        # readjust the size of the window based on current sizes of
+        # child widgets (that is just updated info_box size)
+        self.adjustSize()
 
 
 if __name__ == "__main__":
