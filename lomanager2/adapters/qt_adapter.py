@@ -1,5 +1,7 @@
 import gettext
 import logging
+import signal
+import socket
 import sys
 
 from applogic.packagelogic import MainLogic
@@ -391,8 +393,24 @@ class Adapter(QObject):
         self._app_main_view.close()
 
 
+class SignalWatchdog(QAbstractSocket):
+    def __init__(self):
+        """Propagates system signals from Python to QEventLoop"""
+        # https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co
+        super().__init__(QAbstractSocket.SctpSocket, None)
+        self.writer, self.reader = socket.socketpair()
+        self.writer.setblocking(False)
+        signal.set_wakeup_fd(self.writer.fileno())  # Python hook
+        self.setSocketDescriptor(self.reader.fileno())  # Qt hook
+        self.readyRead.connect(lambda: None)  # Dummy function call
+
+
 def main(skip_update_check: bool = False):
     lomanager2App = QApplication([])
+
+    # Makes the app quit on ctrl+c from console
+    watchdog = SignalWatchdog()  # keeping the reference is needed
+    signal.signal(signal.SIGINT, lambda sig, _: lomanager2App.quit())
 
     # Business logic
     app_logic = MainLogic(skip_update_check)
