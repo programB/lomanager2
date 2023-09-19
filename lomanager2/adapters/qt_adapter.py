@@ -1,33 +1,34 @@
 import gettext
 import logging
+import signal
+import socket
 import sys
 
 from applogic.packagelogic import MainLogic
 from qtinterface.delegates import CheckButtonDelegate, columns
 from qtinterface.gui import AppMainWindow
-from qtinterface.pysidecompat import QtCore  # pyright: ignore
-from qtinterface.pysidecompat import QtGui  # pyright: ignore
-from qtinterface.pysidecompat import QtWidgets  # pyright: ignore
+from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
-from qtinterface.viewmodels import (LanguageMenuRenderModel, SoftwareMenuModel,
-                                    SoftwareMenuRenderModel)
+from qtinterface.viewmodels import (ClipartMenuRenderModel,
+                                    LanguageMenuRenderModel,
+                                    OfficeMenuRenderModel, SoftwareMenuModel)
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-class Adapter(QtCore.QObject):
+class Adapter(QObject):
     # Register custom signals
-    progress_description_signal = QtCore.Signal(str)
-    progress_signal = QtCore.Signal(int)
-    overall_progress_description_signal = QtCore.Signal(str)
-    overall_progress_signal = QtCore.Signal(int)
-    rebuild_tree_signal = QtCore.Signal()
-    thread_worker_ready_signal = QtCore.Signal()
-    warnings_awaiting_signal = QtCore.Signal(list)
-    check_system_state_signal = QtCore.Signal()
-    lock_unlock_GUI_signal = QtCore.Signal()
+    progress_description_signal = Signal(str)
+    progress_signal = Signal(int)
+    overall_progress_description_signal = Signal(str)
+    overall_progress_signal = Signal(int)
+    rebuild_tree_signal = Signal()
+    thread_worker_ready_signal = Signal()
+    warnings_awaiting_signal = Signal(list)
+    check_system_state_signal = Signal()
+    is_GUI_locked_signal = Signal(bool)
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -43,7 +44,10 @@ class Adapter(QtCore.QObject):
 
         # Views
         self._app_main_view = main_view
-        self._software_view = self._app_main_view.software_view
+
+        self._office_view = self._app_main_view.office_view
+        self._clipart_view = self._app_main_view.clipart_view
+
         self._langs_view = self._app_main_view.extra_langs_window.langs_view
         self._progress_view = self._app_main_view.progress_dialog
         self._info_view = self._app_main_view.info_dialog
@@ -51,50 +55,45 @@ class Adapter(QtCore.QObject):
         self._local_copy_view = self._app_main_view.confirm_local_copy_dialog
 
         # Render models (further filter/condition data before sending to views)
-        self._software_menu_rendermodel = SoftwareMenuRenderModel(
-            model=self._software_menu_model, parent=self._software_view
+        self._office_menu_rendermodel = OfficeMenuRenderModel(
+            model=self._software_menu_model, parent=self._office_view
+        )
+        self._clipart_menu_rendermodel = ClipartMenuRenderModel(
+            model=self._software_menu_model, parent=self._clipart_view
         )
         self._language_menu_rendermodel = LanguageMenuRenderModel(
             model=self._software_menu_model, parent=self._langs_view
         )
 
-        # Delegates (custom pseudo button inside views)
-        self.check_button = CheckButtonDelegate(parent=self._app_main_view)
-        self._software_view.setItemDelegate(self.check_button)
-        self._langs_view.setItemDelegate(self.check_button)
-
         self._bind_views_to_models()
         self._connect_signals_and_slots()
         self._preset_views()
 
-        # Flags blocking parts of the interface during certain operations
-        self._is_packages_selecting_allowed = True
-        self._is_starting_procedures_allowed = True
-
     def _bind_views_to_models(self):
-        self._software_view.setModel(self._software_menu_rendermodel)
+        self._office_view.setModel(self._office_menu_rendermodel)
+        self._clipart_view.setModel(self._clipart_menu_rendermodel)
         self._langs_view.setModel(self._language_menu_rendermodel)
 
     def _connect_signals_and_slots(self):
         # Option available to the user: Select additional language packs
-        self._app_main_view.button_add_langs.clicked.connect(self._add_langs)
+        self._app_main_view.actionAddLanguages.triggered.connect(self._add_langs)
 
         # Option available to the user: Apply selected changes
-        self._app_main_view.button_apply_changes.clicked.connect(self._apply_changes)
+        self._app_main_view.actionApplyChanges.triggered.connect(self._apply_changes)
 
         # Option available to the user: Install from local copy
-        self._app_main_view.button_install_from_local_copy.clicked.connect(
+        self._app_main_view.actionInstallFromLocalCopy.triggered.connect(
             self._install_from_local_copy
         )
 
         # Option available to the user: Quit the app
-        self._app_main_view.button_quit.clicked.connect(self._cleanup_and_exit)
+        self._app_main_view.actionQuit.triggered.connect(self._cleanup_and_exit)
 
         # Internal signal: Ask applogic to redo package tree from scratch
         self.rebuild_tree_signal.connect(self._rebuild_tree)
 
         # Internal signal: Lock/Unlock GUI elements
-        self.lock_unlock_GUI_signal.connect(self._lock_unlock_GUI)
+        self.is_GUI_locked_signal.connect(self._GUI_locks)
 
         # Internal signal: Start already prepared thread worker
         self.thread_worker_ready_signal.connect(self._thread_start)
@@ -109,7 +108,8 @@ class Adapter(QtCore.QObject):
         """Any extra changes to appearance of views not done by render models"""
         for n, column_flags in enumerate(columns.values()):
             if column_flags.get("show_in_software_view") is False:
-                self._software_view.hideColumn(n)
+                self._office_view.hideColumn(n)
+                self._clipart_view.hideColumn(n)
             if column_flags.get("show_in_langs_view") is False:
                 self._langs_view.hideColumn(n)
 
@@ -122,8 +122,11 @@ class Adapter(QtCore.QObject):
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
         # Increase spacing between rows in software_view
-        for row in range(self._software_view.model().rowCount()):
-            self._software_view.setRowHeight(row, 50)
+        for row in range(self._office_view.model().rowCount()):
+            self._office_view.setRowHeight(row, 50)
+            self._clipart_view.setRowHeight(row, 50)
+        for row in range(self._langs_view.model().rowCount()):
+            self._langs_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
@@ -148,6 +151,7 @@ class Adapter(QtCore.QObject):
 
             # Get the directory path provided by the user
             selected_dir = self._local_copy_view.selected_dir
+            log.debug(_("The user selected: {}").format(selected_dir))
 
             # Create a separate thread worker that will run
             # selected procedure from the applogic,
@@ -175,10 +179,10 @@ class Adapter(QtCore.QObject):
         # No assumptions should be made here, user has to explicitly demand
         # both package retention and download
         self._apply_changes_view.checkbox_keep_packages.setCheckState(
-            QtCore.Qt.CheckState.Unchecked
+            Qt.CheckState.Unchecked
         )
         self._apply_changes_view.checkbox_force_java_download.setCheckState(
-            QtCore.Qt.CheckState.Unchecked
+            Qt.CheckState.Unchecked
         )
 
         install_list, removal_list = self._app_logic.get_planned_changes()
@@ -262,9 +266,7 @@ class Adapter(QtCore.QObject):
         """
 
         # Block some GUI elements while the procedure is running
-        self._is_packages_selecting_allowed = False
-        self._is_starting_procedures_allowed = False
-        self.lock_unlock_GUI_signal.emit()
+        self.is_GUI_locked_signal.emit(True)
 
         # Connect thread signals
         self.progress_description_signal.connect(self._update_progress_description)
@@ -273,10 +275,10 @@ class Adapter(QtCore.QObject):
             self._update_overall_progress_description
         )
         self.overall_progress_signal.connect(self._update_overall_progress)
-        # TODO: Just for tests. This MUST NOT be available to the user
-        self._progress_view.button_terminate.clicked.connect(
-            self.procedure_thread.terminate
-        )
+        # WARNING: Just for tests. This MUST NOT be available to the user
+        # self._progress_view.button_terminate.clicked.connect(
+        #     self.procedure_thread.terminate
+        # )
         self.procedure_thread.finished.connect(self._thread_stopped_or_terminated)
 
         # Open progress view
@@ -287,7 +289,7 @@ class Adapter(QtCore.QObject):
         self._progress_view.show()
 
         # Change cursor to indicate program is busy
-        self._app_main_view.setCursor(QtCore.Qt.WaitCursor)
+        self._app_main_view.setCursor(Qt.CursorShape.WaitCursor)
 
         # Inform model that underlying data source will invalidate current data
         # (corresponding endResetModel is in the _rebuild_tree)
@@ -318,45 +320,44 @@ class Adapter(QtCore.QObject):
         self.rebuild_tree_signal.emit()
 
         log.debug(_("Emitting GUI locks signal to unlock GUI elements"))
-        self._is_packages_selecting_allowed = True
-        self._is_starting_procedures_allowed = True
-        self.lock_unlock_GUI_signal.emit()
+        self.is_GUI_locked_signal.emit(False)
 
     def _warnings_show(self, warnings):
-        error_icon = QtWidgets.QMessageBox.Icon.Critical
-        good_icon = QtWidgets.QMessageBox.Icon.Information
-        warnings_icon = QtWidgets.QMessageBox.Icon.Warning
+        error_icon = QMessageBox.Icon.Critical
+        good_icon = QMessageBox.Icon.Information
+        warnings_icon = QMessageBox.Icon.Warning
 
         if len(warnings) == 1:
-            isOK, msg = warnings[0]
+            isOK, msg, expl = warnings[0]
             icon = good_icon if isOK else error_icon
             title = _("Success") if isOK else _("Problem")
         else:
             msg = ""
+            expl = ""
             for i, warning in enumerate(warnings):
                 msg += str(i + 1) + ") " + warning[1] + "\n\n"
+                expl += str(i + 1) + ") " + warning[2] + "\n\n"
             icon = warnings_icon
             title = _("Warning")
         self._info_view.setWindowTitle(title)
         self._info_view.setText(msg)
+        self._info_view.setDetailedText(expl)
         self._info_view.setIcon(icon)
         self._info_view.show()
 
-    def _lock_unlock_GUI(self):
-        is_apply_changes_enabled = self._is_starting_procedures_allowed
-        is_local_install_enabled = (
-            self._is_starting_procedures_allowed
-            and not self._app_logic.global_flags.block_local_copy_install
-        )
-        is_software_view_enabled = self._is_packages_selecting_allowed
-        is_langs_view_enabled = is_software_view_enabled
+    def _GUI_locks(self, is_locked: bool):
+        # Apply master lock first
+        for action in self._app_main_view.actions_list:
+            action.setEnabled(not is_locked)
+        self._office_view.setEnabled(not is_locked)
+        self._clipart_view.setEnabled(not is_locked)
+        self._langs_view.setEnabled(not is_locked)
 
-        self._app_main_view.button_apply_changes.setEnabled(is_apply_changes_enabled)
-        self._app_main_view.button_install_from_local_copy.setEnabled(
-            is_local_install_enabled
-        )
-        self._software_view.setEnabled(is_software_view_enabled)
-        self._langs_view.setEnabled(is_langs_view_enabled)
+        # Some elements need to be locked for other reasons
+        if is_locked is False:
+            self._app_main_view.actionInstallFromLocalCopy.setEnabled(
+                not self._app_logic.global_flags.block_local_copy_install
+            )
 
     def _check_system_state(self):
         log.debug(_("check system state signal emitted"))
@@ -384,8 +385,24 @@ class Adapter(QtCore.QObject):
         self._app_main_view.close()
 
 
+class SignalWatchdog(QAbstractSocket):
+    def __init__(self):
+        """Propagates system signals from Python to QEventLoop"""
+        # https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co
+        super().__init__(QAbstractSocket.SctpSocket, None)
+        self.writer, self.reader = socket.socketpair()
+        self.writer.setblocking(False)
+        signal.set_wakeup_fd(self.writer.fileno())  # Python hook
+        self.setSocketDescriptor(self.reader.fileno())  # Qt hook
+        self.readyRead.connect(lambda: None)  # Dummy function call
+
+
 def main(skip_update_check: bool = False):
-    lomanager2App = QtWidgets.QApplication([])
+    lomanager2App = QApplication([])
+
+    # Makes the app quit on ctrl+c from console
+    watchdog = SignalWatchdog()  # keeping the reference is needed
+    signal.signal(signal.SIGINT, lambda sig, _: lomanager2App.quit())
 
     # Business logic
     app_logic = MainLogic(skip_update_check)
@@ -395,10 +412,12 @@ def main(skip_update_check: bool = False):
 
     # Adapter
     adapter = Adapter(app_logic=app_logic, main_view=main_window)
-    adapter._lock_unlock_GUI()
 
+    # Make sure to check system state before anything else
+    adapter._GUI_locks(is_locked=True)
     main_window.show()
     adapter.check_system_state_signal.emit()
+
     sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 

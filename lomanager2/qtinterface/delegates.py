@@ -1,7 +1,7 @@
 import gettext
 import logging
 
-from .pysidecompat import QtCore, QtGui, QtWidgets  # pyright: ignore
+from .pysidecompat import *
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
@@ -34,13 +34,15 @@ columns = {
     },
     "marked for removal?": {
         "id": 4,
-        "i18n_name": _("marked for removal?"),
+        # "i18n_name": _("marked for removal?"),
+        "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
-        "i18n_name": _("marked for install?"),
+        # "i18n_name": _("marked for install?"),
+        "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
     },
@@ -59,40 +61,36 @@ columns = {
 }
 
 
-class CheckButtonDelegate(QtWidgets.QItemDelegate):
-    update_model_signal = QtCore.Signal(QtCore.QAbstractItemModel, QtCore.QModelIndex)
-
-    checked_button_color = QtGui.QColor("#005b00")  # dark green
-    checked_button_border_color = QtGui.QColor("#005b00")  # dark green
-    unchecked_button_color = QtGui.QColor("#008000")  # green
-    unchecked_button_border_color = QtGui.QColor("#008000")  # green
-    disabled_button_color = QtGui.QColor("#635f5e")  # mid grey
-    disabled_button_border_color = QtGui.QColor("#484544")  # dark grey
-    normal_text_color = QtGui.QColor("white")
-    disabled_text_color = QtGui.QColor("#b4adaa")  # light grey
+class CheckButtonDelegate(QItemDelegate):
+    update_model_signal = Signal(QAbstractItemModel, QModelIndex)
 
     def __init__(self, max_height=40, parent=None):
         super(CheckButtonDelegate, self).__init__(parent)
         self.update_model_signal.connect(self.update_model)
         self.max_button_height = max_height
 
+        # Take colors from current style
+        highlight_clr = QWidget().palette().color(QPalette.ColorRole.Highlight)
+        text_clr = QWidget().palette().color(QPalette.ColorRole.Text)
+        mid_clr = QWidget().palette().color(QPalette.ColorRole.Mid)
+        dark_clr = QWidget().palette().color(QPalette.ColorRole.Dark)
+
+        # Color combos (button fill, button border, text)
+        self.unchecked_colors = (highlight_clr, text_clr, text_clr)
+        self.checked_colors = (text_clr, highlight_clr, highlight_clr)
+        self.disabled_colors = (mid_clr, dark_clr, dark_clr)
+
     def update_model(self, model, index):
-        is_visible = bool(
-            index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
-        )
+        is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
         if is_visible:
-            is_enabled = bool(
-                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
-            )
+            is_enabled = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 3))
             if is_enabled:
-                markstate = index.model().data(
-                    index, QtCore.Qt.ItemDataRole.DisplayRole
-                )
+                markstate = index.model().data(index, Qt.ItemDataRole.DisplayRole)
                 log.debug(_("≈≈≈≈≈ SETTING DATA BACK TO THE MODEL ≈≈≈≈≈"))
                 log.debug(
                     _("switching markstate: {} -> {}").format(markstate, not markstate)
                 )
-                model.setData(index, not markstate, QtCore.Qt.ItemDataRole.EditRole)
+                model.setData(index, not markstate, Qt.ItemDataRole.EditRole)
             else:
                 log.debug(_("button disabled"))
         else:
@@ -103,14 +101,16 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
         is_install_col = index.column() == columns.get("marked for install?").get("id")
         if is_remove_col or is_install_col:
             if (
-                event.type() == QtCore.QEvent.Type.MouseButtonRelease
-                and event.button() == QtCore.Qt.MouseButton.LeftButton
+                isinstance(event, QMouseEvent)
+                and event.type() == QEvent.Type.MouseButtonRelease
+                and event.button() == Qt.MouseButton.LeftButton
             ) or (
-                event.type() == QtCore.QEvent.Type.KeyPress
-                and event.key() == QtCore.Qt.Key.Key_Space
+                isinstance(event, QKeyEvent)
+                and event.type() == QEvent.Type.KeyPress
+                and event.key() == Qt.Key.Key_Space
             ):
                 self.update_model_signal.emit(model, index)
-            elif event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
+            elif event.type() == QEvent.Type.MouseButtonDblClick:
                 log.debug(_("mouse double click event"))
                 # Capture DoubleClick here
                 # (accept event to prevent cell editor getting opened)
@@ -130,88 +130,82 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
         is_remove_col = index.column() == columns.get("marked for removal?").get("id")
         is_install_col = index.column() == columns.get("marked for install?").get("id")
         if is_remove_col or is_install_col:
-            is_visible = bool(
-                index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 2)
-            )
+            is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
             if is_visible:
                 # Do the button painting here
 
-                is_marked = bool(
-                    index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
-                )
+                is_marked = bool(index.model().data(index, Qt.ItemDataRole.EditRole))
                 is_enabled = bool(
-                    index.model().data(index, QtCore.Qt.ItemDataRole.UserRole + 3)
+                    index.model().data(index, Qt.ItemDataRole.UserRole + 3)
                 )
                 if is_enabled and is_marked:
-                    button_color = self.checked_button_color
-                    button_border_color = self.checked_button_border_color
-                    button_text_color = self.normal_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.checked_colors
                 elif is_enabled and is_marked is False:
-                    button_color = self.unchecked_button_color
-                    button_border_color = self.unchecked_button_border_color
-                    button_text_color = self.normal_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.unchecked_colors
                 else:
-                    button_color = self.disabled_button_color
-                    button_border_color = self.disabled_button_border_color
-                    button_text_color = self.disabled_text_color
+                    (btn_clr, btn_border_clr, btn_text_clr) = self.disabled_colors
                 remove_btn_i18n_t = _("remove")
                 install_btn_i18n_t = _("install")
                 button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
 
                 #
                 painter.save()
+                pen = painter.pen()
+
+                full_rect = option.rect.getRect()
+                full_x, full_y, full_w, full_h = full_rect
 
                 # Ignore selection: if option.state & QStyle.State_Selected
                 # and remove highlight around the button irrespective its
                 # selection/focus state
                 painter.eraseRect(option.rect)
 
-                # set border color (also controls text color)
-                pen = painter.pen()
-                pen.setColor(button_border_color)
-                painter.setPen(pen)
-
-                # set button fill color
-                painter.setBrush(button_color)
+                # shrink rect slightly
+                # delta = 1
+                # option.rect.adjust(delta, delta, -delta, -delta)
 
                 # Draw the "button"
-                # limit button height
-                x, y, w, h = option.rect.getRect()
-                new_h = self.max_button_height if h > self.max_button_height else h
-                new_y = y + (h / 2) - (new_h / 2)
-                option.rect.setRect(x, new_y, w, new_h)
-
-                # shrink is slightly
-                delta = 2
-                option.rect.adjust(delta, delta, -delta, -delta)
-                x, y, w, h = option.rect.getRect()
-
-                # paint with smooth edges
-                painter.setRenderHint(QtGui.QPainter.Antialiasing)
-                painter.drawRoundedRect(x, y, w, h, 10, 10)
-
-                # (re)set pen color to draw text
-                pen.setColor(button_text_color)
+                btn_x = full_x
+                btn_h = 0.8 * full_h
+                btn_y = full_y + (full_h / 2) - (btn_h / 2)
+                btn_w = full_w
+                # set border color (also controls text color)
+                pen.setColor(btn_border_clr)
                 painter.setPen(pen)
-
-                # Draw button text
-                painter.drawText(
-                    option.rect, QtCore.Qt.AlignmentFlag.AlignCenter, button_text
+                # set button fill color
+                painter.setBrush(btn_clr)
+                #  paint the "button" with smooth edges
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                painter.drawRoundedRect(
+                    btn_x, btn_y, btn_w, btn_h, btn_h / 2, btn_h / 2
                 )
 
                 # Draw a checkbox
-                x, y, w, h = option.rect.getRect()
-                new_h = 0.6 * h
-                new_w = new_h
-                new_y = y + h / 2 - new_h / 2
-                new_x = x + new_w
-                option.rect.setRect(new_x, new_y, new_w, new_h)
+                checkbox_h = 0.6 * btn_h
+                checkbox_w = checkbox_h
+                margin = checkbox_w
+                checkbox_y = btn_y + (btn_h / 2) - (checkbox_h / 2)
+                checkbox_x = margin + btn_x
+                option.rect.setRect(checkbox_x, checkbox_y, checkbox_w, checkbox_h)
                 self.drawCheck(
                     painter,
                     option,
                     option.rect,
-                    QtCore.Qt.Checked if is_marked else QtCore.Qt.Unchecked,
+                    Qt.CheckState.Checked if is_marked else Qt.CheckState.Unchecked,
                 )
+
+                # Draw text
+                text_x = checkbox_x + checkbox_w
+                text_y = full_y
+                text_w = btn_w - (margin + 1.5 * checkbox_w + margin)
+                text_h = full_h
+                option.rect.setRect(text_x, text_y, text_w, text_h)
+                # (re)set pen color to draw text
+                pen.setColor(btn_text_clr)
+                # pen.setColor("green")
+                painter.setPen(pen)
+                # Draw button text
+                painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, button_text)
 
                 #
                 painter.restore()
@@ -221,4 +215,20 @@ class CheckButtonDelegate(QtWidgets.QItemDelegate):
                 pass
         else:
             # Use default delegates to paint other cells
-            QtWidgets.QItemDelegate.paint(self, painter, option, index)
+            QItemDelegate.paint(self, painter, option, index)
+
+    def sizeHint(self, option, index):
+        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
+        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        if is_remove_col or is_install_col:
+            #  Works by returning the (runtime evaluated) size of a string
+            #  that is not made translatable
+            #  (and is an expression of shameless bragging)
+            font_metrics = self.parent().fontMetrics()
+            button_size = font_metrics.size(
+                Qt.TextFlag.TextSingleLine, "awesome lomanager2"
+            )
+            return button_size
+        else:
+            # Use default delegates' sizeHint for other cells
+            return super().sizeHint(option, index)

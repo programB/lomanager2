@@ -53,12 +53,12 @@ class MainLogic(object):
         self.warnings = []
         return warnings
 
-    def inform_user(self, msg: str, isOK: bool):
+    def inform_user(self, msg: str, explanation: str, isOK: bool):
         if isOK:
-            log.info(msg)
+            log.info(msg + explanation)
         else:
-            log.error(msg)
-        self.warnings.append((isOK, msg))
+            log.error(msg + explanation)
+        self.warnings.append((isOK, msg, explanation))
 
     def get_planned_changes(self):
         return (
@@ -75,21 +75,21 @@ class MainLogic(object):
         """
         if self.global_flags.ready_to_apply_changes is False:
             msg = _("Not ready to apply changes")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         if "keep_packages" in kwargs.keys():
             keep_packages = kwargs["keep_packages"]
         else:
             msg = _("keep_packages argument is obligatory")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         if "force_java_download" in kwargs.keys():
             force_java_download = kwargs["force_java_download"]
         else:
             msg = _("force_java_download argument is obligatory")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         # We are good to go
@@ -150,13 +150,13 @@ class MainLogic(object):
         progress_reporter.step_start(_("Cleaning temporary directories"))
         is_cleaned_w, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_cleaned_w is False:
-            msg = _("Failed to (re)create working directory: ") + msg_w
-            self.inform_user(msg, isOK=False)
+            msg = _("Failed to (re)create working directory: ")
+            self.inform_user(msg, msg_w, isOK=False)
             return
         is_cleaned_v, msg_v = PCLOS.clean_dir(configuration.verified_dir)
         if is_cleaned_v is False:
-            msg = _("Failed to (re)create verified directory: ") + msg_v
-            self.inform_user(msg, isOK=False)
+            msg = _("Failed to (re)create verified directory: ")
+            self.inform_user(msg, msg_v, isOK=False)
             return
         else:
             directories = [
@@ -183,20 +183,20 @@ class MainLogic(object):
                     "Insufficient disk space to download selected "
                     "packages. Needed: {}. Available {}"
                 ).format(needed, available)
-                self.inform_user(msg, isOK=False)
+                self.inform_user(msg, "", isOK=False)
                 return
             progress_reporter.step_end()
 
             # STEP
             progress_reporter.step_start(_("Collecting files"))
-            is_every_pkg_collected, msg, collected_files = self._collect_packages(
+            is_every_pkg_collected, expl, collected_files = self._collect_packages(
                 packages_to_download,
                 progress_reporter=progress_reporter,
             )
 
             if is_every_pkg_collected is False:
-                msg = _("Failed to download requested packages: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Failed to download requested packages: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             else:
                 progress_reporter.step_end()
@@ -220,19 +220,19 @@ class MainLogic(object):
         """
         if self.global_flags.ready_to_apply_changes is False:
             msg = _("Not ready to apply changes")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         if self.global_flags.block_local_copy_install is True:
             msg = _("Local copy installation was blocked")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         if "local_copy_dir" in kwargs.keys():
             local_copy_directory = kwargs["local_copy_dir"]
         else:
             msg = _("local_copy_dir argument is obligatory")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         # We are good to go
@@ -259,13 +259,13 @@ class MainLogic(object):
         progress_reporter.step_start(_("Cleaning temporary directories"))
         is_wd_cleaned, msg_w = PCLOS.clean_dir(configuration.working_dir)
         if is_wd_cleaned is False:
-            msg = _("Failed to (re)create working directory: ") + msg_w
-            self.inform_user(msg, isOK=False)
+            msg = _("Failed to (re)create working directory: ")
+            self.inform_user(msg, msg_w, isOK=False)
             return
         is_vd_cleaned, msg_v = PCLOS.clean_dir(configuration.verified_dir)
         if is_vd_cleaned is False:
-            msg = _("Failed to (re)create verified directory: ") + msg_v
-            self.inform_user(msg, isOK=False)
+            msg = _("Failed to (re)create verified directory: ")
+            self.inform_user(msg, msg_v, isOK=False)
             return
         else:
             directories = [
@@ -287,7 +287,7 @@ class MainLogic(object):
         # Checks if local_copy_directory exists at all
         if not pathlib.Path(local_copy_directory).is_dir():
             msg = _("Could not find directory with saved packages")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
             return
 
         # STEP
@@ -321,7 +321,7 @@ class MainLogic(object):
                     "Java is not installed in the system and was "
                     "not found in the directory provided"
                 )
-                self.inform_user(msg, isOK=False)
+                self.inform_user(msg, "", isOK=False)
                 return
             elif not java.is_installed and Java_local_copy["isPresent"]:
                 log.info(_("Java packages found will be installed."))
@@ -414,7 +414,7 @@ class MainLogic(object):
             )
         else:
             msg = _("Nothing to install. Check logs.")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
 
     def check_system_state(self, *args, **kwargs):
         """Checks if installing/removing packages is allowed
@@ -440,7 +440,7 @@ class MainLogic(object):
             self.global_flags.block_local_copy_install = True
             self.global_flags.block_checking_4_updates = True
             msg = _("Unexpected error. Could not read processes PIDs. Check log.")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
         if running_managers:  # at least 1 package manager is running
             self.global_flags.block_removal = True
             self.global_flags.block_normal_install = True
@@ -454,7 +454,7 @@ class MainLogic(object):
             )
             for manager, pids in running_managers.items():
                 msg += manager + ": " + str(pids) + "  "
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
         else:
             log.info(_("No running package manager found ...good"))
         progress_reporter.step_end()
@@ -466,7 +466,7 @@ class MainLogic(object):
             self.global_flags.block_normal_install = True
             self.global_flags.block_local_copy_install = True
             msg = _("Unexpected error. Could not read processes PIDs. Check log.")
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
         if running_office_suits:  # an office app is running
             self.global_flags.block_removal = True
             self.global_flags.block_normal_install = True
@@ -478,7 +478,7 @@ class MainLogic(object):
             )
             for office, pids in running_office_suits.items():
                 msg += office + ": " + str(pids) + "  "
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
         else:
             log.info(_("No running Office suits found ...good"))
         progress_reporter.step_end()
@@ -497,7 +497,7 @@ class MainLogic(object):
                     is_updated,
                     explanation,
                 ) = (True, True, "")
-                self.inform_user(msg, isOK=False)
+                self.inform_user(msg, "", isOK=False)
             else:
                 (
                     check_successful,
@@ -512,7 +512,7 @@ class MainLogic(object):
                         "installations are blocked. Update your system "
                         "and restart this program."
                     )
-                    self.inform_user(msg, isOK=False)
+                    self.inform_user(msg, "", isOK=False)
                 else:
                     log.info(_("System is fully updated ...good"))
             else:
@@ -524,10 +524,13 @@ class MainLogic(object):
                 )
                 if explanation:
                     msg += "\n" + explanation
-                self.inform_user(msg, isOK=False)
+                self.inform_user(msg, "", isOK=False)
         else:
             log.warning(_("Update checking was blocked"))
         progress_reporter.step_end()
+
+        for flag in vars(self.global_flags):
+            log.debug(f"{flag}: {self.global_flags.__dict__[flag]}")
 
         progress_reporter.step_start(_("Checking if live session is active"))
         if PCLOS.is_live_session_active():
@@ -538,7 +541,7 @@ class MainLogic(object):
                 "session mode LibreOffice may fail to install due "
                 "to insufficient virtual disk space."
             )
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
         else:
             log.info(_("Running on installed system ...good"))
         progress_reporter.step_end()
@@ -606,7 +609,7 @@ class MainLogic(object):
         self.global_flags.ready_to_apply_changes = True
         self.rebuild_timestamp = time.time()
         if msg:
-            self.inform_user(msg, isOK=False)
+            self.inform_user(msg, "", isOK=False)
 
     def remove_temporary_dirs(self):
         log.debug(_("Removing temporary directory"))
@@ -617,7 +620,7 @@ class MainLogic(object):
             msg = _("Error: Temporary directory {} couldn't be removed").format(
                 configuration.temporary_dir
             )
-            self.inform_user(msg, False)
+            self.inform_user(msg, "", isOK=False)
             return False
 
     # -- end Public interface for MainLogic
@@ -1049,13 +1052,13 @@ class MainLogic(object):
         ):
             progress_reporter.step_start(_("Installing Java"))
 
-            is_installed, msg = self._install_Java(
+            is_installed, expl = self._install_Java(
                 rpms_and_tgzs_to_use["files_to_install"]["Java"],
                 progress_reporter,
             )
             if is_installed is False:
-                msg = _("Java installation failed: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Java installation failed: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             progress_reporter.step_end()
         else:
@@ -1078,14 +1081,14 @@ class MainLogic(object):
         if office_packages_to_remove:
             progress_reporter.step_start(_("Removing selected Office components"))
 
-            is_removed, msg = self._uninstall_office_components(
+            is_removed, expl = self._uninstall_office_components(
                 office_packages_to_remove,
                 progress_reporter,
             )
 
             if is_removed is False:
-                msg = _("Failed to remove Office components: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Failed to remove Office components: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             progress_reporter.step_end()
         else:
@@ -1099,14 +1102,14 @@ class MainLogic(object):
         ):
             progress_reporter.step_start(_("Installing selected Office components"))
 
-            is_installed, msg = self._install_office_components(
+            is_installed, expl = self._install_office_components(
                 rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-core"],
                 rpms_and_tgzs_to_use["files_to_install"]["LibreOffice-langs"],
                 progress_reporter,
             )
             if is_installed is False:
-                msg = _("Failed to install Office components: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Failed to install Office components: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
 
             progress_reporter.step_end()
@@ -1123,14 +1126,14 @@ class MainLogic(object):
         if clipart_packages_to_remove:
             progress_reporter.step_start(_("Removing Clipart library"))
 
-            is_removed, msg = self._uninstall_clipart(
+            is_removed, expl = self._uninstall_clipart(
                 clipart_packages_to_remove,
                 progress_reporter,
             )
 
             if is_removed is False:
-                msg = _("Failed to remove Clipart library: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Failed to remove Clipart library: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             progress_reporter.step_end()
         else:
@@ -1141,13 +1144,13 @@ class MainLogic(object):
         if rpms_and_tgzs_to_use["files_to_install"]["Clipart"]:
             progress_reporter.step_start("Installing Clipart library")
 
-            is_installed, msg = self._install_clipart(
+            is_installed, expl = self._install_clipart(
                 rpms_and_tgzs_to_use["files_to_install"]["Clipart"],
                 progress_reporter,
             )
             if is_installed is False:
-                msg = _("Openclipart installation failed: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Openclipart installation failed: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             progress_reporter.step_end()
         else:
@@ -1158,12 +1161,12 @@ class MainLogic(object):
         if create_offline_copy is True:
             progress_reporter.step_start(_("Saving packages"))
 
-            is_saved, msg = PCLOS.move_dir(
+            is_saved, expl = PCLOS.move_dir(
                 configuration.verified_dir, configuration.offline_copy_dir
             )
             if is_saved is False:
-                msg = _("Failed to save packages: ") + msg
-                self.inform_user(msg, isOK=False)
+                msg = _("Failed to save packages: ")
+                self.inform_user(msg, expl, isOK=False)
                 return
             else:
                 msg = _(
@@ -1171,11 +1174,11 @@ class MainLogic(object):
                     "This directory is getting wiped out on reboot, "
                     "please move it to some other location."
                 ).format(configuration.offline_copy_dir)
-                self.inform_user(msg, isOK=True)
+                self.inform_user(msg, expl, isOK=False)
             progress_reporter.step_end()
         else:
             msg = _("All changes successful")
-            self.inform_user(msg, isOK=True)
+            self.inform_user(msg, "", isOK=False)
             progress_reporter.step_skip(_("Packages were not saved for later use"))
 
     def _collect_packages(
