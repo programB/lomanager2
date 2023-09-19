@@ -278,13 +278,10 @@ class ProgressDialog(QDialog):
     def showEvent(self, event):
         # This event is called only when the dialog
         # is shown explicitly (on using show() or setVisible(True))
-        # an centers the dialog on parent
-        # (delay using QTimer is used to give OS time to react)
+        # Delay using QTimer is used to give OS time to react
         # https://stackoverflow.com/questions/66674305/how-to-center-new-window-relative-to-mainwindow-in-pyqt
         if not event.spontaneous():
-            geo = self.geometry()
-            geo.moveCenter(self.parent.geometry().center())
-            QTimer.singleShot(0, lambda: self.setGeometry(geo))
+            QTimer.singleShot(0, lambda: None)
 
 
 class ConfirmApplyDialog(QDialog):
