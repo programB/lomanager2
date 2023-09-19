@@ -151,6 +151,7 @@ class Adapter(QObject):
 
             # Get the directory path provided by the user
             selected_dir = self._local_copy_view.selected_dir
+            log.debug(_("The user selected: {}").format(selected_dir))
 
             # Create a separate thread worker that will run
             # selected procedure from the applogic,

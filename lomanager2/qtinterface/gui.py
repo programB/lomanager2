@@ -425,23 +425,13 @@ class LocalCopyInstallDialog(QDialog):
         self.directory_choice_box.setPlaceholderText(self.selected_dir)
 
     def _chose_directory(self):
-        selection_dialog = QFileDialog()
-        caption = "Select directory"
-        selection_dialog.setWindowTitle(caption)
-        selection_dialog.setDirectory(self.selected_dir)
-        selection_dialog.setFileMode(QFileDialog.FileMode.Directory)
-
-        is_selection_made = selection_dialog.exec()
-        log.debug(
-            _("Dialog_returned: {}, selectedFiles: {} selectedNameFilter: {}").format(
-                is_selection_made,
-                selection_dialog.selectedFiles(),
-                selection_dialog.selectedNameFilter(),
-            )
+        self.selected_dir = QFileDialog.getExistingDirectory(
+            self,
+            _("Select directory"),
+            self.selected_dir,
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks,
         )
-        if is_selection_made == 1:
-            self.directory_choice_box.setText(selection_dialog.selectedFiles()[0])
-            self.selected_dir = selection_dialog.selectedFiles()[0]
+        self.directory_choice_box.setText(self.selected_dir)
 
     def _scale_info_box(self):
         # scale info_box width based on current content.
