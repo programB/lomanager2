@@ -529,6 +529,9 @@ class MainLogic(object):
             log.warning(_("Update checking was blocked"))
         progress_reporter.step_end()
 
+        for flag in vars(self.global_flags):
+            log.debug(f"{flag}: {self.global_flags.__dict__[flag]}")
+
         progress_reporter.step_start(_("Checking if live session is active"))
         if PCLOS.is_live_session_active():
             msg = _(

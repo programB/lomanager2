@@ -28,22 +28,30 @@ class AppMainWindow(QMainWindow):
         super().__init__()
 
         # -- define actions
+        self.actions_list = []
+
         self.actionQuit = ActionsFactory(
             _("Quit"), "application-exit", parent=self, shortcut="Ctrl+Q"
         )
+        self.actions_list.append(self.actionQuit)
         self.actionInstallFromLocalCopy = ActionsFactory(
             _("Install from local copy"), "", parent=self
         )
+        self.actions_list.append(self.actionInstallFromLocalCopy)
         self.actionHelp = ActionsFactory(
             _("Help"), "system-help", parent=self, shortcut="F1"
         )
+        self.actions_list.append(self.actionHelp)
         self.actionAbout = ActionsFactory(_("About"), "", parent=self)
+        self.actions_list.append(self.actionAbout)
         self.actionApplyChanges = ActionsFactory(
             _("Apply changes"), "gtk-apply", parent=self
         )
+        self.actions_list.append(self.actionApplyChanges)
         self.actionAddLanguages = ActionsFactory(
             _("Add languages"), "set-language", parent=self
         )
+        self.actions_list.append(self.actionAddLanguages)
 
         # -- define menu bar
         menubar = self.menuBar()

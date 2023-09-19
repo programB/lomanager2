@@ -11,8 +11,7 @@ from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
 from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     LanguageMenuRenderModel,
-                                    OfficeMenuRenderModel,
-                                    SoftwareMenuModel)
+                                    OfficeMenuRenderModel, SoftwareMenuModel)
 
 t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
 _ = t.gettext
@@ -29,7 +28,7 @@ class Adapter(QObject):
     thread_worker_ready_signal = Signal()
     warnings_awaiting_signal = Signal(list)
     check_system_state_signal = Signal()
-    lock_unlock_GUI_signal = Signal()
+    is_GUI_locked_signal = Signal(bool)
 
     def __init__(self, app_logic, main_view) -> None:
         super().__init__()
@@ -70,10 +69,6 @@ class Adapter(QObject):
         self._connect_signals_and_slots()
         self._preset_views()
 
-        # Flags blocking parts of the interface during certain operations
-        self._is_packages_selecting_allowed = True
-        self._is_starting_procedures_allowed = True
-
     def _bind_views_to_models(self):
         self._office_view.setModel(self._office_menu_rendermodel)
         self._clipart_view.setModel(self._clipart_menu_rendermodel)
@@ -98,7 +93,7 @@ class Adapter(QObject):
         self.rebuild_tree_signal.connect(self._rebuild_tree)
 
         # Internal signal: Lock/Unlock GUI elements
-        self.lock_unlock_GUI_signal.connect(self._lock_unlock_GUI)
+        self.is_GUI_locked_signal.connect(self._GUI_locks)
 
         # Internal signal: Start already prepared thread worker
         self.thread_worker_ready_signal.connect(self._thread_start)
@@ -131,7 +126,7 @@ class Adapter(QObject):
             self._office_view.setRowHeight(row, 50)
             self._clipart_view.setRowHeight(row, 50)
         for row in range(self._langs_view.model().rowCount()):
-            self._langs_view.setRowHeight(row,50)
+            self._langs_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
@@ -270,9 +265,7 @@ class Adapter(QObject):
         """
 
         # Block some GUI elements while the procedure is running
-        self._is_packages_selecting_allowed = False
-        self._is_starting_procedures_allowed = False
-        self.lock_unlock_GUI_signal.emit()
+        self.is_GUI_locked_signal.emit(True)
 
         # Connect thread signals
         self.progress_description_signal.connect(self._update_progress_description)
@@ -326,9 +319,7 @@ class Adapter(QObject):
         self.rebuild_tree_signal.emit()
 
         log.debug(_("Emitting GUI locks signal to unlock GUI elements"))
-        self._is_packages_selecting_allowed = True
-        self._is_starting_procedures_allowed = True
-        self.lock_unlock_GUI_signal.emit()
+        self.is_GUI_locked_signal.emit(False)
 
     def _warnings_show(self, warnings):
         error_icon = QMessageBox.Icon.Critical
@@ -353,22 +344,19 @@ class Adapter(QObject):
         self._info_view.setIcon(icon)
         self._info_view.show()
 
-    def _lock_unlock_GUI(self):
-        is_apply_changes_enabled = self._is_starting_procedures_allowed
-        is_local_install_enabled = (
-            self._is_starting_procedures_allowed
-            and not self._app_logic.global_flags.block_local_copy_install
-        )
-        is_software_view_enabled = self._is_packages_selecting_allowed
-        is_langs_view_enabled = is_software_view_enabled
+    def _GUI_locks(self, is_locked: bool):
+        # Apply master lock first
+        for action in self._app_main_view.actions_list:
+            action.setEnabled(not is_locked)
+        self._office_view.setEnabled(not is_locked)
+        self._clipart_view.setEnabled(not is_locked)
+        self._langs_view.setEnabled(not is_locked)
 
-        self._app_main_view.actionApplyChanges.setEnabled(is_apply_changes_enabled)
-        self._app_main_view.actionInstallFromLocalCopy.setEnabled(
-            is_local_install_enabled
-        )
-        self._office_view.setEnabled(is_software_view_enabled)
-        self._clipart_view.setEnabled(is_software_view_enabled)
-        self._langs_view.setEnabled(is_langs_view_enabled)
+        # Some elements need to be locked for other reasons
+        if is_locked is False:
+            self._app_main_view.actionInstallFromLocalCopy.setEnabled(
+                not self._app_logic.global_flags.block_local_copy_install
+            )
 
     def _check_system_state(self):
         log.debug(_("check system state signal emitted"))
@@ -423,10 +411,12 @@ def main(skip_update_check: bool = False):
 
     # Adapter
     adapter = Adapter(app_logic=app_logic, main_view=main_window)
-    adapter._lock_unlock_GUI()
 
+    # Make sure to check system state before anything else
+    adapter._GUI_locks(is_locked=True)
     main_window.show()
     adapter.check_system_state_signal.emit()
+
     sys.exit(lomanager2App.exec_())  # exec_() for PySide2 compatibility
 
 
