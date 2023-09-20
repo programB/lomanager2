@@ -136,6 +136,9 @@ class AppMainWindow(QMainWindow):
         # -- define info dialog
         self.info_dialog = QMessageBox(parent=self)
 
+        # -- define documentation dialog
+        self.docs_dialog = HelpDialog(parent=self)
+
         # Get the colors from the current style
         separator_clr = self.palette().color(QPalette.ColorRole.Mid).name()
         window_clr = self.palette().color(QPalette.ColorRole.Window).name()
@@ -443,6 +446,72 @@ class LocalCopyInstallDialog(QDialog):
         # readjust the size of the window based on current sizes of
         # child widgets (that is just updated info_box size)
         self.adjustSize()
+
+
+class HelpDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.setWindowTitle(_("lomanager2 help"))
+        modal_layout = QVBoxLayout()
+
+        # -- define text browser
+        self.styled_html_view = QTextBrowser()
+        self.styled_html_view.setReadOnly(True)
+        self.styled_html_view.setOpenExternalLinks(True)
+        self.styled_html_view.setOpenLinks(True)
+
+        # -- define other GUI elements
+        flag_OK = QDialogButtonBox.StandardButton.Close
+        buttons = flag_OK
+        self.buttonBox = QDialogButtonBox(buttons)
+
+        modal_layout.addWidget(self.styled_html_view)
+        modal_layout.addWidget(self.buttonBox)
+
+        self.setLayout(modal_layout)
+        # To close the window some signal has to be emitted.
+        # Although close button sends reject signal this is not used
+        # to take any meaningful actions.
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.markdown_text = ""
+        self.html_text = ""
+        self.css_text = ""
+        self.load_documentation()
+
+        self.resize(640, 480)
+
+    def _load_md(self):
+        with open("./docs/help.md", "r") as markdown_f:
+            text = markdown_f.read()
+        self.markdown_text = text
+
+    def _load_css(self):
+        # self.css_text = "body {color: red;}"
+        self.css_text = ""
+
+    def _md_to_html(self):
+        # convert markdown to html
+        document_md = QTextDocument()
+        document_md.setMarkdown(self.markdown_text)
+        self.html_text = document_md.toHtml()
+
+    def update_view(self):
+        # Turn markdown to html
+        self._md_to_html()
+        # Create empty document and apply css to it
+        document_html = QTextDocument()
+        document_html.setDefaultStyleSheet(self.css_text)
+        # Fill this document with html
+        document_html.setHtml(self.html_text)
+        # update view
+        self.styled_html_view.setDocument(document_html)
+
+    def load_documentation(self):
+        self._load_md()
+        self._load_css()
+        self.update_view()
 
 
 if __name__ == "__main__":
