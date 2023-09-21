@@ -1,11 +1,11 @@
-import gettext
 import logging
 import signal
 import socket
 import sys
 
 from applogic.packagelogic import MainLogic
-from qtinterface.delegates import CheckButtonDelegate, columns
+from i18n import _
+from qtinterface.delegates import columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
@@ -13,8 +13,6 @@ from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     LanguageMenuRenderModel,
                                     OfficeMenuRenderModel, SoftwareMenuModel)
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -39,7 +37,7 @@ class Adapter(QObject):
         # Model (transforms data from app logic to a form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
-            column_names=[columns.get(col).get("i18n_name") for col in columns],
+            column_names=[columns[col]["i18n_name"] for col in columns],
         )
 
         # Views
@@ -151,14 +149,14 @@ class Adapter(QObject):
             "(c) 2023 The PCLinuxOS Team\n\nThis program is licensed  "
             "under the terms of the ...\n"
         )
-        QMessageBox.about(self._app_main_view, _("About"), about_text)
+        QMessageBox.about(self._app_main_view, _("About lomanager2"), about_text)
 
     def _install_from_local_copy(self):
         text = _(
-            "Following procedure will inspect the chosen directory to find "
-            "out if LibreOffice can be installed using packages therein.\n"
-            "Please note that if check is successful any already installed "
-            "Office will be removed with all its language packages."
+            "Please chose the directory with saved packages.\n"
+            "This procedure will check if those packages can be installed and "
+            "if so it will install them but first it will remove any already "
+            "installed Office, together with all its language packages."
         )
         self._local_copy_view.info_box.setText(text)
         # Set some dir before user makes proper choice
@@ -217,7 +215,7 @@ class Adapter(QObject):
             for p in removal_list:
                 summary += "- " + p + "\n"
         if not install_list and not removal_list:
-            summary = _("No changes to apply")
+            summary = _("No changes to make")
         self._apply_changes_view.info_box.setText(summary)
 
         is_ok_to_apply_changes = True if install_list or removal_list else False

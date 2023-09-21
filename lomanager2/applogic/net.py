@@ -1,4 +1,3 @@
-import gettext
 import hashlib
 import logging
 import pathlib
@@ -8,9 +7,8 @@ import urllib.error
 import urllib.request
 from typing import Callable
 
+from i18n import _
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 connections_timeout = 15

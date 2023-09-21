@@ -1,11 +1,10 @@
-import gettext
 import logging
+
+from i18n import _
 
 from .delegates import CheckButtonDelegate
 from .pysidecompat import *
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -26,6 +25,8 @@ def ActionsFactory(name, icon_theme_name, parent, shortcut=None) -> QAction:
 class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.setWindowTitle(_("lomanager2"))
 
         # -- define actions
         self.actions_list = []
@@ -237,7 +238,7 @@ class LangsModalWindow(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle(_("language selection window"))
+        self.setWindowTitle(_("Language selection"))
         modal_layout = QVBoxLayout()
 
         # -- define Langs View
@@ -266,7 +267,7 @@ class ProgressDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle(_("installation progress"))
+        self.setWindowTitle(_("Applying changes"))
         main_layout = QVBoxLayout()
 
         self.progress_description = QLabel()
@@ -284,7 +285,7 @@ class ProgressDialog(QDialog):
         # main_layout.addWidget(self.button_terminate)
 
         self.setLayout(main_layout)
-        self.setFixedSize(450,200)
+        self.setFixedSize(450, 200)
 
     def showEvent(self, event):
         # This event is called only when the dialog
@@ -452,7 +453,7 @@ class HelpDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle(_("lomanager2 help"))
+        self.setWindowTitle(_("Help"))
         modal_layout = QVBoxLayout()
 
         # -- define text browser

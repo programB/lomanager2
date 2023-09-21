@@ -1,12 +1,9 @@
 import argparse
-import gettext
 import logging
 import os
 from datetime import datetime
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
-
+from i18n import _
 
 parser = argparse.ArgumentParser(description=_("Run lomanager2"))
 parser.add_argument("--gui", action="store_true", help=_("run with GUI"))

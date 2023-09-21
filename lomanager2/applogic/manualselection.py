@@ -1,10 +1,9 @@
-import gettext
 import logging
+
+from i18n import _
 
 from .datatypes import VirtualPackage
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -96,7 +95,7 @@ class ManualSelectionLogic(object):
                     is_any_member_marked_for_install = any(
                         [m for m in family_members if m.is_marked_for_install]
                     )
-                    if not is_any_member_marked_for_install:
+                    if not is_any_member_marked_for_install and java is not None:
                         for office in java.children:
                             if office.version != self.recommended_LO_version:
                                 office.is_remove_opt_enabled = True
@@ -109,10 +108,10 @@ class ManualSelectionLogic(object):
                 # 1) mark yourself for install
                 package.is_marked_for_install = True
                 # 2) Java not installed - install it
-                if not java.is_installed:
+                if java is not None and not java.is_installed:
                     java.is_marked_for_install = True
                 # 3) if installing recommended LO mark older versions for removal
-                if package.version == self.recommended_LO_version:
+                if java is not None and package.version == self.recommended_LO_version:
                     for office in java.children:
                         if office.version != self.recommended_LO_version:
                             office.mark_for_removal()

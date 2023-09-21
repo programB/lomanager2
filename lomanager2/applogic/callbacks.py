@@ -1,8 +1,7 @@
-import gettext
 import logging
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
+from i18n import _
+
 log = logging.getLogger("lomanager2_logger")
 
 

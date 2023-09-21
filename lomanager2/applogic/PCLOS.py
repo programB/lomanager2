@@ -1,8 +1,7 @@
 """
-This module gathers functions to return some information about current
+This module gathers functions that return some information about current
 operating system state or change that state.
 """
-import gettext
 import logging
 import os
 import pathlib
@@ -14,9 +13,8 @@ import tarfile
 from typing import Callable
 
 import configuration
+from i18n import _
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 # Force English for all executed shell commands
@@ -961,5 +959,5 @@ def update_menus():
 
 
 def make_dir_tree(target_dir: pathlib.Path):
-    """Recursivly create directories needed to contain the leaf directory"""
+    """Recursively create directories needed to contain the leaf directory"""
     os.makedirs(target_dir, exist_ok=True)

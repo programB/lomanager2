@@ -1,5 +1,4 @@
 import copy
-import gettext
 import logging
 import pathlib
 import re
@@ -8,14 +7,13 @@ import xml.etree.ElementTree as ET
 from typing import Callable
 
 import configuration
+from i18n import _
 
 from . import PCLOS, net
 from .callbacks import UnifiedProgressReporter
 from .datatypes import SignalFlags, VirtualPackage, compare_versions
 from .manualselection import ManualSelectionLogic
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
@@ -181,7 +179,7 @@ class MainLogic(object):
             if is_enough is False:
                 msg = _(
                     "Insufficient disk space to download selected "
-                    "packages. Needed: {}. Available {}"
+                    "packages. Needed: {}. Available: {}"
                 ).format(needed, available)
                 self.inform_user(msg, "", isOK=False)
                 return
@@ -1801,7 +1799,7 @@ class MainLogic(object):
         s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
         if not s:
             return (False, msg)
-        return (True, _("Clipart successfully uninstalled"))
+        return (True, _("Openclipart successfully removed"))
 
     def _install_clipart(
         self,

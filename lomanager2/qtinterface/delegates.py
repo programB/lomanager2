@@ -1,10 +1,9 @@
-import gettext
 import logging
+
+from i18n import _
 
 from .pysidecompat import *
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 columns = {
@@ -34,14 +33,12 @@ columns = {
     },
     "marked for removal?": {
         "id": 4,
-        # "i18n_name": _("marked for removal?"),
         "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
-        # "i18n_name": _("marked for install?"),
         "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
@@ -97,8 +94,8 @@ class CheckButtonDelegate(QItemDelegate):
             log.debug(_("button not visible"))
 
     def editorEvent(self, event, model, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             if (
                 isinstance(event, QMouseEvent)
@@ -127,8 +124,8 @@ class CheckButtonDelegate(QItemDelegate):
         editor.setGeometry(option.rect)
 
     def paint(self, painter, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
             if is_visible:
@@ -144,9 +141,7 @@ class CheckButtonDelegate(QItemDelegate):
                     (btn_clr, btn_border_clr, btn_text_clr) = self.unchecked_colors
                 else:
                     (btn_clr, btn_border_clr, btn_text_clr) = self.disabled_colors
-                remove_btn_i18n_t = _("remove")
-                install_btn_i18n_t = _("install")
-                button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
+                button_text = _("remove") if is_remove_col else _("install")
 
                 #
                 painter.save()
@@ -218,8 +213,8 @@ class CheckButtonDelegate(QItemDelegate):
             QItemDelegate.paint(self, painter, option, index)
 
     def sizeHint(self, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             #  Works by returning the (runtime evaluated) size of a string
             #  that is not made translatable
