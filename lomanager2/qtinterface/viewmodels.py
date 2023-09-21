@@ -118,6 +118,8 @@ class SoftwareMenuModel(QAbstractTableModel):
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
         elif column == column_idx.get("kind"):
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
+            if pf_base == "core-packages":
+                pf_base = _("core")
         elif column == column_idx.get("language_name"):
             lang_code = package.kind
             pf_base, pf_vis, pf_enabled = (
