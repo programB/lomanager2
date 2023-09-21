@@ -151,7 +151,7 @@ class Adapter(QObject):
             "(c) 2023 The PCLinuxOS Team\n\nThis program is licensed  "
             "under the terms of the ...\n"
         )
-        QMessageBox.about(self._app_main_view, _("About"), about_text)
+        QMessageBox.about(self._app_main_view, _("About lomanager2"), about_text)
 
     def _install_from_local_copy(self):
         text = _(
