@@ -1,6 +1,5 @@
 import gettext
 import logging
-import time
 
 from .pysidecompat import *
 

@@ -5,7 +5,7 @@ import socket
 import sys
 
 from applogic.packagelogic import MainLogic
-from qtinterface.delegates import CheckButtonDelegate, columns
+from qtinterface.delegates import columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
 from qtinterface.threads import ProcedureWorker
@@ -39,7 +39,7 @@ class Adapter(QObject):
         # Model (transforms data from app logic to a form digestible by views)
         self._software_menu_model = SoftwareMenuModel(
             self._app_logic,
-            column_names=[columns.get(col).get("i18n_name") for col in columns],
+            column_names=[columns[col]["i18n_name"] for col in columns],
         )
 
         # Views

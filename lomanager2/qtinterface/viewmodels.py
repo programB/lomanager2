@@ -13,7 +13,7 @@ _ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
-column_idx = {
+column_index = {
     "family": 0,
     "kind": 1,
     "language_code": 1,
@@ -114,40 +114,40 @@ class SoftwareMenuModel(QAbstractTableModel):
         else:
             return
 
-        if column == column_idx.get("family"):
+        if column == column_index.get("family"):
             pf_base, pf_vis, pf_enabled = (package.family, True, False)
-        elif column == column_idx.get("kind"):
+        elif column == column_index.get("kind"):
             pf_base, pf_vis, pf_enabled = (package.kind, True, False)
             if pf_base == "core-packages":
                 pf_base = _("core")
-        elif column == column_idx.get("language_name"):
+        elif column == column_index.get("language_name"):
             lang_code = package.kind
             pf_base, pf_vis, pf_enabled = (
                 configuration.supported_langs.get(lang_code),
                 True,
                 False,
             )
-        elif column == column_idx.get("version"):
+        elif column == column_index.get("version"):
             pf_base, pf_vis, pf_enabled = (package.version, True, False)
-        elif column == column_idx.get("marked_for_removal"):
+        elif column == column_index.get("marked_for_removal"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_removal,
                 package.is_remove_opt_visible,
                 package.is_remove_opt_enabled,
             )
-        elif column == column_idx.get("marked_for_install"):
+        elif column == column_index.get("marked_for_install"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_install,
                 package.is_install_opt_visible,
                 package.is_install_opt_enabled,
             )
-        elif column == column_idx.get("installed"):
+        elif column == column_index.get("installed"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_installed,
                 True,
                 True,
             )
-        elif column == column_idx.get("marked_for_download"):
+        elif column == column_index.get("marked_for_download"):
             pf_base, pf_vis, pf_enabled = (
                 package.is_marked_for_download,
                 True,
@@ -296,7 +296,7 @@ class SoftwareMenuModel(QAbstractTableModel):
             )
 
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
-            if column == column_idx.get("marked_for_removal"):
+            if column == column_index.get("marked_for_removal"):
                 # Critically important! Warn views/viewmodels that underlying
                 # data will change
                 self.layoutAboutToBeChanged.emit()
@@ -314,7 +314,7 @@ class SoftwareMenuModel(QAbstractTableModel):
                 # Finally
                 return is_logic_applied
 
-            elif column == column_idx.get("marked_for_install"):
+            elif column == column_index.get("marked_for_install"):
                 self.layoutAboutToBeChanged.emit()
                 is_logic_applied = self._app_logic.change_install_mark(
                     package,
@@ -334,9 +334,9 @@ class SoftwareMenuModel(QAbstractTableModel):
         if index.isValid() is False:
             return Qt.ItemFlag.ItemIsEnabled
         # Only allow marked_for_removal|install fields to be editable
-        if index.column() == column_idx.get(
+        if index.column() == column_index.get(
             "marked_for_removal"
-        ) or index.column() == column_idx.get("marked_for_install"):
+        ) or index.column() == column_index.get("marked_for_install"):
             existing_flags = QAbstractItemModel.flags(self, index)
             return existing_flags | Qt.ItemFlag.ItemIsEditable
         return QAbstractItemModel.flags(self, index)
@@ -352,19 +352,18 @@ class OfficeMenuRenderModel(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, row, parent):
         sm = self.sourceModel
-        if "OpenOffice" in sm().index(row, column_idx.get("family"), parent).data():
+        if "OpenOffice" in sm().index(row, column_index["family"], parent).data():
             # Show any OpenOffice package
             return True
-        if "LibreOffice" in sm().index(row, column_idx.get("family"), parent).data():
+        if "LibreOffice" in sm().index(row, column_index["family"], parent).data():
             if (
-                sm().index(row, column_idx.get("kind"), parent).data()
-                == "core-packages"
-                or sm().index(row, column_idx.get("installed"), parent).data() is True
+                sm().index(row, column_index["kind"], parent).data() == "core-packages"
+                or sm().index(row, column_index["installed"], parent).data() is True
             ):
                 # show any LibreOffice core package
                 # and any INSTALLED LibreOffice lang package
                 return True
-        if "Java" in sm().index(row, column_idx.get("family"), parent).data():
+        if "Java" in sm().index(row, column_index["family"], parent).data():
             # Don't show Java
             # (Switch this to True if needed for debuging.
             #  Non of the other render models is showing Java either)
@@ -380,7 +379,7 @@ class ClipartMenuRenderModel(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, row, parent):
         sm = self.sourceModel
-        if "Clipart" in sm().index(row, column_idx.get("family"), parent).data():
+        if "Clipart" in sm().index(row, column_index["family"], parent).data():
             # Show any Clipart package
             return True
         # and nothing else
@@ -397,10 +396,9 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, row, parent):
         sm = self.sourceModel
         if (
-            "LibreOffice" in sm().index(row, column_idx.get("family"), parent).data()
-            and sm().index(row, column_idx.get("kind"), parent).data()
-            != "core-packages"
-            and sm().index(row, column_idx.get("installed"), parent).data() is False
+            "LibreOffice" in sm().index(row, column_index["family"], parent).data()
+            and sm().index(row, column_index["kind"], parent).data() != "core-packages"
+            and sm().index(row, column_index["installed"], parent).data() is False
         ):
             # show any NOT installed LibreOffice lang package
             return True

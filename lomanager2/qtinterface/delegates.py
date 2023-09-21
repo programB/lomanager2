@@ -95,8 +95,8 @@ class CheckButtonDelegate(QItemDelegate):
             log.debug(_("button not visible"))
 
     def editorEvent(self, event, model, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             if (
                 isinstance(event, QMouseEvent)
@@ -125,8 +125,8 @@ class CheckButtonDelegate(QItemDelegate):
         editor.setGeometry(option.rect)
 
     def paint(self, painter, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             is_visible = bool(index.model().data(index, Qt.ItemDataRole.UserRole + 2))
             if is_visible:
@@ -214,8 +214,8 @@ class CheckButtonDelegate(QItemDelegate):
             QItemDelegate.paint(self, painter, option, index)
 
     def sizeHint(self, option, index):
-        is_remove_col = index.column() == columns.get("marked for removal?").get("id")
-        is_install_col = index.column() == columns.get("marked for install?").get("id")
+        is_remove_col = index.column() == columns["marked for removal?"]["id"]
+        is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
             #  Works by returning the (runtime evaluated) size of a string
             #  that is not made translatable
