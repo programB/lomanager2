@@ -181,7 +181,7 @@ class MainLogic(object):
             if is_enough is False:
                 msg = _(
                     "Insufficient disk space to download selected "
-                    "packages. Needed: {}. Available {}"
+                    "packages. Needed: {}. Available: {}"
                 ).format(needed, available)
                 self.inform_user(msg, "", isOK=False)
                 return
@@ -1801,7 +1801,7 @@ class MainLogic(object):
         s, msg = PCLOS.uninstall_using_apt_get(rpms_to_rm, progress_reporter)
         if not s:
             return (False, msg)
-        return (True, _("Clipart successfully uninstalled"))
+        return (True, _("Openclipart successfully removed"))
 
     def _install_clipart(
         self,

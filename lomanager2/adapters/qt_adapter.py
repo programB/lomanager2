@@ -155,10 +155,10 @@ class Adapter(QObject):
 
     def _install_from_local_copy(self):
         text = _(
-            "Following procedure will inspect the chosen directory to find "
-            "out if LibreOffice can be installed using packages therein.\n"
-            "Please note that if check is successful any already installed "
-            "Office will be removed with all its language packages."
+            "Please chose the directory with saved packages.\n"
+            "This procedure will check if those packages can be installed and "
+            "if so it will install them but first it will remove any already "
+            "installed Office, together with all its language packages."
         )
         self._local_copy_view.info_box.setText(text)
         # Set some dir before user makes proper choice
@@ -217,7 +217,7 @@ class Adapter(QObject):
             for p in removal_list:
                 summary += "- " + p + "\n"
         if not install_list and not removal_list:
-            summary = _("No changes to apply")
+            summary = _("No changes to make")
         self._apply_changes_view.info_box.setText(summary)
 
         is_ok_to_apply_changes = True if install_list or removal_list else False

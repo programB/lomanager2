@@ -1,5 +1,5 @@
 """
-This module gathers functions to return some information about current
+This module gathers functions that return some information about current
 operating system state or change that state.
 """
 import gettext
@@ -961,5 +961,5 @@ def update_menus():
 
 
 def make_dir_tree(target_dir: pathlib.Path):
-    """Recursivly create directories needed to contain the leaf directory"""
+    """Recursively create directories needed to contain the leaf directory"""
     os.makedirs(target_dir, exist_ok=True)

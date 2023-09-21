@@ -34,14 +34,12 @@ columns = {
     },
     "marked for removal?": {
         "id": 4,
-        # "i18n_name": _("marked for removal?"),
         "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": False,
     },
     "marked for install?": {
         "id": 5,
-        # "i18n_name": _("marked for install?"),
         "i18n_name": _("status"),
         "show_in_software_view": True,
         "show_in_langs_view": True,
@@ -144,9 +142,7 @@ class CheckButtonDelegate(QItemDelegate):
                     (btn_clr, btn_border_clr, btn_text_clr) = self.unchecked_colors
                 else:
                     (btn_clr, btn_border_clr, btn_text_clr) = self.disabled_colors
-                remove_btn_i18n_t = _("remove")
-                install_btn_i18n_t = _("install")
-                button_text = remove_btn_i18n_t if is_remove_col else install_btn_i18n_t
+                button_text = _("remove") if is_remove_col else _("install")
 
                 #
                 painter.save()
