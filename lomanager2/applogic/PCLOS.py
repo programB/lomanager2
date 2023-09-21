@@ -2,7 +2,6 @@
 This module gathers functions that return some information about current
 operating system state or change that state.
 """
-import gettext
 import logging
 import os
 import pathlib
@@ -14,9 +13,8 @@ import tarfile
 from typing import Callable
 
 import configuration
+from i18n import _
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 # Force English for all executed shell commands

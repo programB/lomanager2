@@ -1,10 +1,9 @@
-import gettext
 import logging
+
+from i18n import _
 
 from .datatypes import VirtualPackage
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 

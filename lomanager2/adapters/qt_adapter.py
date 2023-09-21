@@ -1,10 +1,10 @@
-import gettext
 import logging
 import signal
 import socket
 import sys
 
 from applogic.packagelogic import MainLogic
+from i18n import _
 from qtinterface.delegates import columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
@@ -13,8 +13,6 @@ from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     LanguageMenuRenderModel,
                                     OfficeMenuRenderModel, SoftwareMenuModel)
 
-t = gettext.translation("lomanager2", localedir="./locales", fallback=True)
-_ = t.gettext
 log = logging.getLogger("lomanager2_logger")
 
 
