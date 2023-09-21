@@ -89,6 +89,9 @@ class Adapter(QObject):
         # Option available to the user: Open help window
         self._app_main_view.actionHelp.triggered.connect(self._show_docs)
 
+        # Option available to the user: Open help window
+        self._app_main_view.actionAbout.triggered.connect(self._show_about)
+
         # Option available to the user: Quit the app
         self._app_main_view.actionQuit.triggered.connect(self._cleanup_and_exit)
 
@@ -139,6 +142,16 @@ class Adapter(QObject):
 
     def _show_docs(self):
         self._app_main_view.docs_dialog.show()
+
+    def _show_about(self):
+        about_text = _(
+            "LibreOffice manager 2 (lomanager2)\n\n"
+            "Installation, update and removal of LibreOffice "
+            "components in PCLinuxOS\n\n"
+            "(c) 2023 The PCLinuxOS Team\n\nThis program is licensed  "
+            "under the terms of the ...\n"
+        )
+        QMessageBox.about(self._app_main_view, _("About"), about_text)
 
     def _install_from_local_copy(self):
         text = _(
