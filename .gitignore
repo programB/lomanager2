@@ -225,3 +225,4 @@ lomanager2/locales/*
 tests/locales/*
 locales/*
 # !*.pot
+i18n/*
