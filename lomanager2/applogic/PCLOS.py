@@ -583,20 +583,45 @@ def install_using_apt_get(
     )
     if status:
         regex_install = re.compile(
+            r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+        )
+        regex_reinstall = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_reinstalled>[0-9]+) reinstalled, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
         is_summary_present = False
         for line in output.split("\n"):
-            if match := regex_install.search(line):
+            if match_i := regex_install.search(line):
                 is_summary_present = True
-                n_upgraded = match.group("n_upgraded")
-                n_installed = match.group("n_installed")
-                n_reinstalled = match.group("n_reinstalled")
-                n_removed = match.group("n_removed")
-                n_not_upgraded = match.group("n_not_upgraded")
+                n_upgraded = match_i.group("n_upgraded")
+                n_installed = match_i.group("n_installed")
+                n_removed = match_i.group("n_removed")
+                n_not_upgraded = match_i.group("n_not_upgraded")
                 if not (
                     (n_upgraded == n_removed == n_not_upgraded == "0")
                     and n_installed != "0"
+                ):
+                    msg = _(
+                        _(
+                            "Dry-run install failed. Packages where not installed: {}"
+                        ).format(output)
+                    )
+                    log.error(msg)
+                    return (False, msg)
+                else:
+                    msg = _(
+                        "Dry-run install successful. Proceeding with actual install..."
+                    )
+                    log.info(msg)
+                    break
+            elif match_ri := regex_reinstall.search(line):
+                is_summary_present = True
+                n_upgraded = match_ri.group("n_upgraded")
+                n_reinstalled = match_ri.group("n_reinstalled")
+                n_removed = match_ri.group("n_removed")
+                n_not_upgraded = match_ri.group("n_not_upgraded")
+                if not (
+                    (n_upgraded == n_removed == n_not_upgraded == "0")
+                    and n_reinstalled != "0"
                 ):
                     msg = _(
                         _(
