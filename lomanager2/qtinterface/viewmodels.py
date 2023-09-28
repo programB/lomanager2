@@ -356,6 +356,7 @@ class OfficeMenuRenderModel(QSortFilterProxyModel):
         if "LibreOffice" in sm().index(row, column_index["family"], parent).data():
             if (
                 sm().index(row, column_index["kind"], parent).data() == "core-packages"
+                or sm().index(row, column_index["kind"], parent).data() == _("core")
                 or sm().index(row, column_index["installed"], parent).data() is True
             ):
                 # show any LibreOffice core package
@@ -396,6 +397,7 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
         if (
             "LibreOffice" in sm().index(row, column_index["family"], parent).data()
             and sm().index(row, column_index["kind"], parent).data() != "core-packages"
+            and sm().index(row, column_index["kind"], parent).data() != _("core")
             and sm().index(row, column_index["installed"], parent).data() is False
         ):
             # show any NOT installed LibreOffice lang package
