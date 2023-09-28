@@ -6,7 +6,9 @@ from datetime import datetime
 from i18n import _
 
 parser = argparse.ArgumentParser(description=_("Run lomanager2"))
-parser.add_argument("--gui", action="store_true", help=_("run with GUI"))
+parser.add_argument(
+    "--cli", action="store_true", help=_("use command line interface (no GUI)")
+)
 parser.add_argument("--debug", action="store_true", help=_("run in debug mode"))
 parser.add_argument(
     "--skip-update-check",
@@ -55,13 +57,13 @@ if os.geteuid() == 0:
 
     # Run the app with chosen interface
     logger.info(_("Log started"))
-    if args.gui is True:
-        from adapters import qt_adapter
-
-        qt_adapter.main(skip_update_check=args.debug and args.skip_update_check)
-    else:
+    if args.cli is True:
         from adapters import cli_adapter
 
         cli_adapter.main(skip_update_check=args.debug and args.skip_update_check)
+    else:
+        from adapters import qt_adapter
+
+        qt_adapter.main(skip_update_check=args.debug and args.skip_update_check)
 else:
     print(_("This program requires root privileges to run."))
