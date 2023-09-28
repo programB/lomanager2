@@ -13,6 +13,7 @@ import tarfile
 from typing import Callable
 
 import configuration
+
 from i18n import _
 
 log = logging.getLogger("lomanager2_logger")
@@ -109,9 +110,11 @@ def get_running_Office_processes() -> tuple[bool, dict]:
 
 
 class HumanUser:
-    def __init__(self, name, home_dir) -> None:
+    def __init__(self, name, home_dir, uid, gid) -> None:
         self.name = name
         self.home_dir = pathlib.Path(home_dir)
+        self.uid = uid
+        self.gid = gid
 
 
 def get_system_users() -> list[HumanUser]:
@@ -130,14 +133,21 @@ def get_system_users() -> list[HumanUser]:
 
     human_users = []
     for user in pwd.getpwall():
+        user.pw_uid
         if (user.pw_shell in system_shells) and ("home" in user.pw_dir):
-            human_users.append(HumanUser(user.pw_name, user.pw_dir))
+            human_users.append(
+                HumanUser(user.pw_name, user.pw_dir, user.pw_uid, user.pw_gid)
+            )
     try:
         root_user = pwd.getpwuid(0)  # assuming root has uid 0
     except Exception as error:
         log.error(_("No root user found ") + str(error))
     else:
-        human_users.append(HumanUser(root_user.pw_name, root_user.pw_dir))
+        human_users.append(
+            HumanUser(
+                root_user.pw_name, root_user.pw_dir, root_user.pw_uid, root_user.pw_gid
+            )
+        )
     return human_users
 
 

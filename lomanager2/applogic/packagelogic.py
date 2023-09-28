@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import pathlib
 import re
 import time
@@ -1700,7 +1701,9 @@ class MainLogic(object):
 
         # Disable checks for every existing user
         for user in PCLOS.get_system_users():
-            conf_dir = user.home_dir.joinpath(".config/libreoffice/4/user")
+            log.debug(f"changing registrymodifications.xcu for user: {user.name}")
+            conf_dir_root = user.home_dir.joinpath(".config/libreoffice")
+            conf_dir = conf_dir_root.joinpath("4/user")
             xcu_file = conf_dir.joinpath("registrymodifications.xcu")
             if xcu_file.exists():
                 # modify existing file
@@ -1728,11 +1731,18 @@ class MainLogic(object):
                 if not conf_dir.exists():
                     PCLOS.make_dir_tree(target_dir=conf_dir)
                 create_xcu_file_w_disabled_autocheck(file=xcu_file)
+            # Set/reset files and folders ownership
+            log.debug(f"reseting ownership of: {conf_dir_root}")
+            os.chown(conf_dir_root, user.uid, user.gid)
+            for item in conf_dir.iterdir():
+                log.debug(f"reseting ownership of: {item}")
+                os.chown(item, user.uid, user.gid)
 
         # Disable checking for new users (if ever created)
         skel_dir = pathlib.Path("/etc/skel/.config/libreoffice/4/user")
         skel_xcu_file = skel_dir.joinpath("registrymodifications.xcu")
         if not skel_xcu_file.exists():
+            log.debug(f"no xcu in skel creating new one")
             if not skel_dir.exists():
                 PCLOS.make_dir_tree(target_dir=skel_dir)
             create_xcu_file_w_disabled_autocheck(file=skel_xcu_file)
