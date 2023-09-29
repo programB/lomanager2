@@ -1753,7 +1753,7 @@ class MainLogic(object):
         # Change it to:
         # Categories=Office;
         log.info(_("updating .desktop files"))
-        base_dirS = pathlib.Path("/opt").glob("libreoffice*")
+        base_dirS = [d for d in pathlib.Path("/opt").glob("libreoffice*") if d.is_dir()]
         fileS = [
             "base.desktop",
             "calc.desktop",
