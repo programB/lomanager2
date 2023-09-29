@@ -323,7 +323,8 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
-    if pathlib.Path("/usr/bin").glob("libreoffice*"):
+    lo_execs = list(pathlib.Path("/usr/bin").glob("libreoffice[1-9].[1-9]"))
+    if lo_execs:
         log.debug(_("Detected LibreOffice binary"))
         # Check if the ure rpm package is installed
         success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
@@ -395,7 +396,11 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 # No langs detected just add the core package to the list
                 list_of_detected_suits.append(("LibreOffice", full_version, ()))
         else:
-            log.warning(_("LibreOffice binary detected but no installed rpm found."))
+            log.warning(
+                _(
+                    "Some LibreOffice executables detected ({}) but no installed rpm found."
+                ).format(lo_execs)
+            )
 
     inf_message = _("All detected office suits (and langs): {}").format(
         list_of_detected_suits
