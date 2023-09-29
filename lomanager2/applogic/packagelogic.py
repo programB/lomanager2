@@ -1178,11 +1178,11 @@ class MainLogic(object):
                     "This directory is getting wiped out on reboot, "
                     "please move it to some other location."
                 ).format(configuration.offline_copy_dir)
-                self.inform_user(msg, expl, isOK=False)
+                self.inform_user(msg, expl, isOK=True)
             progress_reporter.step_end()
         else:
             msg = _("All changes successful")
-            self.inform_user(msg, "", isOK=False)
+            self.inform_user(msg, "", isOK=True)
             progress_reporter.step_skip(_("Packages were not saved for later use"))
 
     def _collect_packages(
