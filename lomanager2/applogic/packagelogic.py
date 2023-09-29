@@ -1647,9 +1647,22 @@ class MainLogic(object):
                 return (False, msg)
 
             # Post install stuff
+            progress_reporter.progress_msg(
+                _("Disabling LibreOffice's online updates...")
+            )
+            progress_reporter.progress(50)
             self._disable_LO_update_checks()
+            progress_reporter.progress(100)
+
+            progress_reporter.progress_msg(_("Modifying .desktop files..."))
+            progress_reporter.progress(50)
             self._modify_dot_desktop_files()
+            progress_reporter.progress(100)
+
+            progress_reporter.progress_msg(_("Applying icon fixes..."))
+            progress_reporter.progress(50)
             self._fix_LXDE_icons()
+            progress_reporter.progress(100)
 
             # Finally return success
             return (True, _("LibreOffice packages successfully installed"))
