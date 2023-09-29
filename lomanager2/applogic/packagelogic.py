@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from typing import Callable
 
 import configuration
+
 from i18n import _
 
 from . import PCLOS, net
@@ -485,6 +486,7 @@ class MainLogic(object):
         if self.global_flags.block_checking_4_updates is False:
             # no running manager prevents access to system rpm database
             progress_reporter.step_start(_("Checking for system updates"))
+            explanation = ""
             if self.skip_update_check:
                 msg = _(
                     "Checking for OS updates was bypassed. Installing "
@@ -521,9 +523,7 @@ class MainLogic(object):
                     "won't be able to install LibreOffice packages. "
                     "Check your internet connection and restart this program."
                 )
-                if explanation:
-                    msg += "\n" + explanation
-                self.inform_user(msg, "", isOK=False)
+                self.inform_user(msg, explanation, isOK=False)
         else:
             log.warning(_("Update checking was blocked"))
         progress_reporter.step_end()

@@ -163,7 +163,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
         if any(
             map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])
         ):
-            return (False, False, _("Failed to check updates"))
+            return (False, False, _("Failed to check updates") + f": {output}")
 
         status, output = run_shell_command(
             "apt-get dist-upgrade --fix-broken --simulate", fail_on_error=True
