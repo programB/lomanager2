@@ -1,5 +1,7 @@
 import logging
 
+from configuration import button_sizing_string
+
 from i18n import _
 
 from .pysidecompat import *
@@ -216,12 +218,12 @@ class CheckButtonDelegate(QItemDelegate):
         is_remove_col = index.column() == columns["marked for removal?"]["id"]
         is_install_col = index.column() == columns["marked for install?"]["id"]
         if is_remove_col or is_install_col:
-            #  Works by returning the (runtime evaluated) size of a string
-            #  that is not made translatable
+            #  Works by returning the (runtime evaluated) size of
+            #  a fixed string that is not made translatable
             #  (and is an expression of shameless bragging)
             font_metrics = self.parent().fontMetrics()
             button_size = font_metrics.size(
-                Qt.TextFlag.TextSingleLine, "awesome lomanager2"
+                Qt.TextFlag.TextSingleLine, button_sizing_string
             )
             return button_size
         else:

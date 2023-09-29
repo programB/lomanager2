@@ -186,3 +186,5 @@ existing_helppacks = [
     "ru", "ta", "uk", "bn-IN", "ja", "km", "el"
     ]
 # fmt: on
+
+button_sizing_string = "awesome lomanager2"
