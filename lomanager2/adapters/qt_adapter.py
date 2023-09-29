@@ -389,9 +389,10 @@ class Adapter(QObject):
         self.thread_worker_ready_signal.emit()
 
     def _cleanup_and_exit(self):
+        log.debug(_("Quit clicked: User decided to finish using the app"))
         removed = self._app_logic.remove_temporary_dirs()
         if removed:
-            log.debug("Bye")
+            log.info("Bye")
         else:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
         self._app_main_view.close()
