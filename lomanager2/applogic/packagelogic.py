@@ -519,7 +519,7 @@ class MainLogic(object):
                 msg = _(
                     "Failed to check update status \nand as a result you "
                     "won't be able to install LibreOffice packages. "
-                    "Check you internet connection and restart this program."
+                    "Check your internet connection and restart this program."
                 )
                 if explanation:
                     msg += "\n" + explanation
