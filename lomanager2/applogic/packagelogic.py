@@ -58,7 +58,11 @@ class MainLogic(object):
             log.info(msg + explanation)
         else:
             log.error(msg + explanation)
-        self.warnings.append((isOK, msg, explanation))
+        # Do not add the same warning twice
+        # (it will be logged in the code above as many times as sent)
+        warning = (isOK, msg, explanation)
+        if not warning in self.warnings:
+            self.warnings.append(warning)
 
     def get_planned_changes(self):
         return (
