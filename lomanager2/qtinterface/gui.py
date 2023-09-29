@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 from i18n import _
 
@@ -484,8 +485,12 @@ class HelpDialog(QDialog):
         self.resize(640, 480)
 
     def _load_md(self):
-        with open("./docs/help.md", "r") as markdown_f:
-            text = markdown_f.read()
+        help_md = pathlib.Path("/usr/share/doc/lomanager2").joinpath("help.md")
+        if help_md.exists():
+            with open(help_md, "r") as markdown_f:
+                text = markdown_f.read()
+        else:
+            text = _("Help document not found")
         self.markdown_text = text
 
     def _load_css(self):
