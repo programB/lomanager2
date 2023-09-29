@@ -573,7 +573,6 @@ class MainLogic(object):
             recommended_Java_ver,
             recommended_LO_ver,
             recommended_Clip_ver,
-            msg,
         ) = self._get_available_software()
         progress_reporter.step_end()
 
@@ -607,7 +606,14 @@ class MainLogic(object):
         )
         self.global_flags.ready_to_apply_changes = True
         self.rebuild_timestamp = time.time()
-        if msg:
+        if (
+            configuration.force_specific_LO_version != ""
+            and newest_LO_ver != ""
+            and newest_LO_ver != configuration.force_specific_LO_version
+        ):
+            msg = _("Downgrade of LibreOffice to version {} is recommended.").format(
+                configuration.force_specific_LO_version
+            )
             self.inform_user(msg, "", isOK=False)
 
     def remove_temporary_dirs(self):
@@ -858,7 +864,6 @@ class MainLogic(object):
 
     def _get_available_software(self):
         available_virtual_packages = []
-        msg = ""
 
         # Since this program is not meant to update Java,
         # Java version is not used.
@@ -887,9 +892,6 @@ class MainLogic(object):
         # Decide which LO version should be recommended for installation
         if configuration.force_specific_LO_version != "":
             LO_ver = configuration.force_specific_LO_version
-            msg += _("Downgrade of LibreOffice to version {} is recommended.").format(
-                LO_ver
-            )
         else:
             LO_ver = configuration.latest_available_LO_version
         recommended_LO_ver = LO_ver
@@ -983,7 +985,6 @@ class MainLogic(object):
             recommended_Java_ver,
             recommended_LO_ver,
             recommended_Clip_ver,
-            msg,
         )
 
     def _detect_installed_software(self):
