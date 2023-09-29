@@ -179,6 +179,8 @@ class Adapter(QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.local_copy_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Window title differes depending on procedure
+            self._progress_view.setWindowTitle(_("Applying changes"))
             # Show progress bar (check_system_state is not showing it)
             self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
@@ -261,6 +263,8 @@ class Adapter(QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.normal_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Window title differes depending on procedure
+            self._progress_view.setWindowTitle(_("Applying changes"))
             # Show progress bar (check_system_state is not showing it)
             self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
@@ -383,7 +387,8 @@ class Adapter(QObject):
         # Number of steps differs depending on procedure
         proc_steps = self._app_logic.check_system_procedure_step_count
         self._progress_view.overall_progress_bar.setRange(0, proc_steps)
-        #
+        # Window title differes depending on procedure
+        self._progress_view.setWindowTitle(_("Checking system state"))
         self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
