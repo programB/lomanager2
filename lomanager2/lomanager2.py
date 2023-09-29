@@ -25,23 +25,21 @@ args = parser.parse_args()
 # Check if programs runs with root privileges
 if os.geteuid() == 0:
     # Setup logging
-    log_level = logging.DEBUG if args.debug else logging.INFO
-
     # Create log(s) directory
-    logs_path = "/root/.lomanager2/log/"
-    os.makedirs(logs_path, exist_ok=True)
+    logs_dir = "/root/.lomanager2/log/"
+    os.makedirs(logs_dir, exist_ok=True)
 
     logger = logging.getLogger("lomanager2_logger")
-    logger.setLevel(log_level)
+    logger.setLevel(logging.DEBUG)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(log_level)
+    console_handler.setLevel(logging.DEBUG if args.debug else logging.WARNING)
 
     log_filename = datetime.now().strftime("%Y-%m-%d_%H%M%S") + ".log"
     logfile_handler = logging.FileHandler(
-        logs_path + log_filename, mode="w", encoding="utf-8", delay=False, errors=None
+        logs_dir + log_filename, mode="w", encoding="utf-8", delay=False, errors=None
     )
-    logfile_handler.setLevel(log_level)
+    logfile_handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
 
     debug_formatter = logging.Formatter(
         "%(asctime)s [%(levelname)s] (in %(module)s.%(funcName)s): %(message)s"
