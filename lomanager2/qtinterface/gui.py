@@ -78,8 +78,8 @@ class AppMainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolBar)
 
         # -- define Software View
-        self.office_view = CustomTableView(no_of_rows=5, parent=self)
-        self.clipart_view = CustomTableView(no_of_rows=3, parent=self)
+        self.office_view = CustomTableView(no_of_rows=3, parent=self)
+        self.clipart_view = CustomTableView(no_of_rows=2, parent=self)
 
         # -- define other GUI elements
         left_spacer = QSpacerItem(
