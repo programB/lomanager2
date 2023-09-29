@@ -4,7 +4,6 @@ import socket
 import sys
 
 from applogic.packagelogic import MainLogic
-from i18n import _
 from qtinterface.delegates import columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
@@ -12,6 +11,8 @@ from qtinterface.threads import ProcedureWorker
 from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     LanguageMenuRenderModel,
                                     OfficeMenuRenderModel, SoftwareMenuModel)
+
+from i18n import _
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -125,12 +126,6 @@ class Adapter(QObject):
         self._software_menu_model.endResetModel()
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
-        # Increase spacing between rows in software_view
-        for row in range(self._office_view.model().rowCount()):
-            self._office_view.setRowHeight(row, 50)
-            self._clipart_view.setRowHeight(row, 50)
-        for row in range(self._langs_view.model().rowCount()):
-            self._langs_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())

@@ -177,7 +177,11 @@ class CustomTableView(QTableView):
         if hide_header:
             self.horizontalHeader().hide()
 
-        # Vertical header should not exist at all
+        # Increase spacing between rows
+        self.verticalHeader().setDefaultSectionSize(50)
+        self.row_height = self.verticalHeader().defaultSectionSize()
+
+        # Vertical header should never be visible
         self.verticalHeader().hide()
 
         # Selection and focus should be turned off
@@ -220,7 +224,7 @@ class CustomTableView(QTableView):
         if self.no_of_rows is not None:
             # This is one of the main software views (office/clipart).
             # Set table height hint to requested multiple of rowHeight
-            table_size.setHeight(self.no_of_rows * self.rowHeight(0))
+            table_size.setHeight(self.no_of_rows * self.row_height + 1)
             return table_size
         else:
             # Unrestricted number of rows. That means it's a langs_view.
@@ -235,7 +239,7 @@ class CustomTableView(QTableView):
             # (That way it shows at least 6 entries)
             new_hint = QSize()
             new_hint.setWidth(table_size.width())
-            new_hint.setHeight(2*table_size.height())
+            new_hint.setHeight(2 * table_size.height())
             return new_hint
 
     def paintEvent(self, event):
