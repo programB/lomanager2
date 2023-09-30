@@ -28,6 +28,7 @@ class AppMainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle(_("lomanager2"))
+        self.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define actions
         self.actions_list = []
@@ -125,21 +126,27 @@ class AppMainWindow(QMainWindow):
 
         # -- define Languages window
         self.extra_langs_window = LangsModalWindow(parent=self)
+        self.extra_langs_window.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define Progress dialog
         self.progress_dialog = ProgressDialog(parent=self)
+        self.progress_dialog.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define Apply changes confirmation dialog
         self.confirm_apply_dialog = ConfirmApplyDialog(parent=self)
+        self.confirm_apply_dialog.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define Local copy install confirmation dialog
         self.confirm_local_copy_dialog = LocalCopyInstallDialog(parent=self)
+        self.confirm_local_copy_dialog.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define info dialog
         self.info_dialog = QMessageBox(parent=self)
+        self.info_dialog.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # -- define documentation dialog
         self.docs_dialog = HelpDialog(parent=self)
+        self.docs_dialog.setWindowIcon(QIcon.fromTheme("office_section"))
 
         # Get the colors from the current style
         separator_clr = self.palette().color(QPalette.ColorRole.Mid).name()
@@ -280,7 +287,6 @@ class ProgressDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle(_("Applying changes"))
         main_layout = QVBoxLayout()
 
         self.progress_description = QLabel()
