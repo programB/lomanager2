@@ -155,11 +155,11 @@ class Adapter(QObject):
 
     def _show_about(self):
         about_text = _(
-            "LibreOffice manager 2 (lomanager2)\n\n"
+            "LibreOffice Manager 2 (lomanager2)\n\n"
             "Installation, update and removal of LibreOffice "
             "components in PCLinuxOS\n\n"
-            "(c) 2023 The PCLinuxOS Team\n\nThis program is licensed  "
-            "under the terms of the ...\n"
+            "Copyright (C) 2023 programB\n\nThis program is licensed  "
+            "under the terms of the GNU GPL version 3.\n"
         )
         QMessageBox.about(self._app_main_view, _("About lomanager2"), about_text)
 
