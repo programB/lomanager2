@@ -1,3 +1,20 @@
+"""
+Copyright (C) 2023 programB
+
+This file is part of lomanager2.
+
+lomanager2 is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 3
+as published by the Free Software Foundation.
+
+lomanager2 is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with lomanager2.  If not, see <http://www.gnu.org/licenses/>.
+"""
 import logging
 import signal
 import socket
@@ -138,11 +155,11 @@ class Adapter(QObject):
 
     def _show_about(self):
         about_text = _(
-            "LibreOffice manager 2 (lomanager2)\n\n"
+            "LibreOffice Manager 2 (lomanager2)\n\n"
             "Installation, update and removal of LibreOffice "
             "components in PCLinuxOS\n\n"
-            "(c) 2023 The PCLinuxOS Team\n\nThis program is licensed  "
-            "under the terms of the ...\n"
+            "Copyright (C) 2023 programB\n\nThis program is licensed  "
+            "under the terms of the GNU GPL version 3.\n"
         )
         QMessageBox.about(self._app_main_view, _("About lomanager2"), about_text)
 

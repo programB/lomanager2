@@ -1,3 +1,20 @@
+"""
+Copyright (C) 2023 programB
+
+This file is part of lomanager2.
+
+lomanager2 is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 3
+as published by the Free Software Foundation.
+
+lomanager2 is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with lomanager2.  If not, see <http://www.gnu.org/licenses/>.
+"""
 import argparse
 import os
 import pathlib
@@ -150,16 +167,20 @@ def pack_release(rel_dir: pathlib.Path, target_dir: pathlib.Path):
 
 
 def copy_docs_to(dir: pathlib.Path):
-    help_f = pathlib.Path("docs").joinpath("help.md")
-    target = dir.joinpath(help_f.name)
-    try:
-        shutil.copyfile(help_f, target)
-    except Exception as error:
-        print(f"Failed to Copy: {help_f} to {target}")
-        print(error)
-        exit(1)
-    else:
-        print(f"Copied: {help_f} to {target}")
+    doc_files = [
+        pathlib.Path("docs").joinpath("help.md"),
+        pathlib.Path(".").joinpath("LICENSE.md"),
+    ]
+    for document in doc_files:
+        target = dir.joinpath(document.name)
+        try:
+            shutil.copyfile(document, target)
+        except Exception as error:
+            print(f"Failed to Copy: {document} to {target}")
+            print(error)
+            exit(1)
+        else:
+            print(f"Copied: {document} to {target}")
 
 
 def copy_spec_to(dir: pathlib.Path):

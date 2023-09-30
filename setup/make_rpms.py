@@ -1,3 +1,20 @@
+"""
+Copyright (C) 2023 programB
+
+This file is part of lomanager2.
+
+lomanager2 is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 3
+as published by the Free Software Foundation.
+
+lomanager2 is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with lomanager2.  If not, see <http://www.gnu.org/licenses/>.
+"""
 import pathlib
 
 import defs
@@ -19,7 +36,7 @@ spec_text = (
     r"URL:            https://www.pclinuxos.com/forum/index.php/topic=59009.0.html" + "\n"
     r"Source:         %{name}-%{version}.tar.xz" + "\n"
     r"Source1:        help.md" + "\n"
-    # r"Source1:        libreoffice.conf" + "\n"
+    r"Source2:        LICENSE.md" + "\n"
     r"Summary:        Script to install LibreOffice in one of 110 languages" + "\n"
     r"Summary(de):    Skript zur Installation von LibreOffice in einer von 110 Sprachen" + "\n"
     r"Summary(fr):    Script pour installer LibreOffice en 110 langues" + "\n"
@@ -204,6 +221,7 @@ spec_text = (
     r"#Documents" + "\n"
     r"mkdir -p %{buildroot}/%_datadir/doc/%{name}" + "\n"
     r"install -m 0644 %SOURCE1 %{buildroot}/%_datadir/doc/%{name}/help.md" + "\n"
+    r"install -m 0644 %SOURCE2 %{buildroot}/%_datadir/doc/%{name}/LICENSE.md" + "\n"
     r"" + "\n"
     r"#help ldconfig find the libs" + "\n"
     r"mkdir -p %{buildroot}/etc/ld.so.conf.d" + "\n"
@@ -224,6 +242,7 @@ spec_text = (
     rf"%_datadir/locale/*/LC_MESSAGES/{defs.__package__}.mo" + "\n"
     r"/etc/ld.so.conf.d/libreoffice.conf" + "\n"
     r"%_datadir/doc/lomanager2/help.md" + "\n"
+    r"%_datadir/doc/lomanager2/LICENSE.md" + "\n"
     r"" + "\n"
     r"%changelog" + "\n"
     r"* Thu Sep 28 2023 pp - 7.6.1-1pclos2023" + "\n"
