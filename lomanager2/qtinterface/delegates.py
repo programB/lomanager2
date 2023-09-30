@@ -75,7 +75,7 @@ class CheckButtonDelegate(QItemDelegate):
         dark_clr = QWidget().palette().color(QPalette.ColorRole.Dark)
 
         # Color combos (button fill, button border, text)
-        self.unchecked_colors = (highlight_clr, text_clr, text_clr)
+        self.unchecked_colors = (highlight_clr, highlight_clr, text_clr)
         self.checked_colors = (text_clr, highlight_clr, highlight_clr)
         self.disabled_colors = (mid_clr, dark_clr, dark_clr)
 

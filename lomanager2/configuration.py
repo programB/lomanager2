@@ -21,9 +21,9 @@ def make_minor_ver(full_version: str) -> str:
 # latest_available_LO_version should be full version number (4 segments)
 # (all version strings are derived from it unless overridden by
 #  non empty force_specific_LO_version which should also comprise 4 segments)
-latest_available_LO_version = "7.5.4.2"
+latest_available_LO_version = "7.6.2.1"
 force_specific_LO_version = ""
-# force_specific_LO_version = "7.3.6.3"
+# force_specific_LO_version = "7.5.4.2"
 
 latest_available_clipart_version = (
     make_base_ver(latest_available_LO_version)
