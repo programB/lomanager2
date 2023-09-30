@@ -119,6 +119,10 @@ class ManualSelectionLogic(object):
                             for lang in office.children:
                                 lang.mark_for_removal()
                                 lang.is_remove_opt_enabled = False
+                                if lang.is_installed:
+                                    for item in package.get_your_family():
+                                        if item.is_langpack() and item.kind == lang.kind:
+                                            item.is_marked_for_install = True
                 # 4) If this is a lang pack
                 if package.is_langpack():
                     if package.parent is not None:
