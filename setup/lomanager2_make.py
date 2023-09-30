@@ -167,16 +167,20 @@ def pack_release(rel_dir: pathlib.Path, target_dir: pathlib.Path):
 
 
 def copy_docs_to(dir: pathlib.Path):
-    help_f = pathlib.Path("docs").joinpath("help.md")
-    target = dir.joinpath(help_f.name)
-    try:
-        shutil.copyfile(help_f, target)
-    except Exception as error:
-        print(f"Failed to Copy: {help_f} to {target}")
-        print(error)
-        exit(1)
-    else:
-        print(f"Copied: {help_f} to {target}")
+    doc_files = [
+        pathlib.Path("docs").joinpath("help.md"),
+        pathlib.Path(".").joinpath("LICENSE.md"),
+    ]
+    for document in doc_files:
+        target = dir.joinpath(document.name)
+        try:
+            shutil.copyfile(document, target)
+        except Exception as error:
+            print(f"Failed to Copy: {document} to {target}")
+            print(error)
+            exit(1)
+        else:
+            print(f"Copied: {document} to {target}")
 
 
 def copy_spec_to(dir: pathlib.Path):
