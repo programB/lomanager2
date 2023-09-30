@@ -4,6 +4,7 @@ from typing import Any
 
 import configuration
 from applogic.datatypes import compare_versions
+
 from i18n import _
 
 from .pysidecompat import *
@@ -31,7 +32,20 @@ class SoftwareMenuModel(QAbstractTableModel):
         super().__init__()
 
         self._app_logic = app_logic
-        self._column_names = column_names
+        self._final_column_names = column_names.copy()
+
+        # Initially when there is no data in tables substitute
+        # header for columns 4&5 with standard,longer one for proper
+        # window sizing
+        self._temporary_column_names = column_names.copy()
+        self._temporary_column_names[
+            column_index["marked_for_removal"]
+        ] = configuration.button_sizing_string
+        self._temporary_column_names[
+            column_index["marked_for_install"]
+        ] = configuration.button_sizing_string
+
+        self._column_names = self._temporary_column_names
 
         self.last_rebuild_timestamp = 0
         self._package_list = []
@@ -46,6 +60,12 @@ class SoftwareMenuModel(QAbstractTableModel):
                 root=self._app_logic.package_tree_root
             )
             self.last_rebuild_timestamp = self._app_logic.rebuild_timestamp
+            if self._package_list != []:
+                self._column_names = self._final_column_names
+                self.headerDataChanged.emit(
+                    Qt.Orientation.Horizontal, 0, len(self._column_names)
+                )
+
         return self._package_list
 
     def _build_sorted_list(self, root):
@@ -356,6 +376,7 @@ class OfficeMenuRenderModel(QSortFilterProxyModel):
         if "LibreOffice" in sm().index(row, column_index["family"], parent).data():
             if (
                 sm().index(row, column_index["kind"], parent).data() == "core-packages"
+                or sm().index(row, column_index["kind"], parent).data() == _("core")
                 or sm().index(row, column_index["installed"], parent).data() is True
             ):
                 # show any LibreOffice core package
@@ -396,6 +417,7 @@ class LanguageMenuRenderModel(QSortFilterProxyModel):
         if (
             "LibreOffice" in sm().index(row, column_index["family"], parent).data()
             and sm().index(row, column_index["kind"], parent).data() != "core-packages"
+            and sm().index(row, column_index["kind"], parent).data() != _("core")
             and sm().index(row, column_index["installed"], parent).data() is False
         ):
             # show any NOT installed LibreOffice lang package

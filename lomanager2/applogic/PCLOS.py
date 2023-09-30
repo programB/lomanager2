@@ -13,6 +13,7 @@ import tarfile
 from typing import Callable
 
 import configuration
+
 from i18n import _
 
 log = logging.getLogger("lomanager2_logger")
@@ -109,9 +110,11 @@ def get_running_Office_processes() -> tuple[bool, dict]:
 
 
 class HumanUser:
-    def __init__(self, name, home_dir) -> None:
+    def __init__(self, name, home_dir, uid, gid) -> None:
         self.name = name
         self.home_dir = pathlib.Path(home_dir)
+        self.uid = uid
+        self.gid = gid
 
 
 def get_system_users() -> list[HumanUser]:
@@ -130,14 +133,21 @@ def get_system_users() -> list[HumanUser]:
 
     human_users = []
     for user in pwd.getpwall():
+        user.pw_uid
         if (user.pw_shell in system_shells) and ("home" in user.pw_dir):
-            human_users.append(HumanUser(user.pw_name, user.pw_dir))
+            human_users.append(
+                HumanUser(user.pw_name, user.pw_dir, user.pw_uid, user.pw_gid)
+            )
     try:
         root_user = pwd.getpwuid(0)  # assuming root has uid 0
     except Exception as error:
         log.error(_("No root user found ") + str(error))
     else:
-        human_users.append(HumanUser(root_user.pw_name, root_user.pw_dir))
+        human_users.append(
+            HumanUser(
+                root_user.pw_name, root_user.pw_dir, root_user.pw_uid, root_user.pw_gid
+            )
+        )
     return human_users
 
 
@@ -153,7 +163,7 @@ def check_system_update_status() -> tuple[bool, bool, str]:
         if any(
             map(lambda e: e in output, ["error", "Error", "Err", "Failure", "failed"])
         ):
-            return (False, False, _("Failed to check updates"))
+            return (False, False, _("Failed to check updates") + f": {output}")
 
         status, output = run_shell_command(
             "apt-get dist-upgrade --fix-broken --simulate", fail_on_error=True
@@ -313,7 +323,8 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
         list_of_detected_suits.append(("LibreOffice", version, ()))
 
     # Look for LibreOffice 3.4 and above (including latest)
-    if pathlib.Path("/usr/bin").glob("libreoffice*"):
+    lo_execs = list(pathlib.Path("/usr/bin").glob("libreoffice[1-9].[1-9]"))
+    if lo_execs:
         log.debug(_("Detected LibreOffice binary"))
         # Check if the ure rpm package is installed
         success, reply = run_shell_command("rpm -qa | grep libreoffice | grep ure")
@@ -385,7 +396,11 @@ def detect_installed_office_software() -> list[tuple[str, str, tuple]]:
                 # No langs detected just add the core package to the list
                 list_of_detected_suits.append(("LibreOffice", full_version, ()))
         else:
-            log.warning(_("LibreOffice binary detected but no installed rpm found."))
+            log.warning(
+                _(
+                    "Some LibreOffice executables detected ({}) but no installed rpm found."
+                ).format(lo_execs)
+            )
 
     inf_message = _("All detected office suits (and langs): {}").format(
         list_of_detected_suits
@@ -573,20 +588,45 @@ def install_using_apt_get(
     )
     if status:
         regex_install = re.compile(
+            r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
+        )
+        regex_reinstall = re.compile(
             r"^(?P<n_upgraded>[0-9]+) upgraded, (?P<n_installed>[0-9]+) newly installed, (?P<n_reinstalled>[0-9]+) reinstalled, (?P<n_removed>[0-9]+) removed and (?P<n_not_upgraded>[0-9]+) not upgraded\.$"
         )
         is_summary_present = False
         for line in output.split("\n"):
-            if match := regex_install.search(line):
+            if match_i := regex_install.search(line):
                 is_summary_present = True
-                n_upgraded = match.group("n_upgraded")
-                n_installed = match.group("n_installed")
-                n_reinstalled = match.group("n_reinstalled")
-                n_removed = match.group("n_removed")
-                n_not_upgraded = match.group("n_not_upgraded")
+                n_upgraded = match_i.group("n_upgraded")
+                n_installed = match_i.group("n_installed")
+                n_removed = match_i.group("n_removed")
+                n_not_upgraded = match_i.group("n_not_upgraded")
                 if not (
                     (n_upgraded == n_removed == n_not_upgraded == "0")
                     and n_installed != "0"
+                ):
+                    msg = _(
+                        _(
+                            "Dry-run install failed. Packages where not installed: {}"
+                        ).format(output)
+                    )
+                    log.error(msg)
+                    return (False, msg)
+                else:
+                    msg = _(
+                        "Dry-run install successful. Proceeding with actual install..."
+                    )
+                    log.info(msg)
+                    break
+            elif match_ri := regex_reinstall.search(line):
+                is_summary_present = True
+                n_upgraded = match_ri.group("n_upgraded")
+                n_reinstalled = match_ri.group("n_reinstalled")
+                n_removed = match_ri.group("n_removed")
+                n_not_upgraded = match_ri.group("n_not_upgraded")
+                if not (
+                    (n_upgraded == n_removed == n_not_upgraded == "0")
+                    and n_reinstalled != "0"
                 ):
                     msg = _(
                         _(

@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 from i18n import _
 
@@ -77,8 +78,8 @@ class AppMainWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolBar)
 
         # -- define Software View
-        self.office_view = CustomTableView(no_of_rows=5, parent=self)
-        self.clipart_view = CustomTableView(no_of_rows=3, parent=self)
+        self.office_view = CustomTableView(no_of_rows=3, parent=self)
+        self.clipart_view = CustomTableView(no_of_rows=2, parent=self)
 
         # -- define other GUI elements
         left_spacer = QSpacerItem(
@@ -176,7 +177,11 @@ class CustomTableView(QTableView):
         if hide_header:
             self.horizontalHeader().hide()
 
-        # Vertical header should not exist at all
+        # Increase spacing between rows
+        self.verticalHeader().setDefaultSectionSize(50)
+        self.row_height = self.verticalHeader().defaultSectionSize()
+
+        # Vertical header should never be visible
         self.verticalHeader().hide()
 
         # Selection and focus should be turned off
@@ -217,17 +222,25 @@ class CustomTableView(QTableView):
         # Override width (added 2x scroll_bar_width for nicer look)
         table_size.setWidth(col_width_sum + 2 * scroll_bar_width)
         if self.no_of_rows is not None:
-            # Set table height hint to requested muliple of rowHeight
-            table_size.setHeight(self.no_of_rows * self.rowHeight(0))
+            # This is one of the main software views (office/clipart).
+            # Set table height hint to requested multiple of rowHeight
+            table_size.setHeight(self.no_of_rows * self.row_height + 1)
+            return table_size
         else:
-            # Unrestricted number of rows. That means it's a langs_view
-            # and since the width was already set by setWidth above
+            # Unrestricted number of rows. That means it's a langs_view.
+            # Since the width was already set by setWidth above
             # the containing window (parent of langs_view)
-            # should be fixed in its horizontal size.
+            # should now be fixed in its horizontal size to match that.
             # (The user can expand that window verticaly though and also
             #  the scrollbar will be shown if needed)
             self.parent().setFixedWidth(table_size.width())
-        return table_size
+            # Increase initial vertical size of the langs window
+            # by hinting its size to be 2x langs_view vertical size.
+            # (That way it shows at least 6 entries)
+            new_hint = QSize()
+            new_hint.setWidth(table_size.width())
+            new_hint.setHeight(2 * table_size.height())
+            return new_hint
 
     def paintEvent(self, event):
         self.updateGeometry()  # checks sizeHint
@@ -484,8 +497,12 @@ class HelpDialog(QDialog):
         self.resize(640, 480)
 
     def _load_md(self):
-        with open("./docs/help.md", "r") as markdown_f:
-            text = markdown_f.read()
+        help_md = pathlib.Path("/usr/share/doc/lomanager2").joinpath("help.md")
+        if help_md.exists():
+            with open(help_md, "r") as markdown_f:
+                text = markdown_f.read()
+        else:
+            text = _("Help document not found")
         self.markdown_text = text
 
     def _load_css(self):

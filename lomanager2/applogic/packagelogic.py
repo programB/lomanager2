@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import pathlib
 import re
 import time
@@ -7,6 +8,7 @@ import xml.etree.ElementTree as ET
 from typing import Callable
 
 import configuration
+
 from i18n import _
 
 from . import PCLOS, net
@@ -56,7 +58,11 @@ class MainLogic(object):
             log.info(msg + explanation)
         else:
             log.error(msg + explanation)
-        self.warnings.append((isOK, msg, explanation))
+        # Do not add the same warning twice
+        # (it will be logged in the code above as many times as sent)
+        warning = (isOK, msg, explanation)
+        if not warning in self.warnings:
+            self.warnings.append(warning)
 
     def get_planned_changes(self):
         return (
@@ -484,6 +490,7 @@ class MainLogic(object):
         if self.global_flags.block_checking_4_updates is False:
             # no running manager prevents access to system rpm database
             progress_reporter.step_start(_("Checking for system updates"))
+            explanation = ""
             if self.skip_update_check:
                 msg = _(
                     "Checking for OS updates was bypassed. Installing "
@@ -518,11 +525,9 @@ class MainLogic(object):
                 msg = _(
                     "Failed to check update status \nand as a result you "
                     "won't be able to install LibreOffice packages. "
-                    "Check you internet connection and restart this program."
+                    "Check your internet connection and restart this program."
                 )
-                if explanation:
-                    msg += "\n" + explanation
-                self.inform_user(msg, "", isOK=False)
+                self.inform_user(msg, explanation, isOK=False)
         else:
             log.warning(_("Update checking was blocked"))
         progress_reporter.step_end()
@@ -572,7 +577,6 @@ class MainLogic(object):
             recommended_Java_ver,
             recommended_LO_ver,
             recommended_Clip_ver,
-            msg,
         ) = self._get_available_software()
         progress_reporter.step_end()
 
@@ -606,7 +610,14 @@ class MainLogic(object):
         )
         self.global_flags.ready_to_apply_changes = True
         self.rebuild_timestamp = time.time()
-        if msg:
+        if (
+            configuration.force_specific_LO_version != ""
+            and newest_LO_ver != ""
+            and newest_LO_ver != configuration.force_specific_LO_version
+        ):
+            msg = _("Downgrade of LibreOffice to version {} is recommended.").format(
+                configuration.force_specific_LO_version
+            )
             self.inform_user(msg, "", isOK=False)
 
     def remove_temporary_dirs(self):
@@ -857,7 +868,6 @@ class MainLogic(object):
 
     def _get_available_software(self):
         available_virtual_packages = []
-        msg = ""
 
         # Since this program is not meant to update Java,
         # Java version is not used.
@@ -886,9 +896,6 @@ class MainLogic(object):
         # Decide which LO version should be recommended for installation
         if configuration.force_specific_LO_version != "":
             LO_ver = configuration.force_specific_LO_version
-            msg += _("Downgrade of LibreOffice to version {} is recommended.").format(
-                LO_ver
-            )
         else:
             LO_ver = configuration.latest_available_LO_version
         recommended_LO_ver = LO_ver
@@ -982,7 +989,6 @@ class MainLogic(object):
             recommended_Java_ver,
             recommended_LO_ver,
             recommended_Clip_ver,
-            msg,
         )
 
     def _detect_installed_software(self):
@@ -1172,11 +1178,11 @@ class MainLogic(object):
                     "This directory is getting wiped out on reboot, "
                     "please move it to some other location."
                 ).format(configuration.offline_copy_dir)
-                self.inform_user(msg, expl, isOK=False)
+                self.inform_user(msg, expl, isOK=True)
             progress_reporter.step_end()
         else:
             msg = _("All changes successful")
-            self.inform_user(msg, "", isOK=False)
+            self.inform_user(msg, "", isOK=True)
             progress_reporter.step_skip(_("Packages were not saved for later use"))
 
     def _collect_packages(
@@ -1641,9 +1647,22 @@ class MainLogic(object):
                 return (False, msg)
 
             # Post install stuff
+            progress_reporter.progress_msg(
+                _("Disabling LibreOffice's online updates...")
+            )
+            progress_reporter.progress(50)
             self._disable_LO_update_checks()
+            progress_reporter.progress(100)
+
+            progress_reporter.progress_msg(_("Modifying .desktop files..."))
+            progress_reporter.progress(50)
             self._modify_dot_desktop_files()
+            progress_reporter.progress(100)
+
+            progress_reporter.progress_msg(_("Applying icon fixes..."))
+            progress_reporter.progress(50)
             self._fix_LXDE_icons()
+            progress_reporter.progress(100)
 
             # Finally return success
             return (True, _("LibreOffice packages successfully installed"))
@@ -1700,7 +1719,9 @@ class MainLogic(object):
 
         # Disable checks for every existing user
         for user in PCLOS.get_system_users():
-            conf_dir = user.home_dir.joinpath(".config/libreoffice/4/user")
+            log.debug(f"changing registrymodifications.xcu for user: {user.name}")
+            conf_dir_root = user.home_dir.joinpath(".config/libreoffice")
+            conf_dir = conf_dir_root.joinpath("4/user")
             xcu_file = conf_dir.joinpath("registrymodifications.xcu")
             if xcu_file.exists():
                 # modify existing file
@@ -1728,11 +1749,18 @@ class MainLogic(object):
                 if not conf_dir.exists():
                     PCLOS.make_dir_tree(target_dir=conf_dir)
                 create_xcu_file_w_disabled_autocheck(file=xcu_file)
+            # Set/reset files and folders ownership
+            log.debug(f"reseting ownership of: {conf_dir_root}")
+            os.chown(conf_dir_root, user.uid, user.gid)
+            for item in conf_dir.iterdir():
+                log.debug(f"reseting ownership of: {item}")
+                os.chown(item, user.uid, user.gid)
 
         # Disable checking for new users (if ever created)
         skel_dir = pathlib.Path("/etc/skel/.config/libreoffice/4/user")
         skel_xcu_file = skel_dir.joinpath("registrymodifications.xcu")
         if not skel_xcu_file.exists():
+            log.debug(f"no xcu in skel creating new one")
             if not skel_dir.exists():
                 PCLOS.make_dir_tree(target_dir=skel_dir)
             create_xcu_file_w_disabled_autocheck(file=skel_xcu_file)
@@ -1743,7 +1771,7 @@ class MainLogic(object):
         # Change it to:
         # Categories=Office;
         log.info(_("updating .desktop files"))
-        base_dirS = pathlib.Path("/opt").glob("libreoffice*")
+        base_dirS = [d for d in pathlib.Path("/opt").glob("libreoffice*") if d.is_dir()]
         fileS = [
             "base.desktop",
             "calc.desktop",

@@ -4,7 +4,6 @@ import socket
 import sys
 
 from applogic.packagelogic import MainLogic
-from i18n import _
 from qtinterface.delegates import columns
 from qtinterface.gui import AppMainWindow
 from qtinterface.pysidecompat import *
@@ -12,6 +11,8 @@ from qtinterface.threads import ProcedureWorker
 from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     LanguageMenuRenderModel,
                                     OfficeMenuRenderModel, SoftwareMenuModel)
+
+from i18n import _
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -125,12 +126,6 @@ class Adapter(QObject):
         self._software_menu_model.endResetModel()
         # Have the model inform all attached views to redraw themselves entirely
         self._software_menu_model.layoutChanged.emit()
-        # Increase spacing between rows in software_view
-        for row in range(self._office_view.model().rowCount()):
-            self._office_view.setRowHeight(row, 50)
-            self._clipart_view.setRowHeight(row, 50)
-        for row in range(self._langs_view.model().rowCount()):
-            self._langs_view.setRowHeight(row, 50)
         # Check if there are any messages that should be shown to the user
         if self._app_logic.warnings:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
@@ -184,6 +179,8 @@ class Adapter(QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.local_copy_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Window title differes depending on procedure
+            self._progress_view.setWindowTitle(_("Applying changes"))
             # Show progress bar (check_system_state is not showing it)
             self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
@@ -266,6 +263,8 @@ class Adapter(QObject):
             # Number of steps differs depending on procedure
             proc_steps = self._app_logic.normal_procedure_step_count
             self._progress_view.overall_progress_bar.setRange(0, proc_steps)
+            # Window title differes depending on procedure
+            self._progress_view.setWindowTitle(_("Applying changes"))
             # Show progress bar (check_system_state is not showing it)
             self._progress_view.progress_bar.setVisible(True)
             # Lock GUI elements, open progress window and start thread
@@ -388,15 +387,17 @@ class Adapter(QObject):
         # Number of steps differs depending on procedure
         proc_steps = self._app_logic.check_system_procedure_step_count
         self._progress_view.overall_progress_bar.setRange(0, proc_steps)
-        #
+        # Window title differes depending on procedure
+        self._progress_view.setWindowTitle(_("Checking system state"))
         self._progress_view.progress_bar.setVisible(False)
         # Lock GUI elements, open progress window and start thread
         self.thread_worker_ready_signal.emit()
 
     def _cleanup_and_exit(self):
+        log.debug(_("Quit clicked: User decided to finish using the app"))
         removed = self._app_logic.remove_temporary_dirs()
         if removed:
-            log.debug("Bye")
+            log.info("Bye")
         else:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
         self._app_main_view.close()
