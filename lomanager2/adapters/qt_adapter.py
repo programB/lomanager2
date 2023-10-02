@@ -157,12 +157,12 @@ class Adapter(QObject):
     def _show_about(self):
         about_text = _(
             "LibreOffice Manager 2 (lomanager2)\n\n"
-            f"Version {__version__}\n\n"
+            "Version {}\n\n"
             "Installation, update and removal of LibreOffice "
             "components in PCLinuxOS\n\n"
             "Copyright (C) 2023 programB\n\nThis program is licensed  "
             "under the terms of the GNU GPL version 3.\n"
-        )
+        ).format(__version__)
         QMessageBox.about(self._app_main_view, _("About lomanager2"), about_text)
 
     def _install_from_local_copy(self):
@@ -416,7 +416,7 @@ class Adapter(QObject):
         log.debug(_("Quit clicked: User decided to finish using the app"))
         removed = self._app_logic.remove_temporary_dirs()
         if removed:
-            log.info("Bye")
+            log.info(_("Bye"))
         else:
             self.warnings_awaiting_signal.emit(self._app_logic.get_warnings())
         self._app_main_view.close()
