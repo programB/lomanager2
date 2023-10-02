@@ -15,9 +15,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with lomanager2.  If not, see <http://www.gnu.org/licenses/>.
 """
-# fmt: off
-__package__    = "lomanager2"
-__version__    = "7.6.1"
-__copyright__  = "Copyright 2023, programB"
-__license__    = "GNU GPL v3"
-# fmt: on
+import pathlib
+
+setup_dir = pathlib.Path("setup")
+if not setup_dir.is_dir():
+    print("This script must be called from the top level directory")
+    exit(1)
+src_dir = pathlib.Path("lomanager2")
+
+version = ""
+package = ""
+with open(src_dir.joinpath("defs.py"), "r") as defs_f:
+    for line in defs_f:
+        if line.startswith("__package__"):
+            package = line.split("=")[1].strip().replace("\"","")
+        if line.startswith("__version__"):
+            version = line.split("=")[1].strip().replace("\"","")
