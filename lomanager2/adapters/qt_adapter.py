@@ -30,6 +30,7 @@ from qtinterface.viewmodels import (ClipartMenuRenderModel,
                                     OfficeMenuRenderModel, SoftwareMenuModel)
 
 from i18n import _
+from defs import __version__
 
 log = logging.getLogger("lomanager2_logger")
 
@@ -156,6 +157,7 @@ class Adapter(QObject):
     def _show_about(self):
         about_text = _(
             "LibreOffice Manager 2 (lomanager2)\n\n"
+            f"Version {__version__}\n\n"
             "Installation, update and removal of LibreOffice "
             "components in PCLinuxOS\n\n"
             "Copyright (C) 2023 programB\n\nThis program is licensed  "
