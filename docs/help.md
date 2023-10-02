@@ -29,7 +29,9 @@ The process of removing LibreOffice, or any of the language packs, is equally st
 
 ### <a name="upgrading-to-newer-version">Upgrading to newer version</a>
 
-Once the new LibreOffice version becomes available and gets thoroughly tested by PCLOS team you will be able to mark it for installation. Once marked it will automatically mark any already installed version for removal. At this point pressing the "Apply changes" button will first download the new version and only once this step is successful it will remove the old version and install the new one. Note that this procedure removes all existing language packs so if you want to use specific language pack you will have to manually mark it for installation in addition to the new core package just marked. This can be done in one step, simply mark desired language pack by using the "Add languages" option. If you don't do this you can add this package separately afterwards.
+Once the new LibreOffice version becomes available and gets thoroughly tested by PCLOS team you will be able to mark it for installation. Once marked it will automatically mark any already installed version for removal. At this point pressing the "Apply changes" button will first download the new version and only once this step is successful it will remove the old version and install the new one.
+
+This procedure will mark any installed language packs for removal and should automatically mark their new versions for installation. Please make sure that you see the language packages you need scheduled for installation in the summary dialog. If they were not marked you can add them manually using languages selection window now or after you have installed the new LibreOffice version.
 
 ### <a name="downgrading">Downgrading</a>
 
@@ -89,4 +91,4 @@ Open LibreOffice and use the menu Tools->Options... to open options dialog. In t
 
    Head over to our forum and ask for help. There is the lomanager topic where relevant discussion takes place, use it please:
 
-   [LibreOffice manager (lomanager) support topic](https://www.pclinuxos.com/forum/index.php/topic,59009.0.html) (opens in your browser)
+   [LibreOffice manager (lomanager) support topic](https://www.pclinuxos.com/forum/) (opens in your browser)
