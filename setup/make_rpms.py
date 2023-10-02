@@ -245,8 +245,8 @@ spec_text = (
     r"%_datadir/doc/lomanager2/LICENSE.md" + "\n"
     r"" + "\n"
     r"%changelog" + "\n"
-    r"* Mon Oct 2 2023 pp - 1.0.0-alpha.1-1programB2023" + "\n"
-    r"- Test version" + "\n"
+    r"* Mon Oct 2 2023 pp - 0.1.0-1programB2023" + "\n"
+    r"- Initial release" + "\n"
     r"" + "\n"
 )
 # fmt:on
