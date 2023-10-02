@@ -1042,7 +1042,7 @@ class MainLogic(object):
             installed_virtual_packages.append(clipart_core_package)
 
         nice_list = " || ".join([str(p) for p in installed_virtual_packages])
-        log.info("found_software: " + nice_list)
+        log.info(_("found_software: {}").format(nice_list))
         return installed_virtual_packages
 
     def _make_changes(

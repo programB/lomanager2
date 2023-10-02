@@ -21,7 +21,7 @@ import pathlib
 import shutil
 import subprocess
 
-import defs
+import common
 
 supported_langs = [
     "bg_BG",
@@ -47,7 +47,7 @@ if not setup_dir.is_dir():
 
 src_dir = pathlib.Path("lomanager2")
 locale_dir = pathlib.Path("i18n")
-domain = defs.__package__
+domain = common.package
 main_pot_file = locale_dir.joinpath(domain + ".pot")
 
 

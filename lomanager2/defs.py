@@ -17,7 +17,7 @@ along with lomanager2.  If not, see <http://www.gnu.org/licenses/>.
 """
 # fmt: off
 __package__    = "lomanager2"
-__version__    = "7.6.1"
+__version__    = "0.1.0"
 __copyright__  = "Copyright 2023, programB"
 __license__    = "GNU GPL v3"
 # fmt: on

@@ -22,7 +22,7 @@ import shutil
 import tarfile
 import zipapp
 
-import defs
+import common
 import make_locales
 import make_rpms
 
@@ -41,12 +41,12 @@ mo_dir = build_dir.joinpath("translations")
 dist_dir = pathlib.Path("dist")
 dist_SOURCES_dir = dist_dir.joinpath("SOURCES")
 dist_SPECS_dir = dist_dir.joinpath("SPECS")
-release_dir = dist_SOURCES_dir.joinpath(defs.__package__ + "-" + defs.__version__)
+release_dir = dist_SOURCES_dir.joinpath(common.package + "-" + common.version)
 
-exe_filename = defs.__package__
+exe_filename = common.package
 exe_file = bin_dir.joinpath(exe_filename)
 
-spec_filename = defs.__package__ + ".spec"
+spec_filename = common.package + ".spec"
 spec_file = build_dir.joinpath(spec_filename)
 
 
@@ -254,7 +254,7 @@ def command_send_to_build_machine():
 #     if RPM:
 #         try:
 #             print(f"Building binary .rpm package")
-#             subprocess.run(["rpmbuild", "-bb", f"{defs.SPECS}/{spec_filename}"])
+#             subprocess.run(["rpmbuild", "-bb", f"{common.SPECS}/{spec_filename}"])
 #         except Exception as error:
 #             print(error)
 #             exit(1)
@@ -263,7 +263,7 @@ def command_send_to_build_machine():
 #     if SRPM:
 #         try:
 #             print(f"Building  src.rpm package")
-#             subprocess.run(["rpmbuild", "-bs", f"{defs.SPECS}/{spec_filename}"])
+#             subprocess.run(["rpmbuild", "-bs", f"{common.SPECS}/{spec_filename}"])
 #         except Exception as error:
 #             print(error)
 #             exit(1)
